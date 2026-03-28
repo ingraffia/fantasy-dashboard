@@ -43,13 +43,22 @@ function formatHitterLine(b) {
 
 function formatPitcherLine(p) {
     if (!p) return null
-    const parts = [`${p.ip} IP`]
+    const parts = [`${p.ip}IP`]
     if (p.h > 0) parts.push(`${p.h}H`)
     parts.push(`${p.er}ER`)
     if (p.bb > 0) parts.push(`${p.bb}BB`)
     parts.push(`${p.k}K`)
-    if (p.hr > 0) parts.push(`${p.hr}HR`)
     return parts.join(', ')
+}
+
+function useIsMobile() {
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+    useEffect(() => {
+        const handler = () => setIsMobile(window.innerWidth < 768)
+        window.addEventListener('resize', handler)
+        return () => window.removeEventListener('resize', handler)
+    }, [])
+    return isMobile
 }
 
 function Tag({ text, bg = C.gray100, color = C.gray600 }) {
@@ -74,11 +83,11 @@ function MlbLogo({ team, size = 20, showText = true, whiteText = false }) {
     const map = { 'AZ': 'ari', 'WAS': 'wsh', 'CWS': 'chw', 'LA': 'lad' }
     const abbr = map[normalized] || normalized.toLowerCase()
     return (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <img src={`https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/${abbr}.png`}
                 alt={team} style={{ width: size, height: size, objectFit: 'contain' }}
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'inline' }} />
-            <span style={{ display: showText ? 'inline' : 'none', color: whiteText ? 'rgba(255,255,255,0.6)' : C.gray600, fontSize: 12 }}>{team}</span>
+                onError={(e) => { e.target.style.display = 'none' }} />
+            {showText && <span style={{ color: whiteText ? 'rgba(255,255,255,0.6)' : C.gray600, fontSize: 12 }}>{team}</span>}
         </div>
     )
 }
@@ -89,14 +98,14 @@ function RankBadge({ rank }) {
     return <span style={{ fontSize: 12, fontWeight: 600, color }}>#{rank}</span>
 }
 
-function PlayerAvatar({ imageUrl, name, size = 28 }) {
+function PlayerAvatar({ imageUrl, name, size = 36 }) {
     return imageUrl ? (
         <img src={imageUrl} alt={name}
             style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', background: C.gray100, flexShrink: 0 }}
             onError={e => e.target.style.display = 'none'}
         />
     ) : (
-        <div style={{ width: size, height: size, borderRadius: '50%', background: C.gray200, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: C.gray400, fontWeight: 600 }}>
+        <div style={{ width: size, height: size, borderRadius: '50%', background: C.gray200, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: C.gray400, fontWeight: 600 }}>
             {name?.charAt(0) || '?'}
         </div>
     )
@@ -109,10 +118,10 @@ function AvailabilityBadges({ playerKey, ownership, leagues }) {
             {leagues.map(lg => {
                 const status = ownership[playerKey]?.[lg.leagueKey]
                 const available = status?.available !== false
-                const label = available ? 'Free Agent' : (status?.ownerTeamName || 'Taken')
+                const label = available ? 'FA' : (status?.ownerTeamName || 'Taken')
                 return (
                     <span key={lg.leagueKey} title={lg.leagueName} style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 3, padding: '1px 7px',
+                        display: 'inline-flex', alignItems: 'center', gap: 3, padding: '1px 6px',
                         borderRadius: 3, fontSize: 10, fontWeight: 500,
                         background: available ? C.greenLight : C.gray100,
                         color: available ? C.green : C.gray600,
@@ -125,19 +134,19 @@ function AvailabilityBadges({ playerKey, ownership, leagues }) {
     )
 }
 
-// ─── Live Box Score Components ──────────────────────────────────────────────
+// ─── Live Box Score Components ───────────────────────────────────────────────
 
 function GameStatusBadge({ game }) {
     if (game.isLive) {
         const inningStr = game.inning ? `${game.inningHalf === 'Top' ? '▲' : '▼'}${game.inning}` : 'Live'
         return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '2px 8px', borderRadius: 99 }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-                {inningStr} · {game.outs ?? 0} out
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '2px 7px', borderRadius: 99 }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                {inningStr} · {game.outs ?? 0}out
             </span>
         )
     }
-    if (game.isFinal) return <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, background: C.gray100, padding: '2px 8px', borderRadius: 99 }}>Final</span>
+    if (game.isFinal) return <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, background: C.gray100, padding: '2px 7px', borderRadius: 99 }}>Final</span>
     const timeStr = game.startTime ? new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'
     return <span style={{ fontSize: 10, color: C.gray400, fontWeight: 600 }}>{timeStr}</span>
 }
@@ -146,18 +155,15 @@ function CompactGamePill({ game }) {
     const started = game.isLive || game.isFinal
     return (
         <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px',
+            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px',
             background: C.gray50, border: `1px solid ${C.gray200}`, borderRadius: 20,
             fontSize: 11, fontWeight: 500, color: C.gray600, flexShrink: 0, whiteSpace: 'nowrap',
         }}>
-            <span style={{ fontWeight: started ? 600 : 400 }}>{game.awayTeam}</span>
-            {started
-                ? <span style={{ fontWeight: 700, color: C.gray800 }}>{game.awayScore ?? 0} – {game.homeScore ?? 0}</span>
-                : <span style={{ color: C.gray400 }}>vs</span>
-            }
-            <span style={{ fontWeight: started ? 600 : 400 }}>{game.homeTeam}</span>
-            {game.isLive && <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />}
-            {game.isFinal && <span style={{ fontSize: 9, color: C.gray400, fontWeight: 700 }}>F</span>}
+            <span>{game.awayTeam}</span>
+            {started ? <span style={{ fontWeight: 700, color: C.gray800 }}>{game.awayScore}-{game.homeScore}</span> : <span style={{ color: C.gray400 }}>vs</span>}
+            <span>{game.homeTeam}</span>
+            {game.isLive && <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />}
+            {game.isFinal && <span style={{ fontSize: 9, color: C.gray400 }}>F</span>}
         </div>
     )
 }
@@ -167,11 +173,9 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap }) {
     const statLine = isPitcherPos ? formatPitcherLine(bsPlayer.pitching) : formatHitterLine(bsPlayer.batting)
     const isActive = bsPlayer.status === 'batting' || bsPlayer.status === 'pitching'
 
-    // Determine if this is a good or bad performance
     let perfColor = C.gray800
     if (isPitcherPos && bsPlayer.pitching) {
-        const er = bsPlayer.pitching.er
-        const ip = parseFloat(bsPlayer.pitching.ip)
+        const er = bsPlayer.pitching.er; const ip = parseFloat(bsPlayer.pitching.ip)
         if (ip >= 6 && er <= 1) perfColor = C.green
         else if (er >= 4) perfColor = C.red
     } else if (bsPlayer.batting) {
@@ -180,32 +184,27 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap }) {
         else if (ab >= 3 && h === 0) perfColor = C.red
     }
 
-    // Try to find matching avatar from roster
     const normN = normName(bsPlayer.name)
     const imgUrl = imageMap[normN] || null
 
     return (
         <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
+            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
             borderBottom: `1px solid ${C.gray100}`,
             background: isActive ? `${C.green}08` : 'transparent',
         }}>
-            <PlayerAvatar imageUrl={imgUrl} name={bsPlayer.name} size={28} />
+            <PlayerAvatar imageUrl={imgUrl} name={bsPlayer.name} size={26} />
             <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontWeight: 600, fontSize: 12, color: C.gray800, whiteSpace: 'nowrap' }}>{bsPlayer.name}</span>
-                    <span style={{ fontSize: 10, color: C.gray400, fontWeight: 600 }}>{bsPlayer.position}</span>
-                    {isActive && (
-                        <span style={{ fontSize: 9, fontWeight: 800, color: C.green, background: C.greenLight, padding: '1px 5px', borderRadius: 3, textTransform: 'uppercase' }}>
-                            {bsPlayer.status === 'batting' ? 'At Bat' : 'Pitching'}
-                        </span>
-                    )}
-                    {rosterPlayer && (
-                        <SlotPill slot={rosterPlayer.selectedPosition} />
-                    )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, fontSize: 12, color: C.gray800 }}>{bsPlayer.name}</span>
+                    <span style={{ fontSize: 10, color: C.gray400 }}>{bsPlayer.position}</span>
+                    {isActive && <span style={{ fontSize: 9, fontWeight: 800, color: C.green, background: C.greenLight, padding: '1px 4px', borderRadius: 3 }}>
+                        {bsPlayer.status === 'batting' ? 'AB' : 'P'}
+                    </span>}
+                    {rosterPlayer && <SlotPill slot={rosterPlayer.selectedPosition} />}
                 </div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: perfColor, whiteSpace: 'nowrap', textAlign: 'right' }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: perfColor, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>
                 {statLine || '—'}
             </div>
         </div>
@@ -216,25 +215,15 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
     const started = game.isLive || game.isFinal
     const loading = !boxscore && started
 
-    // Find my players in this boxscore
-    const allBsPlayers = [
-        ...(boxscore?.away?.players || []),
-        ...(boxscore?.home?.players || []),
-    ]
+    const allBsPlayers = [...(boxscore?.away?.players || []), ...(boxscore?.home?.players || [])]
     const myBsPlayers = allBsPlayers.filter(p => myPlayerNames.has(normName(p.name)))
 
-    // Match to roster for slot info
     const withRoster = myBsPlayers.map(bp => ({
         bsPlayer: bp,
         rosterPlayer: rosterPlayers.find(rp => normName(rp.name) === normName(bp.name)),
-    }))
-
-    // Sort: pitchers first, then batters by order
-    withRoster.sort((a, b) => {
-        const aP = !!a.bsPlayer.pitching
-        const bP = !!b.bsPlayer.pitching
-        if (aP && !bP) return -1
-        if (!aP && bP) return 1
+    })).sort((a, b) => {
+        const aP = !!a.bsPlayer.pitching; const bP = !!b.bsPlayer.pitching
+        if (aP && !bP) return -1; if (!aP && bP) return 1
         return (a.bsPlayer.battingOrder ?? 999) - (b.bsPlayer.battingOrder ?? 999)
     })
 
@@ -243,46 +232,33 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
             background: C.white,
             border: `1px solid ${game.isLive ? '#86efac' : C.gray200}`,
             borderTop: `3px solid ${game.isLive ? C.green : game.isFinal ? C.gray200 : C.accent}`,
-            borderRadius: 10,
-            overflow: 'hidden',
-            minWidth: 280,
-            maxWidth: 340,
-            flexShrink: 0,
+            borderRadius: 10, overflow: 'hidden',
+            minWidth: 260, maxWidth: 320, flexShrink: 0,
         }}>
-            {/* Game header */}
-            <div style={{ padding: '10px 14px', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <MlbLogo team={game.awayTeam} size={16} showText={false} />
-                    <span style={{ fontSize: 12, fontWeight: 700, color: C.gray800 }}>{game.awayTeam}</span>
-                    {started && <span style={{ fontSize: 14, fontWeight: 900, color: C.gray800 }}>{game.awayScore ?? 0}</span>}
-                    <span style={{ fontSize: 11, color: C.gray400, fontWeight: 500 }}>@</span>
-                    {started && <span style={{ fontSize: 14, fontWeight: 900, color: C.gray800 }}>{game.homeScore ?? 0}</span>}
-                    <span style={{ fontSize: 12, fontWeight: 700, color: C.gray800 }}>{game.homeTeam}</span>
-                    <MlbLogo team={game.homeTeam} size={16} showText={false} />
+            <div style={{ padding: '8px 12px', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                    <MlbLogo team={game.awayTeam} size={14} showText={false} />
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{game.awayTeam}</span>
+                    {started && <span style={{ fontSize: 14, fontWeight: 900 }}>{game.awayScore ?? 0}</span>}
+                    <span style={{ fontSize: 11, color: C.gray400 }}>@</span>
+                    {started && <span style={{ fontSize: 14, fontWeight: 900 }}>{game.homeScore ?? 0}</span>}
+                    <span style={{ fontSize: 12, fontWeight: 700 }}>{game.homeTeam}</span>
+                    <MlbLogo team={game.homeTeam} size={14} showText={false} />
                 </div>
                 <GameStatusBadge game={game} />
             </div>
-
-            {/* My players */}
-            <div style={{ padding: '4px 14px 8px' }}>
+            <div style={{ padding: '4px 12px 8px' }}>
                 {loading ? (
-                    <div style={{ padding: '12px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading stats...</div>
+                    <div style={{ padding: '10px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading...</div>
                 ) : !started ? (
-                    <div style={{ padding: '12px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>
-                        Game starts {new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    <div style={{ padding: '10px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>
+                        {new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </div>
                 ) : withRoster.length === 0 ? (
-                    <div style={{ padding: '12px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>No active players found</div>
-                ) : (
-                    withRoster.map(({ bsPlayer, rosterPlayer }) => (
-                        <MyPlayerStatRow
-                            key={bsPlayer.name}
-                            bsPlayer={bsPlayer}
-                            rosterPlayer={rosterPlayer}
-                            imageMap={imageMap}
-                        />
-                    ))
-                )}
+                    <div style={{ padding: '10px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>No stats yet</div>
+                ) : withRoster.map(({ bsPlayer, rosterPlayer }) => (
+                    <MyPlayerStatRow key={bsPlayer.name} bsPlayer={bsPlayer} rosterPlayer={rosterPlayer} imageMap={imageMap} />
+                ))}
             </div>
         </div>
     )
@@ -290,56 +266,37 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
 
 function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers, imageMap }) {
     if (games.length === 0) return null
-
     const myGames = games.filter(g => myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam))
     const otherGames = games.filter(g => !myTeams.has(g.awayTeam) && !myTeams.has(g.homeTeam))
     const liveCount = games.filter(g => g.isLive).length
 
     return (
-        <div style={{ padding: '12px 1.5rem', background: C.white, borderBottom: `1px solid ${C.gray100}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Today's Games
-                </span>
+        <div style={{ padding: '10px 16px', background: C.white, borderBottom: `1px solid ${C.gray100}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Today</span>
                 {liveCount > 0 && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '2px 8px', borderRadius: 99 }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '2px 7px', borderRadius: 99 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
                         {liveCount} Live
                     </span>
                 )}
-                <span style={{ fontSize: 10, color: C.gray400, marginLeft: 'auto' }}>
-                    {myGames.length} game{myGames.length !== 1 ? 's' : ''} with your players
-                </span>
+                <span style={{ fontSize: 10, color: C.gray400, marginLeft: 'auto' }}>{myGames.length} with your players</span>
             </div>
-
-            {/* My player games — expanded cards */}
             {myGames.length > 0 && (
-                <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 8 }}>
+                <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6, WebkitOverflowScrolling: 'touch' }}>
                     {myGames.map(g => (
-                        <BoxScoreCard
-                            key={g.gamePk}
-                            game={g}
-                            boxscore={boxscores[g.gamePk]}
-                            myPlayerNames={myPlayerNames}
-                            rosterPlayers={rosterPlayers}
-                            imageMap={imageMap}
-                        />
+                        <BoxScoreCard key={g.gamePk} game={g} boxscore={boxscores[g.gamePk]}
+                            myPlayerNames={myPlayerNames} rosterPlayers={rosterPlayers} imageMap={imageMap} />
                     ))}
                 </div>
             )}
-
-            {/* Other games — compact pills */}
             {otherGames.length > 0 && (
-                <div style={{ marginTop: myGames.length > 0 ? 10 : 0 }}>
-                    {myGames.length > 0 && (
-                        <div style={{ fontSize: 10, color: C.gray400, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Other Games</div>
-                    )}
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ marginTop: myGames.length > 0 ? 8 : 0 }}>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                         {otherGames.map(g => <CompactGamePill key={g.gamePk} game={g} />)}
                     </div>
                 </div>
             )}
-
             <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
         </div>
     )
@@ -374,8 +331,7 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
     const isEspn = playerKey.startsWith('espn.')
     const statDefs = detail ? (isPitcher(detail.position) ? PITCHER_STATS : HITTER_STATS) : []
     const ranksByLeague = leagues.map(lg => ({
-        leagueName: lg.leagueName,
-        leagueKey: lg.leagueKey,
+        leagueName: lg.leagueName, leagueKey: lg.leagueKey,
         overallRank: rankMap[lg.leagueKey]?.[playerKey]?.overallRank,
         leagueRank: rankMap[lg.leagueKey]?.[playerKey]?.leagueRank,
     }))
@@ -383,63 +339,60 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
 
     return (
         <>
-            <div className="animate-fade-in-backdrop" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.3)', zIndex: 40 }} />
-            <div className="animate-slide-in-right" style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 400, background: C.white, zIndex: 50, boxShadow: '-4px 0 24px rgba(0,0,0,0.12)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div style={{ background: isEspn ? '#1a1a2e' : C.navy, padding: '1rem 1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        {(detail?.imageUrl || isEspn) && (
-                            <img src={detail?.imageUrl || `https://a.espncdn.com/i/headshots/mlb/players/full/${playerKey.replace('espn.p.', '')}.png`} alt={playerName}
-                                style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.2)', background: isEspn ? '#2d2d44' : C.navyLight }}
-                                onError={e => e.target.style.display = 'none'}
-                            />
-                        )}
+            <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 40 }} />
+            <div style={{
+                position: 'fixed', right: 0, top: 0, bottom: 0,
+                width: 'min(400px, 100vw)',
+                background: C.white, zIndex: 50,
+                boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
+                display: 'flex', flexDirection: 'column', overflow: 'hidden'
+            }}>
+                <div style={{ background: isEspn ? '#1a1a2e' : C.navy, padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <img src={detail?.imageUrl || (isEspn ? `https://a.espncdn.com/i/headshots/mlb/players/full/${playerKey.replace('espn.p.', '')}.png` : '')} alt={playerName}
+                            style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.2)', background: C.navyLight, flexShrink: 0 }}
+                            onError={e => e.target.style.display = 'none'}
+                        />
                         <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ color: C.white, fontWeight: 700, fontSize: 17 }}>{playerName}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ color: C.white, fontWeight: 700, fontSize: 15 }}>{playerName}</span>
                                 {isEspn && <Tag text="ESPN" bg="#f0483e30" color="#ff6b6b" />}
                             </div>
-                            {detail && (
-                                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{detail.position}</span>
-                                    <span>·</span>
-                                    <MlbLogo team={detail.proTeam} size={18} whiteText={true} />
-                                    {detail.uniformNumber ? <span>#{detail.uniformNumber}</span> : null}
-                                </div>
-                            )}
-                            {overallRank && <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 11, marginTop: 2 }}>Overall rank #{overallRank}</div>}
+                            {detail && <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 }}>{detail.position} · {detail.proTeamAbbr || detail.proTeam}</div>}
+                            {overallRank && <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>Rank #{overallRank}</div>}
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: C.white, cursor: 'pointer', borderRadius: 4, padding: '4px 8px', fontSize: 16, lineHeight: 1 }}>✕</button>
+                    <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: C.white, cursor: 'pointer', borderRadius: 4, padding: '4px 8px', fontSize: 16, lineHeight: 1, flexShrink: 0 }}>✕</button>
                 </div>
 
                 {loading ? (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.gray400 }}>Loading...</div>
                 ) : !detail ? (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.gray400 }}>Failed to load player</div>
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.gray400 }}>Failed to load</div>
                 ) : (
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', WebkitOverflowScrolling: 'touch' }}>
                         {detail.injuryStatus && (
-                            <div style={{ background: C.redLight, border: '1px solid #fecaca', borderRadius: 6, padding: '10px 12px', marginBottom: 16 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: C.red, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>{detail.injuryStatus}</div>
-                                {detail.injuryNote && <div style={{ fontSize: 12, color: C.red }}>{detail.injuryNote}</div>}
+                            <div style={{ background: C.redLight, border: '1px solid #fecaca', borderRadius: 6, padding: '8px 10px', marginBottom: 12 }}>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: C.red, textTransform: 'uppercase' }}>{detail.injuryStatus}</div>
+                                {detail.injuryNote && <div style={{ fontSize: 11, color: C.red, marginTop: 2 }}>{detail.injuryNote}</div>}
                             </div>
                         )}
-                        <div style={{ marginBottom: 20 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Rankings</div>
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Rankings</div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                <div style={{ background: C.gray50, borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
+                                <div style={{ background: C.gray50, borderRadius: 6, padding: '8px', textAlign: 'center' }}>
                                     <div style={{ fontSize: 20, fontWeight: 800, color: !overallRank ? C.gray400 : overallRank <= 50 ? C.green : overallRank <= 150 ? C.amber : C.gray800 }}>
                                         {overallRank ? `#${overallRank}` : '—'}
                                     </div>
-                                    <div style={{ fontSize: 10, color: C.gray400, marginTop: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Overall</div>
+                                    <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase' }}>Overall</div>
                                 </div>
-                                <div style={{ background: C.gray50, borderRadius: 6, padding: '8px 10px' }}>
+                                <div style={{ background: C.gray50, borderRadius: 6, padding: '8px' }}>
                                     {ranksByLeague.filter(r => r.leagueRank || r.overallRank).map(r => (
-                                        <div key={r.leagueKey} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontSize: 12 }}>
-                                            <span style={{ color: C.gray600, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>
+                                        <div key={r.leagueKey} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontSize: 11 }}>
+                                            <span style={{ color: C.gray600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 90 }}>
                                                 {r.leagueName.split(' ').slice(0, 2).join(' ')}
                                             </span>
-                                            <span style={{ fontWeight: 600, color: !r.leagueRank ? C.gray400 : r.leagueRank <= 50 ? C.green : r.leagueRank <= 150 ? C.amber : C.gray800 }}>
+                                            <span style={{ fontWeight: 600, color: !r.leagueRank ? C.gray400 : r.leagueRank <= 50 ? C.green : C.gray800 }}>
                                                 {r.leagueRank ? `#${r.leagueRank}` : '—'}
                                             </span>
                                         </div>
@@ -447,55 +400,47 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
                                 </div>
                             </div>
                         </div>
-                        <div style={{ marginBottom: 20 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>2026 Season Stats</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>2026 Stats</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
                                 {statDefs.map(s => (
-                                    <div key={s.id} style={{ background: C.gray50, borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
-                                        <div style={{ fontSize: 16, fontWeight: 700, color: C.gray800 }}>{detail.stats[s.id] ?? '—'}</div>
-                                        <div style={{ fontSize: 10, color: C.gray400, marginTop: 2, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
+                                    <div key={s.id} style={{ background: C.gray50, borderRadius: 6, padding: '6px 8px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: 15, fontWeight: 700, color: C.gray800 }}>{detail.stats[s.id] ?? '—'}</div>
+                                        <div style={{ fontSize: 9, color: C.gray400, fontWeight: 600, textTransform: 'uppercase' }}>{s.label}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div style={{ marginBottom: 20 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Ownership</div>
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Ownership</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ flex: 1, background: C.gray100, borderRadius: 99, height: 6, overflow: 'hidden' }}>
+                                <div style={{ flex: 1, background: C.gray100, borderRadius: 99, height: 5, overflow: 'hidden' }}>
                                     <div style={{ width: `${detail.percentOwned}%`, background: C.accent, height: '100%', borderRadius: 99 }} />
                                 </div>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: C.gray800, minWidth: 36 }}>{detail.percentOwned}%</span>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: C.gray800 }}>{detail.percentOwned}%</span>
                             </div>
-                            <div style={{ fontSize: 11, color: C.gray400, marginTop: 4 }}>Owned in {detail.percentOwned}% of leagues</div>
                         </div>
-                        <div style={{ marginBottom: 20 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>Your Leagues</div>
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Your Leagues</div>
                             {leagues.map(lg => {
                                 const onRoster = lg.players?.some(p => p.playerKey === playerKey)
                                 const slot = lg.players?.find(p => p.playerKey === playerKey)?.selectedPosition
                                 return (
-                                    <div key={lg.leagueKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: `1px solid ${C.gray100}` }}>
+                                    <div key={lg.leagueKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${C.gray100}` }}>
                                         <span style={{ fontSize: 12, color: C.gray800 }}>{lg.leagueName}</span>
                                         {onRoster
-                                            ? <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><SlotPill slot={slot} /><Tag text="On roster" bg={C.accentLight} color={C.accent} /></div>
+                                            ? <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><SlotPill slot={slot} /></div>
                                             : <Tag text="Not owned" bg={C.gray100} color={C.gray400} />}
                                     </div>
                                 )
                             })}
                         </div>
-                        {detail.isUndroppable && (
-                            <div style={{ background: C.amberLight, border: '1px solid #fcd34d', borderRadius: 6, padding: '8px 12px', fontSize: 12, color: C.amber }}>
-                                ⚠️ Undroppable player
-                            </div>
-                        )}
                         {isEspn && (
-                            <div style={{ marginTop: 12, textAlign: 'center' }}>
-                                <a href={`https://fantasy.espn.com/baseball/players/card?playerId=${playerKey.replace('espn.p.', '')}`}
-                                    target="_blank" rel="noreferrer"
-                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', borderRadius: 6, background: '#f0483e10', color: '#f0483e', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>
-                                    View on ESPN ↗
-                                </a>
-                            </div>
+                            <a href={`https://fantasy.espn.com/baseball/players/card?playerId=${playerKey.replace('espn.p.', '')}`}
+                                target="_blank" rel="noreferrer"
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 8, background: '#f0483e10', color: '#f0483e', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+                                View on ESPN ↗
+                            </a>
                         )}
                     </div>
                 )}
@@ -504,31 +449,58 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
     )
 }
 
+// ─── Mobile Player Card ──────────────────────────────────────────────────────
+
+function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
+    const hasYahoo = p.leagueSlots.some(ls => !ls.leagueKey.startsWith('espn'))
+    const hasEspn = p.leagueSlots.some(ls => ls.leagueKey.startsWith('espn'))
+
+    return (
+        <div onClick={() => openPlayer(p.primaryPlayerKey, p.primaryName)}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: `1px solid ${C.gray100}`, background: C.white, cursor: 'pointer', active: { background: C.gray50 } }}
+            onMouseEnter={e => e.currentTarget.style.background = C.gray50}
+            onMouseLeave={e => e.currentTarget.style.background = C.white}>
+            <PlayerAvatar imageUrl={getResImg(p)} name={p.primaryName} size={40} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: C.gray800 }}>{p.primaryName}</span>
+                    {p.injuryStatus && <span style={{ fontSize: 12 }} title={p.injuryStatus}>🏥</span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
+                    <Tag text={p.position || '—'} />
+                    <MlbLogo team={p.proTeam} size={13} showText={true} />
+                    {hasYahoo && <Tag text="Y" bg="#00529b20" color="#00529b" />}
+                    {hasEspn && <Tag text="E" bg="#f0483e20" color="#f0483e" />}
+                </div>
+                <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                    {p.leagueSlots.map(ls => (
+                        <SlotPill key={ls.leagueKey} slot={ls.selectedPosition} />
+                    ))}
+                </div>
+            </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                {p.bestOverallRank && <div style={{ fontSize: 12 }}><RankBadge rank={p.bestOverallRank} /></div>}
+                {p.bestLeagueRank && <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>lg <RankBadge rank={p.bestLeagueRank} /></div>}
+                {!p.bestOverallRank && !p.bestLeagueRank && <span style={{ fontSize: 12, color: C.gray400 }}>—</span>}
+            </div>
+        </div>
+    )
+}
+
+// ─── Lineup Row ──────────────────────────────────────────────────────────────
+
 const sectionLabelRow = (text, color = C.gray600) => (
     <tr>
-        <td colSpan={7} style={{ padding: '6px 16px', fontSize: 11, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
+        <td colSpan={7} style={{ padding: '5px 14px', fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
             {text}
         </td>
     </tr>
 )
 
-const SortHeader = ({ label, sortKey, currentSort, onSort, style }) => {
-    const isActive = currentSort.key === sortKey
-    return (
-        <th onClick={() => onSort(sortKey)} style={{ ...style, cursor: 'pointer', userSelect: 'none' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                {label}
-                <span style={{ fontSize: 13, color: isActive ? C.navy : 'transparent' }}>
-                    {isActive ? (currentSort.direction === 'asc' ? '↑' : '↓') : '↕'}
-                </span>
-            </div>
-        </th>
-    )
-}
-
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 
 export default function Dashboard({ api }) {
+    const isMobile = useIsMobile()
     const [data, setData] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
@@ -539,8 +511,6 @@ export default function Dashboard({ api }) {
     const [posFilter, setPosFilter] = useState('All')
     const [leagueFilter, setLeagueFilter] = useState('All')
     const [statusFilter, setStatusFilter] = useState('All')
-    const [sortConfig, setSortConfig] = useState({ key: 'rank', direction: 'asc' })
-    const handleSort = (key) => setSortConfig(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }))
     const [freeAgents, setFreeAgents] = useState([])
     const [faLoading, setFaLoading] = useState(false)
     const [faLeague, setFaLeague] = useState(null)
@@ -563,9 +533,7 @@ export default function Dashboard({ api }) {
             if (!lg.leagueKey.startsWith('espn')) return
             const espnRanks = {}
             lg.players.forEach(p => {
-                if (p.overallRank || p.leagueRank) {
-                    espnRanks[p.playerKey] = { overallRank: p.overallRank || null, leagueRank: p.leagueRank || null }
-                }
+                if (p.overallRank || p.leagueRank) espnRanks[p.playerKey] = { overallRank: p.overallRank || null, leagueRank: p.leagueRank || null }
             })
             results[lg.leagueKey] = espnRanks
         })
@@ -575,9 +543,7 @@ export default function Dashboard({ api }) {
                 const playerKeys = lg.players.map(p => p.playerKey).join(',')
                 const r = await axios.get(`${api}/api/rankings/${lg.leagueKey}?playerKeys=${playerKeys}`, { withCredentials: true })
                 results[lg.leagueKey] = r.data
-            } catch (e) {
-                console.warn('Rankings failed for', lg.leagueName)
-            }
+            } catch (e) { console.warn('Rankings failed for', lg.leagueName) }
         }))
         setRankMap(results)
         setRanksLoading(false)
@@ -586,8 +552,7 @@ export default function Dashboard({ api }) {
     const loadDashboard = useCallback(() => {
         const yahooPromise = axios.get(`${api}/api/dashboard`, { withCredentials: true })
         const espnPromise = axios.get(`${api}/api/espn-dashboard`, { withCredentials: true }).catch(e => {
-            console.warn('ESPN dashboard failed (non-fatal):', e.message)
-            return null
+            console.warn('ESPN failed:', e.message); return null
         })
         Promise.all([yahooPromise, espnPromise])
             .then(([yahooRes, espnRes]) => {
@@ -608,23 +573,17 @@ export default function Dashboard({ api }) {
             .catch(e => console.warn('Scoreboard failed:', e.message))
     }, [api])
 
-    // Fetch boxscores for games involving my players' teams
+    const myTeams = useMemo(() => new Set(data.flatMap(lg => lg.players.map(p => p.proTeam)).filter(Boolean)), [data])
+
     const loadBoxscores = useCallback((currentGames, currentMyTeams) => {
-        const relevantGames = currentGames.filter(g =>
-            (g.isLive || g.isFinal) &&
-            (currentMyTeams.has(g.awayTeam) || currentMyTeams.has(g.homeTeam))
-        )
-        if (relevantGames.length === 0) return
-        Promise.all(
-            relevantGames.map(g =>
-                axios.get(`${api}/api/boxscore/${g.gamePk}`)
-                    .then(r => ({ gamePk: g.gamePk, data: r.data }))
-                    .catch(() => null)
-            )
-        ).then(results => {
-            const newBoxscores = {}
-            results.forEach(r => { if (r) newBoxscores[r.gamePk] = r.data })
-            setBoxscores(prev => ({ ...prev, ...newBoxscores }))
+        const relevant = currentGames.filter(g => (g.isLive || g.isFinal) && (currentMyTeams.has(g.awayTeam) || currentMyTeams.has(g.homeTeam)))
+        if (relevant.length === 0) return
+        Promise.all(relevant.map(g =>
+            axios.get(`${api}/api/boxscore/${g.gamePk}`).then(r => ({ gamePk: g.gamePk, data: r.data })).catch(() => null)
+        )).then(results => {
+            const nb = {}
+            results.forEach(r => { if (r) nb[r.gamePk] = r.data })
+            setBoxscores(prev => ({ ...prev, ...nb }))
         })
     }, [api])
 
@@ -643,18 +602,11 @@ export default function Dashboard({ api }) {
         return () => clearInterval(interval)
     }, [games.length])
 
-    // Recompute myTeams whenever data changes — used in boxscore fetching
-    const myTeams = useMemo(() =>
-        new Set(data.flatMap(lg => lg.players.map(p => p.proTeam)).filter(Boolean))
-        , [data])
-
-    // Load boxscores whenever games or myTeams updates
     useEffect(() => {
         if (games.length > 0 && myTeams.size > 0) {
             loadBoxscores(games, myTeams)
             const interval = setInterval(() => {
-                const hasLive = games.some(g => g.isLive)
-                if (hasLive) loadBoxscores(games, myTeams)
+                if (games.some(g => g.isLive)) loadBoxscores(games, myTeams)
             }, 60 * 1000)
             return () => clearInterval(interval)
         }
@@ -662,16 +614,11 @@ export default function Dashboard({ api }) {
 
     const fetchFreeAgents = (leagueKey, pos, srch) => {
         if (leagueKey?.startsWith('espn')) return
-        setFaLoading(true)
-        setOwnership({})
+        setFaLoading(true); setOwnership({})
         const params = new URLSearchParams({ position: pos })
         if (srch) params.append('search', srch)
         axios.get(`${api}/api/free-agents/${leagueKey}?${params}`, { withCredentials: true })
-            .then(r => {
-                setFreeAgents(r.data)
-                setFaLoading(false)
-                if (r.data.length > 0) fetchOwnership(r.data.map(p => p.playerKey))
-            })
+            .then(r => { setFreeAgents(r.data); setFaLoading(false); if (r.data.length > 0) fetchOwnership(r.data.map(p => p.playerKey)) })
             .catch(() => setFaLoading(false))
     }
 
@@ -684,8 +631,8 @@ export default function Dashboard({ api }) {
 
     useEffect(() => {
         if (activeTab === 'waiver' && data.length > 0) {
-            const yahooLeagues = data.filter(l => !l.leagueKey.startsWith('espn'))
-            const lk = faLeague || yahooLeagues[0]?.leagueKey
+            const yl = data.filter(l => !l.leagueKey.startsWith('espn'))
+            const lk = faLeague || yl[0]?.leagueKey
             if (!faLeague && lk) setFaLeague(lk)
             if (lk) fetchFreeAgents(lk, faPos, faSearch)
         }
@@ -712,44 +659,35 @@ export default function Dashboard({ api }) {
     const getResImg = useCallback((p) => {
         const n = normName(p.name) || p.playerKey
         const img = imageMap[n] || p.imageUrl
-        if (img && img.includes('yimg.com')) {
+        if (img?.includes('yimg.com')) {
             const parts = img.split('https://s.yimg.com/')
             if (parts.length > 2) return 'https://s.yimg.com/' + parts[parts.length - 1]
         }
         return img
     }, [imageMap])
 
-    // All roster players flat list for boxscore cross-referencing
-    const allRosterPlayers = useMemo(() =>
-        data.flatMap(lg => lg.players)
-        , [data])
-
-    // Normalized set of my player names for boxscore matching
-    const myPlayerNames = useMemo(() =>
-        new Set(allRosterPlayers.map(p => normName(p.name)).filter(Boolean))
-        , [allRosterPlayers])
+    const allRosterPlayers = useMemo(() => data.flatMap(lg => lg.players), [data])
+    const myPlayerNames = useMemo(() => new Set(allRosterPlayers.map(p => normName(p.name)).filter(Boolean)), [allRosterPlayers])
 
     const allPlayers = (() => {
         const playerMap = {}
         data.forEach(lg => {
             lg.players.forEach(p => {
                 const n = normName(p.name) || p.playerKey
-                if (!playerMap[n]) {
-                    playerMap[n] = { ...p, primaryPlayerKey: p.playerKey, primaryName: p.name, leagueSlots: [], allRanks: [] }
-                }
+                if (!playerMap[n]) playerMap[n] = { ...p, primaryPlayerKey: p.playerKey, primaryName: p.name, leagueSlots: [], allRanks: [] }
                 playerMap[n].leagueSlots.push({ leagueName: lg.leagueName, leagueKey: lg.leagueKey, leagueUrl: lg.leagueUrl, selectedPosition: p.selectedPosition })
                 playerMap[n].allRanks.push(getPlayerRanks(p.playerKey, lg.leagueKey))
                 if (p.injuryStatus && !playerMap[n].injuryStatus) playerMap[n].injuryStatus = p.injuryStatus
             })
         })
         return Object.values(playerMap).map(p => {
-            let bestOverall = Infinity, bestLeague = Infinity
+            let bO = Infinity, bL = Infinity
             p.allRanks.forEach(r => {
-                if (r.overallRank && r.overallRank < bestOverall) bestOverall = r.overallRank
-                if (r.leagueRank && r.leagueRank < bestLeague) bestLeague = r.leagueRank
+                if (r.overallRank && r.overallRank < bO) bO = r.overallRank
+                if (r.leagueRank && r.leagueRank < bL) bL = r.leagueRank
             })
-            p.bestOverallRank = bestOverall === Infinity ? null : bestOverall
-            p.bestLeagueRank = bestLeague === Infinity ? null : bestLeague
+            p.bestOverallRank = bO === Infinity ? null : bO
+            p.bestLeagueRank = bL === Infinity ? null : bL
             return p
         })
     })()
@@ -760,38 +698,15 @@ export default function Dashboard({ api }) {
         const ml = leagueFilter === 'All' || p.leagueSlots.some(ls => ls.leagueName === leagueFilter)
         const mst = statusFilter === 'All' || (statusFilter === 'Healthy' ? !p.injuryStatus : !!p.injuryStatus)
         return ms && mp && ml && mst
-    })
-
-    const sorted = [...filtered].sort((a, b) => {
-        const dir = sortConfig.direction === 'asc' ? 1 : -1
-        if (sortConfig.key === 'rank') {
-            const aR = a.bestOverallRank ?? a.bestLeagueRank ?? Infinity
-            const bR = b.bestOverallRank ?? b.bestLeagueRank ?? Infinity
-            if (aR !== bR) return (aR - bR) * dir
-            return (a.primaryName || '').localeCompare(b.primaryName || '')
-        }
-        if (sortConfig.key === 'share') {
-            const diff = b.leagueSlots.length - a.leagueSlots.length
-            if (diff !== 0) return diff * dir
-            return (a.primaryName || '').localeCompare(b.primaryName || '')
-        }
-        if (sortConfig.key === 'name') return (a.primaryName || '').localeCompare(b.primaryName || '') * dir
-        if (sortConfig.key === 'position') return ((a.position || '').localeCompare(b.position || '')) * dir
-        return (a.primaryName || '').localeCompare(b.primaryName || '')
+    }).sort((a, b) => {
+        const aR = a.bestOverallRank ?? a.bestLeagueRank ?? Infinity
+        const bR = b.bestOverallRank ?? b.bestLeagueRank ?? Infinity
+        return aR - bR || (a.primaryName || '').localeCompare(b.primaryName || '')
     })
 
     const visibleFreeAgents = freeAgents
-        .filter(p => {
-            if (!faAllLeagues) return true
-            const po = ownership[p.playerKey]
-            if (!po) return true
-            return Object.values(po).every(o => o.available)
-        })
-        .sort((a, b) => {
-            if (faSortBy === 'overall') return (a.overallRank ?? 9999) - (b.overallRank ?? 9999)
-            if (faSortBy === 'league') return (a.leagueRank ?? 9999) - (b.leagueRank ?? 9999)
-            return 0
-        })
+        .filter(p => { if (!faAllLeagues) return true; const po = ownership[p.playerKey]; if (!po) return true; return Object.values(po).every(o => o.available) })
+        .sort((a, b) => faSortBy === 'overall' ? (a.overallRank ?? 9999) - (b.overallRank ?? 9999) : (a.leagueRank ?? 9999) - (b.leagueRank ?? 9999))
 
     const leagueSummary = data.map(l => ({ leagueKey: l.leagueKey, leagueName: l.leagueName, players: l.players }))
     const activeLeagueData = data.find(l => l.leagueKey === activeLeague)
@@ -799,10 +714,33 @@ export default function Dashboard({ api }) {
     const openPlayer = (playerKey, name) => setSelectedPlayer({ playerKey, name })
     const yahooLeagues = data.filter(l => !l.leagueKey.startsWith('espn'))
 
-    const renderPlayerRow = (p, source, leagueKey) => {
+    const renderLineupRow = (p, source, leagueKey) => {
         const ranks = getPlayerRanks(p.playerKey, leagueKey)
         const yahooId = leagueKey.split('.l.')[1]
         const isIL = IL_SLOTS.includes(p.selectedPosition)
+        if (isMobile) {
+            return (
+                <tr key={p.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer', background: isIL ? '#fffafa' : C.white }}
+                    onClick={() => openPlayer(p.playerKey, p.name)}
+                    onMouseEnter={e => e.currentTarget.style.background = isIL ? C.redLight : C.gray50}
+                    onMouseLeave={e => e.currentTarget.style.background = isIL ? '#fffafa' : C.white}>
+                    <td style={{ padding: '8px 10px', verticalAlign: 'middle', width: 44 }}><SlotPill slot={p.selectedPosition} /></td>
+                    <td style={{ padding: '8px 6px', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <PlayerAvatar imageUrl={getResImg(p)} name={p.name} size={34} />
+                            <div>
+                                <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
+                                <div style={{ fontSize: 11, color: C.gray400 }}>{p.position}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td style={{ padding: '8px 10px', verticalAlign: 'middle', textAlign: 'right' }}>
+                        <RankBadge rank={ranks.overallRank} />
+                        <StatusBadge status={p.injuryStatus} />
+                    </td>
+                </tr>
+            )
+        }
         return (
             <tr key={p.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer', background: isIL ? '#fffafa' : C.white }}
                 onClick={() => openPlayer(p.playerKey, p.name)}
@@ -811,8 +749,8 @@ export default function Dashboard({ api }) {
                 <td style={{ ...tdStyle, width: 55 }}><SlotPill slot={p.selectedPosition} /></td>
                 <td style={tdStyle}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <PlayerAvatar imageUrl={getResImg(p)} name={p.name} size={44} />
-                        <span style={{ fontWeight: 500 }}>{p.name || '—'}</span>
+                        <PlayerAvatar imageUrl={getResImg(p)} name={p.name} size={40} />
+                        <span style={{ fontWeight: 500 }}>{p.name}</span>
                     </div>
                 </td>
                 <td style={{ ...tdStyle, color: C.gray400, fontSize: 12 }}>{p.position}</td>
@@ -820,15 +758,9 @@ export default function Dashboard({ api }) {
                 <td style={tdStyle}><RankBadge rank={ranks.leagueRank} /></td>
                 <td style={tdStyle}><StatusBadge status={p.injuryStatus} /></td>
                 <td style={tdStyle}>
-                    {source === 'espn' ? (
-                        <a href={`https://fantasy.espn.com/baseball/players/card?playerId=${p.playerKey.replace('espn.p.', '')}`}
-                            target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                            style={{ fontSize: 11, color: '#f0483e', textDecoration: 'none' }}>ESPN ↗</a>
-                    ) : (
-                        <a href={`https://baseball.fantasysports.yahoo.com/b1/${yahooId}`}
-                            target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                            style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>Yahoo ↗</a>
-                    )}
+                    {source === 'espn'
+                        ? <a href={`https://fantasy.espn.com/baseball/players/card?playerId=${p.playerKey.replace('espn.p.', '')}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 11, color: '#f0483e', textDecoration: 'none' }}>ESPN ↗</a>
+                        : <a href={`https://baseball.fantasysports.yahoo.com/b1/${yahooId}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>Yahoo ↗</a>}
                 </td>
             </tr>
         )
@@ -836,149 +768,113 @@ export default function Dashboard({ api }) {
 
     if (loading) return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 12, background: C.gray50 }}>
-            <div style={{ fontSize: 36, marginBottom: 8 }}>⚾</div>
+            <div style={{ fontSize: 36 }}>⚾</div>
             <div style={{ fontSize: 16, fontWeight: 600, color: C.navy }}>Loading your leagues...</div>
-            <div style={{ color: C.gray400, fontSize: 13 }}>Fetching rosters, matchups, and standings</div>
         </div>
     )
+    if (error) return <div style={{ padding: '2rem', color: C.red }}>Error: {error} <button onClick={loadDashboard} style={btnStyle}>Retry</button></div>
 
-    if (error) return (
-        <div style={{ padding: '2rem' }}>
-            <div style={{ color: C.red, marginBottom: 8, fontSize: 13 }}>Error: {error}</div>
-            <button onClick={loadDashboard} style={btnStyle}>Retry</button>
-        </div>
-    )
+    const px = isMobile ? '12px' : '1.5rem'
 
     return (
         <div style={{ minHeight: '100vh', background: C.gray50, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 13, color: C.gray800 }}>
 
             {selectedPlayer && (
-                <PlayerPanel
-                    playerKey={selectedPlayer.playerKey}
-                    playerName={selectedPlayer.name}
-                    leagues={leagueSummary}
-                    rankMap={rankMap}
-                    onClose={() => setSelectedPlayer(null)}
-                    api={api}
-                />
+                <PlayerPanel playerKey={selectedPlayer.playerKey} playerName={selectedPlayer.name}
+                    leagues={leagueSummary} rankMap={rankMap} onClose={() => setSelectedPlayer(null)} api={api} />
             )}
 
             {/* Header */}
             <div style={{
-                background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-                borderBottom: `1px solid ${C.gray200}`, padding: '0 1.5rem',
+                background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+                borderBottom: `1px solid ${C.gray200}`, padding: `0 ${px}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                height: 64, position: 'sticky', top: 0, zIndex: 40
+                height: isMobile ? 52 : 60, position: 'sticky', top: 0, zIndex: 40
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', width: 34, height: 34, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(59,130,246,0.3)', flexShrink: 0 }}>
-                        <span style={{ fontSize: 16 }}>⚾</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <span style={{ fontSize: 14 }}>⚾</span>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <div style={{ fontSize: 16, fontWeight: 800, color: C.navy, letterSpacing: '-0.02em', lineHeight: 1.1 }}>
-                            Fantasy <span style={{ color: C.gray400, fontWeight: 500 }}>Dashboard</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: C.gray400, fontWeight: 500 }}>
-                            {data.length} Connected Leagues · 2026 Season
-                            {ranksLoading && <span style={{ color: C.navy, marginLeft: 4 }}> · Loading ranks...</span>}
+                    <div>
+                        <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 800, color: C.navy, lineHeight: 1.1 }}>Fantasy Dashboard</div>
+                        <div style={{ fontSize: 10, color: C.gray400 }}>
+                            {data.length} leagues · 2026
+                            {ranksLoading && ' · Loading ranks...'}
                         </div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                    {lastUpdated && <span style={{ fontSize: 11, color: C.gray400 }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
-                    <button onClick={() => { loadDashboard(); loadScoreboard(); }} style={{
-                        fontSize: 12, fontWeight: 700, padding: '7px 16px', borderRadius: 20,
-                        border: 'none', background: C.navy, color: C.white, cursor: 'pointer',
-                        transition: 'all 0.2s',
-                    }}
-                        onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                        onMouseLeave={e => e.currentTarget.style.opacity = '1'}>
-                        ↻ Refresh
-                    </button>
-                    <a href={`${api}/auth/logout`} style={{ fontSize: 12, fontWeight: 600, color: C.gray600, textDecoration: 'none', padding: '6px 12px', background: C.gray100, borderRadius: 12 }}>Sign Out</a>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14 }}>
+                    {!isMobile && lastUpdated && <span style={{ fontSize: 11, color: C.gray400 }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
+                    <button onClick={() => { loadDashboard(); loadScoreboard() }} style={{
+                        fontSize: isMobile ? 11 : 12, fontWeight: 700, padding: isMobile ? '6px 12px' : '7px 16px',
+                        borderRadius: 20, border: 'none', background: C.navy, color: C.white, cursor: 'pointer',
+                    }}>↻ {isMobile ? '' : 'Refresh'}</button>
+                    <a href={`${api}/auth/logout`} style={{ fontSize: isMobile ? 11 : 12, fontWeight: 600, color: C.gray600, textDecoration: 'none', padding: '6px 10px', background: C.gray100, borderRadius: 12 }}>
+                        {isMobile ? '↪' : 'Sign Out'}
+                    </a>
                 </div>
             </div>
 
             {/* Live Box Scores */}
-            <LiveBoxScores
-                games={games}
-                boxscores={boxscores}
-                myTeams={myTeams}
-                myPlayerNames={myPlayerNames}
-                rosterPlayers={allRosterPlayers}
-                imageMap={imageMap}
-            />
+            <LiveBoxScores games={games} boxscores={boxscores} myTeams={myTeams}
+                myPlayerNames={myPlayerNames} rosterPlayers={allRosterPlayers} imageMap={imageMap} />
 
             {/* Matchup Cards */}
-            <div style={{ padding: '1rem 1.5rem 0.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+            <div style={{ padding: `12px ${px} 6px`, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
                 {data.map(lg => {
                     const isWinning = lg.matchup?.isWinning
-                    const isLosing = lg.matchup && !lg.matchup.isWinning && parseFloat(lg.matchup.oppScore || 0) > parseFloat(lg.matchup.myScore || 0)
+                    const isLosing = lg.matchup && !isWinning && parseFloat(lg.matchup.oppScore || 0) > parseFloat(lg.matchup.myScore || 0)
                     let bgGrad = 'linear-gradient(145deg, #ffffff 0%, #f8fafc 100%)'
-                    let borderColor = C.gray200
-                    let glowColor = null
-                    let myColor = C.navy
-                    let oppColor = C.gray400
+                    let borderColor = C.gray200, myColor = C.navy, oppColor = C.gray400
                     if (lg.matchup) {
-                        if (isWinning) { bgGrad = 'linear-gradient(145deg, #ffffff 0%, #f0fdf4 100%)'; borderColor = '#bbf7d0'; glowColor = '#22c55e20'; myColor = C.green }
-                        else if (isLosing) { bgGrad = 'linear-gradient(145deg, #ffffff 0%, #fef2f2 100%)'; borderColor = '#fecaca'; glowColor = '#ef444420'; myColor = C.red }
-                    } else { bgGrad = 'linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%)' }
+                        if (isWinning) { bgGrad = 'linear-gradient(145deg, #ffffff 0%, #f0fdf4 100%)'; borderColor = '#bbf7d0'; myColor = C.green }
+                        else if (isLosing) { bgGrad = 'linear-gradient(145deg, #ffffff 0%, #fef2f2 100%)'; borderColor = '#fecaca'; myColor = C.red }
+                    }
                     const href = lg.source === 'espn'
                         ? `https://fantasy.espn.com/baseball/league?leagueId=${lg.leagueKey.split('.l.')[1]}`
                         : `https://baseball.fantasysports.yahoo.com/b1/${lg.leagueKey.split('.l.')[1]}`
                     return (
                         <a href={href} target="_blank" rel="noopener noreferrer" key={lg.leagueKey} style={{
                             textDecoration: 'none', color: 'inherit', display: 'block',
-                            background: bgGrad, borderRadius: 12, padding: '1.25rem',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.03)', border: `1px solid ${borderColor}`,
-                            position: 'relative', overflow: 'hidden', transition: 'transform 0.15s ease, box-shadow 0.15s ease'
-                        }}
-                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(0,0,0,0.06)' }}
-                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.03)' }}>
-                            {glowColor && <div style={{ position: 'absolute', top: -10, right: -10, width: 40, height: 40, background: glowColor, borderRadius: '50%', filter: 'blur(10px)' }} />}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, paddingRight: 10 }}>
+                            background: bgGrad, borderRadius: 10, padding: '12px 14px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: `1px solid ${borderColor}`,
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, flex: 1 }}>
                                     {lg.source === 'espn'
-                                        ? <img src="https://a.espncdn.com/favicon.ico" width={14} height={14} alt="ESPN" style={{ flexShrink: 0 }} />
-                                        : <img src="https://s.yimg.com/cv/apiv2/default/icons/favicon_y19_32x32_custom.svg" width={14} height={14} alt="Yahoo" style={{ flexShrink: 0 }} />}
-                                    <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{lg.leagueName}</span>
+                                        ? <img src="https://a.espncdn.com/favicon.ico" width={12} height={12} alt="ESPN" />
+                                        : <img src="https://s.yimg.com/cv/apiv2/default/icons/favicon_y19_32x32_custom.svg" width={12} height={12} alt="Yahoo" />}
+                                    <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lg.leagueName}</span>
                                 </div>
-                                {lg.standing && <span style={{ fontSize: 11, color: C.gray400, fontWeight: 700, background: C.gray100, padding: '2px 8px', borderRadius: 10, flexShrink: 0 }}>Rank #{lg.standing.rank}</span>}
+                                {lg.standing && <span style={{ fontSize: 11, color: C.gray400, fontWeight: 600, background: C.gray100, padding: '1px 7px', borderRadius: 8, flexShrink: 0 }}>#{lg.standing.rank}</span>}
                             </div>
                             {lg.matchup ? (
-                                <>
-                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, alignItems: 'flex-start' }}>
-                                            <div style={{ fontSize: 10, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em', marginBottom: 4 }}>My Team</div>
-                                            <div style={{ fontWeight: 900, fontSize: 32, color: myColor, lineHeight: 1, letterSpacing: '-0.03em' }}>
-                                                {lg.scoringType === 'head' ? Math.round(lg.matchup.myScore) : lg.matchup.myScore}
-                                            </div>
-                                            {lg.matchup.myProjected && lg.scoringType !== 'head' && parseFloat(lg.matchup.myProjected) > 0 && (
-                                                <div style={{ fontSize: 11, color: C.gray400, marginTop: 4 }}>proj {lg.matchup.myProjected}</div>
-                                            )}
-                                        </div>
-                                        <div style={{ fontSize: 13, color: C.gray200, fontWeight: 800, fontStyle: 'italic', padding: '0 12px', flexShrink: 0 }}>VS</div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, alignItems: 'flex-end', textAlign: 'right' }}>
-                                            <div style={{ fontSize: 10, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em', marginBottom: 4, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{lg.matchup.oppName || 'Opp'}</div>
-                                            <div style={{ fontWeight: 900, fontSize: 32, color: oppColor, lineHeight: 1, letterSpacing: '-0.03em', marginTop: 8 }}>
-                                                {lg.scoringType === 'head' ? Math.round(lg.matchup.oppScore) : lg.matchup.oppScore}
-                                            </div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div>
+                                        <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>My Team</div>
+                                        <div style={{ fontWeight: 900, fontSize: 28, color: myColor, lineHeight: 1 }}>
+                                            {lg.scoringType === 'head' ? Math.round(lg.matchup.myScore) : lg.matchup.myScore}
                                         </div>
                                     </div>
-                                    {lg.standing && (
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px dashed ${borderColor}`, paddingTop: 12, marginTop: 14 }}>
-                                            <span style={{ fontSize: 11, color: C.gray400, fontWeight: 600 }}>Week {lg.matchup.week} Matchup</span>
-                                            <span style={{ fontSize: 11, color: C.navy, fontWeight: 700 }}>{lg.standing.wins}W – {lg.standing.losses}L</span>
+                                    <div style={{ fontSize: 11, color: C.gray300, fontWeight: 700 }}>VS</div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lg.matchup.oppName || 'Opp'}</div>
+                                        <div style={{ fontWeight: 900, fontSize: 28, color: oppColor, lineHeight: 1 }}>
+                                            {lg.scoringType === 'head' ? Math.round(lg.matchup.oppScore) : lg.matchup.oppScore}
                                         </div>
-                                    )}
-                                </>
+                                    </div>
+                                </div>
                             ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 0 10px' }}>
-                                    <div style={{ fontSize: 11, color: C.gray400, textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.08em', marginBottom: 12 }}>Total Season Points</div>
+                                <div style={{ textAlign: 'center', padding: '4px 0' }}>
                                     {lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0
-                                        ? <div style={{ fontWeight: 900, fontSize: 44, color: C.navy, letterSpacing: '-0.04em', lineHeight: 1 }}>{lg.standing.pointsFor}</div>
-                                        : <div style={{ fontSize: 13, color: C.gray400 }}>{lg.standing ? `${lg.standing.wins}W - ${lg.standing.losses}L` : 'No data yet'}</div>}
-                                    {lg.standing && <div style={{ fontSize: 11, color: C.gray400, marginTop: 16 }}>Overall: {lg.standing.wins}W – {lg.standing.losses}L</div>}
+                                        ? <div style={{ fontWeight: 900, fontSize: 36, color: C.navy }}>{lg.standing.pointsFor}<span style={{ fontSize: 13, fontWeight: 500, color: C.gray400 }}> pts</span></div>
+                                        : <div style={{ fontSize: 13, color: C.gray400 }}>{lg.standing ? `${lg.standing.wins}W – ${lg.standing.losses}L` : 'No data'}</div>}
+                                </div>
+                            )}
+                            {lg.matchup && lg.standing && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px dashed ${borderColor}`, paddingTop: 8, marginTop: 10 }}>
+                                    <span style={{ fontSize: 10, color: C.gray400 }}>Week {lg.matchup.week}</span>
+                                    <span style={{ fontSize: 10, color: C.navy, fontWeight: 700 }}>{lg.standing.wins}W – {lg.standing.losses}L</span>
                                 </div>
                             )}
                         </a>
@@ -987,122 +883,126 @@ export default function Dashboard({ api }) {
             </div>
 
             {/* Tabs */}
-            <div style={{ padding: '24px 1.5rem 16px', display: 'flex', justifyContent: 'center', background: C.white, borderBottom: `1px solid ${C.gray100}` }}>
-                <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: 6, borderRadius: 16 }}>
-                    {[{ id: 'feed', label: 'All Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waiver Wire' }].map(tab => {
+            <div style={{ padding: `16px ${px} 12px`, display: 'flex', justifyContent: 'center', background: C.white, borderBottom: `1px solid ${C.gray100}`, position: 'sticky', top: isMobile ? 52 : 60, zIndex: 30 }}>
+                <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: 5, borderRadius: 14, width: isMobile ? '100%' : 'auto' }}>
+                    {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }].map(tab => {
                         const isActive = activeTab === tab.id
                         return (
                             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-                                padding: '12px 32px', fontSize: 15, fontWeight: isActive ? 800 : 600,
+                                flex: isMobile ? 1 : 'none',
+                                padding: isMobile ? '10px 8px' : '10px 28px',
+                                fontSize: isMobile ? 13 : 14, fontWeight: isActive ? 800 : 600,
                                 color: isActive ? C.navy : C.gray400,
-                                background: isActive ? C.white : 'transparent', border: 'none', borderRadius: 12,
-                                boxShadow: isActive ? '0 4px 12px rgba(0,0,0,0.06)' : 'none',
-                                cursor: 'pointer', transition: 'all 0.2s',
-                            }}>
-                                {tab.label}
-                            </button>
+                                background: isActive ? C.white : 'transparent', border: 'none', borderRadius: 10,
+                                boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                                cursor: 'pointer', transition: 'all 0.15s',
+                            }}>{tab.label}</button>
                         )
                     })}
                 </div>
             </div>
 
-            <div style={{ padding: '1.25rem 1.5rem' }}>
+            <div style={{ padding: `12px ${px}` }}>
 
                 {/* ALL PLAYERS */}
                 {activeTab === 'feed' && (
                     <>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12, alignItems: 'center' }}>
-                            <input placeholder="Search players or teams..." value={search} onChange={e => setSearch(e.target.value)} style={{ ...inputStyle, width: 210 }} />
-                            <select value={leagueFilter} onChange={e => setLeagueFilter(e.target.value)} style={selStyle}>
-                                {['All', ...data.map(l => l.leagueName)].map(l => <option key={l}>{l}</option>)}
-                            </select>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <input placeholder="Search players..." value={search} onChange={e => setSearch(e.target.value)}
+                                style={{ ...inputStyle, flex: isMobile ? 1 : 'none', width: isMobile ? 'auto' : 200 }} />
                             <select value={posFilter} onChange={e => setPosFilter(e.target.value)} style={selStyle}>
                                 {POSITIONS.map(p => <option key={p}>{p}</option>)}
                             </select>
-                            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selStyle}>
-                                <option>All</option><option>Healthy</option><option>Injured</option>
-                            </select>
-                            <span style={{ marginLeft: 'auto', fontSize: 12, color: C.gray400 }}>{sorted.length} players</span>
+                            {!isMobile && (
+                                <>
+                                    <select value={leagueFilter} onChange={e => setLeagueFilter(e.target.value)} style={selStyle}>
+                                        {['All', ...data.map(l => l.leagueName)].map(l => <option key={l}>{l}</option>)}
+                                    </select>
+                                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={selStyle}>
+                                        <option>All</option><option>Healthy</option><option>Injured</option>
+                                    </select>
+                                </>
+                            )}
+                            <span style={{ fontSize: 11, color: C.gray400, marginLeft: 'auto' }}>{filtered.length} players</span>
                         </div>
-                        <div style={tableCard}>
-                            <table style={tableStyle}>
-                                <thead>
-                                    <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
-                                        <SortHeader label="Player" sortKey="name" currentSort={sortConfig} onSort={handleSort} style={thStyle} />
-                                        <SortHeader label="Primary Pos" sortKey="position" currentSort={sortConfig} onSort={handleSort} style={thStyle} />
-                                        <SortHeader label="Roster Share" sortKey="share" currentSort={sortConfig} onSort={handleSort} style={thStyle} />
-                                        <SortHeader label="Best Rank" sortKey="rank" currentSort={sortConfig} onSort={handleSort} style={thStyle} />
-                                        <th style={thStyle}>Leagues & Slots</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {sorted.length === 0
-                                        ? <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2.5rem', color: C.gray400 }}>No players match your filters</td></tr>
-                                        : sorted.map(p => {
-                                            const hasYahoo = p.leagueSlots.some(ls => !ls.leagueKey.startsWith('espn'))
-                                            const hasEspn = p.leagueSlots.some(ls => ls.leagueKey.startsWith('espn'))
-                                            return (
-                                                <tr key={p.primaryPlayerKey}
-                                                    onClick={() => openPlayer(p.primaryPlayerKey, p.primaryName)}
-                                                    style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer' }}
-                                                    onMouseEnter={e => e.currentTarget.style.background = C.gray50}
-                                                    onMouseLeave={e => e.currentTarget.style.background = C.white}>
-                                                    <td style={tdStyle}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                            <PlayerAvatar imageUrl={getResImg(p)} name={p.primaryName} size={44} />
-                                                            <div>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                                    <span style={{ fontWeight: 600, fontSize: 13, color: C.gray800 }}>{p.primaryName || '—'}</span>
-                                                                    {p.injuryStatus && <span style={{ fontSize: 13, color: C.red }} title={p.injuryStatus}>🏥</span>}
-                                                                </div>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}>
-                                                                    <MlbLogo team={p.proTeam} size={14} />
-                                                                    {hasYahoo && <Tag text="Yahoo" bg="#00529b20" color="#00529b" />}
-                                                                    {hasEspn && <Tag text="ESPN" bg="#f0483e20" color="#f0483e" />}
+
+                        {isMobile ? (
+                            <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.gray200}`, overflow: 'hidden' }}>
+                                {filtered.length === 0
+                                    ? <div style={{ padding: '2rem', textAlign: 'center', color: C.gray400 }}>No players found</div>
+                                    : filtered.map(p => (
+                                        <MobilePlayerCard key={p.primaryPlayerKey} p={p} data={data} rankMap={rankMap} getResImg={getResImg} openPlayer={openPlayer} />
+                                    ))}
+                            </div>
+                        ) : (
+                            <div style={tableCard}>
+                                <table style={tableStyle}>
+                                    <thead>
+                                        <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
+                                            {['Player', 'Pos', 'Roster Share', 'Best Rank', 'Leagues & Slots'].map(h => <th key={h} style={thStyle}>{h}</th>)}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filtered.length === 0
+                                            ? <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2.5rem', color: C.gray400 }}>No players found</td></tr>
+                                            : filtered.map(p => {
+                                                const hasYahoo = p.leagueSlots.some(ls => !ls.leagueKey.startsWith('espn'))
+                                                const hasEspn = p.leagueSlots.some(ls => ls.leagueKey.startsWith('espn'))
+                                                return (
+                                                    <tr key={p.primaryPlayerKey} onClick={() => openPlayer(p.primaryPlayerKey, p.primaryName)}
+                                                        style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer' }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = C.gray50}
+                                                        onMouseLeave={e => e.currentTarget.style.background = C.white}>
+                                                        <td style={tdStyle}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                <PlayerAvatar imageUrl={getResImg(p)} name={p.primaryName} size={40} />
+                                                                <div>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                                        <span style={{ fontWeight: 600 }}>{p.primaryName}</span>
+                                                                        {p.injuryStatus && <span title={p.injuryStatus}>🏥</span>}
+                                                                    </div>
+                                                                    <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+                                                                        <MlbLogo team={p.proTeam} size={13} />
+                                                                        {hasYahoo && <Tag text="Yahoo" bg="#00529b20" color="#00529b" />}
+                                                                        {hasEspn && <Tag text="ESPN" bg="#f0483e20" color="#f0483e" />}
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                    </td>
-                                                    <td style={tdStyle}><Tag text={p.position || '—'} /></td>
-                                                    <td style={tdStyle}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                            <span style={{ fontWeight: 600, color: C.gray800 }}>{p.leagueSlots.length}</span>
-                                                            <span style={{ color: C.gray400, fontSize: 11 }}>/ {data.length} Leagues</span>
-                                                        </div>
-                                                    </td>
-                                                    <td style={tdStyle}>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                                            {p.bestOverallRank ? <div style={{ fontSize: 12 }}><span style={{ color: C.gray400 }}>Overall:</span> <RankBadge rank={p.bestOverallRank} /></div> : null}
-                                                            {p.bestLeagueRank ? <div style={{ fontSize: 12 }}><span style={{ color: C.gray400 }}>Positional:</span> <RankBadge rank={p.bestLeagueRank} /></div> : null}
-                                                            {(!p.bestOverallRank && !p.bestLeagueRank) && <span style={{ color: C.gray400, fontSize: 12 }}>—</span>}
-                                                        </div>
-                                                    </td>
-                                                    <td style={tdStyle}>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                                            {p.leagueSlots.map(ls => (
-                                                                <div key={ls.leagueKey} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                                    <SlotPill slot={ls.selectedPosition} />
-                                                                    <span style={{ fontSize: 11, color: C.gray400 }}>{ls.leagueName}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )
-                                        })}
-                                </tbody>
-                            </table>
-                        </div>
+                                                        </td>
+                                                        <td style={tdStyle}><Tag text={p.position || '—'} /></td>
+                                                        <td style={tdStyle}><span style={{ fontWeight: 600 }}>{p.leagueSlots.length}</span><span style={{ color: C.gray400, fontSize: 11 }}> / {data.length}</span></td>
+                                                        <td style={tdStyle}>
+                                                            {p.bestOverallRank ? <div style={{ fontSize: 12 }}>Overall: <RankBadge rank={p.bestOverallRank} /></div> : null}
+                                                            {p.bestLeagueRank ? <div style={{ fontSize: 12 }}>Pos: <RankBadge rank={p.bestLeagueRank} /></div> : null}
+                                                            {(!p.bestOverallRank && !p.bestLeagueRank) && <span style={{ color: C.gray400 }}>—</span>}
+                                                        </td>
+                                                        <td style={tdStyle}>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                                {p.leagueSlots.map(ls => (
+                                                                    <div key={ls.leagueKey} style={{ display: 'flex', gap: 5 }}>
+                                                                        <SlotPill slot={ls.selectedPosition} />
+                                                                        <span style={{ fontSize: 11, color: C.gray400 }}>{ls.leagueName}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </>
                 )}
 
                 {/* LINEUPS */}
                 {activeTab === 'lineup' && (
                     <>
-                        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }}>
                             {data.map(lg => (
                                 <button key={lg.leagueKey} onClick={() => setActiveLeague(lg.leagueKey)} style={{
-                                    padding: '5px 14px', fontSize: 12, borderRadius: 6, cursor: 'pointer', fontWeight: 500,
+                                    padding: '5px 12px', fontSize: 11, borderRadius: 6, cursor: 'pointer', fontWeight: 500, flexShrink: 0,
                                     background: activeLeague === lg.leagueKey ? C.navy : C.white,
                                     color: activeLeague === lg.leagueKey ? C.white : C.gray600,
                                     border: `1px solid ${activeLeague === lg.leagueKey ? C.navy : C.gray200}`,
@@ -1111,68 +1011,42 @@ export default function Dashboard({ api }) {
                         </div>
                         {activeLeagueData && (
                             <div style={tableCard}>
-                                <div style={{ padding: '16px 20px', borderBottom: `1px solid ${C.gray200}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: C.white }}>
+                                <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.gray200}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                                            <span style={{ fontWeight: 800, fontSize: 18, color: C.navy }}>{activeLeagueData.teamName}</span>
-                                            <Tag text="Read only" bg={C.amberLight} color={C.amber} />
-                                        </div>
-                                        <a href={activeLeagueData.leagueUrl} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.accent, textDecoration: 'none' }}>
+                                        <div style={{ fontWeight: 800, fontSize: 15, color: C.navy }}>{activeLeagueData.teamName}</div>
+                                        <a href={activeLeagueData.leagueUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>
                                             Open in {activeLeagueData.source === 'espn' ? 'ESPN' : 'Yahoo'} ↗
                                         </a>
                                     </div>
                                     {activeLeagueData.matchup && (
-                                        <div style={{ display: 'flex', alignItems: 'center', background: C.gray50, border: `1px solid ${C.gray200}`, borderRadius: 10, padding: '10px 20px', gap: 20 }}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                                                <span style={{ fontSize: 11, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em' }}>My Team</span>
-                                                <span style={{ fontSize: 24, fontWeight: 900, color: activeLeagueData.matchup.isWinning ? C.green : C.navy, lineHeight: 1 }}>
-                                                    {activeLeagueData.scoringType === 'head' ? Math.round(activeLeagueData.matchup.myScore) : activeLeagueData.matchup.myScore}
-                                                </span>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: 20, fontWeight: 900, color: activeLeagueData.matchup.isWinning ? C.green : C.red, lineHeight: 1 }}>
+                                                {activeLeagueData.scoringType === 'head' ? Math.round(activeLeagueData.matchup.myScore) : activeLeagueData.matchup.myScore}
+                                                <span style={{ fontSize: 13, color: C.gray400, fontWeight: 500 }}> – {activeLeagueData.scoringType === 'head' ? Math.round(activeLeagueData.matchup.oppScore) : activeLeagueData.matchup.oppScore}</span>
                                             </div>
-                                            <div style={{ fontSize: 13, color: C.gray300, fontWeight: 800, fontStyle: 'italic', marginTop: 12 }}>VS</div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                                <span style={{ fontSize: 11, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.05em', maxWidth: 120, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                                                    {activeLeagueData.matchup.oppName || 'Opponent'}
-                                                </span>
-                                                <span style={{ fontSize: 24, fontWeight: 900, color: !activeLeagueData.matchup.isWinning ? C.red : C.gray400, lineHeight: 1 }}>
-                                                    {activeLeagueData.scoringType === 'head' ? Math.round(activeLeagueData.matchup.oppScore) : activeLeagueData.matchup.oppScore}
-                                                </span>
-                                            </div>
+                                            <div style={{ fontSize: 10, color: C.gray400 }}>{activeLeagueData.matchup.oppName}</div>
                                         </div>
                                     )}
                                 </div>
                                 <table style={tableStyle}>
                                     <thead>
                                         <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
-                                            {['Slot', 'Player', 'Eligible', 'Overall', 'Lg Rank', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)}
+                                            {isMobile
+                                                ? ['Slot', 'Player', 'Rank/Status'].map(h => <th key={h} style={thStyle}>{h}</th>)
+                                                : ['Slot', 'Player', 'Eligible', 'Overall', 'Lg Rank', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)}
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {sectionLabelRow('Active Hitters')}
-                                        {[...activeLeagueData.players]
-                                            .filter(p => !['BN', 'P', 'SP', 'RP', ...IL_SLOTS].includes(p.selectedPosition))
-                                            .sort((a, b) => slotOrder.indexOf(a.selectedPosition) - slotOrder.indexOf(b.selectedPosition))
-                                            .map(p => renderPlayerRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
-                                        {sectionLabelRow('Benched Hitters', C.gray400)}
-                                        {[...activeLeagueData.players]
-                                            .filter(p => p.selectedPosition === 'BN' && !(p.position?.includes('SP') || p.position?.includes('RP') || p.position === 'P'))
-                                            .map(p => renderPlayerRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
+                                        {[...activeLeagueData.players].filter(p => !['BN', 'P', 'SP', 'RP', ...IL_SLOTS].includes(p.selectedPosition)).sort((a, b) => slotOrder.indexOf(a.selectedPosition) - slotOrder.indexOf(b.selectedPosition)).map(p => renderLineupRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
+                                        {sectionLabelRow('Bench Hitters', C.gray400)}
+                                        {[...activeLeagueData.players].filter(p => p.selectedPosition === 'BN' && !(p.position?.includes('SP') || p.position?.includes('RP') || p.position === 'P')).map(p => renderLineupRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
                                         {sectionLabelRow('Active Pitchers')}
-                                        {[...activeLeagueData.players]
-                                            .filter(p => ['P', 'SP', 'RP'].includes(p.selectedPosition))
-                                            .sort((a, b) => slotOrder.indexOf(a.selectedPosition) - slotOrder.indexOf(b.selectedPosition))
-                                            .map(p => renderPlayerRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
-                                        {sectionLabelRow('Benched Pitchers', C.gray400)}
-                                        {[...activeLeagueData.players]
-                                            .filter(p => p.selectedPosition === 'BN' && (p.position?.includes('SP') || p.position?.includes('RP') || p.position === 'P'))
-                                            .map(p => renderPlayerRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
+                                        {[...activeLeagueData.players].filter(p => ['P', 'SP', 'RP'].includes(p.selectedPosition)).sort((a, b) => slotOrder.indexOf(a.selectedPosition) - slotOrder.indexOf(b.selectedPosition)).map(p => renderLineupRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
+                                        {sectionLabelRow('Bench Pitchers', C.gray400)}
+                                        {[...activeLeagueData.players].filter(p => p.selectedPosition === 'BN' && (p.position?.includes('SP') || p.position?.includes('RP') || p.position === 'P')).map(p => renderLineupRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
                                         {activeLeagueData.players.some(p => IL_SLOTS.includes(p.selectedPosition)) && (
-                                            <>
-                                                {sectionLabelRow('Injured List', C.red)}
-                                                {[...activeLeagueData.players]
-                                                    .filter(p => IL_SLOTS.includes(p.selectedPosition))
-                                                    .map(p => renderPlayerRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
-                                            </>
+                                            <>{sectionLabelRow('Injured List', C.red)}{[...activeLeagueData.players].filter(p => IL_SLOTS.includes(p.selectedPosition)).map(p => renderLineupRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}</>
                                         )}
                                     </tbody>
                                 </table>
@@ -1184,67 +1058,89 @@ export default function Dashboard({ api }) {
                 {/* WAIVER WIRE */}
                 {activeTab === 'waiver' && (
                     <>
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                            <select value={faLeague || ''} onChange={e => { setFaLeague(e.target.value); fetchFreeAgents(e.target.value, faPos, faSearch) }} style={selStyle}>
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                            <select value={faLeague || ''} onChange={e => { setFaLeague(e.target.value); fetchFreeAgents(e.target.value, faPos, faSearch) }} style={{ ...selStyle, flex: isMobile ? 1 : 'none' }}>
                                 {yahooLeagues.map(lg => <option key={lg.leagueKey} value={lg.leagueKey}>{lg.leagueName}</option>)}
                             </select>
                             <select value={faPos} onChange={e => { setFaPos(e.target.value); fetchFreeAgents(faLeague || yahooLeagues[0]?.leagueKey, e.target.value, faSearch) }} style={selStyle}>
                                 {POSITIONS.map(p => <option key={p}>{p}</option>)}
                             </select>
-                            <input placeholder="Search free agents..." value={faSearch}
-                                onChange={e => setFaSearch(e.target.value)}
-                                onKeyDown={e => e.key === 'Enter' && fetchFreeAgents(faLeague || yahooLeagues[0]?.leagueKey, faPos, faSearch)}
-                                style={{ ...inputStyle, width: 190 }} />
-                            <button onClick={() => fetchFreeAgents(faLeague || yahooLeagues[0]?.leagueKey, faPos, faSearch)} style={btnStyle}>Search</button>
-                            <select value={faSortBy} onChange={e => setFaSortBy(e.target.value)} style={selStyle}>
-                                <option value="overall">Sort: Overall Rank</option>
-                                <option value="league">Sort: League Rank</option>
-                            </select>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: C.gray600, cursor: 'pointer' }}>
-                                <input type="checkbox" checked={faAllLeagues} onChange={e => setFaAllLeagues(e.target.checked)} />
-                                Available in all leagues
-                            </label>
-                            {ownershipLoading && <span style={{ fontSize: 11, color: C.gray400 }}>Checking availability...</span>}
-                            <Tag text="Add/Drop coming soon" bg={C.amberLight} color={C.amber} />
+                            <div style={{ display: 'flex', gap: 6, width: isMobile ? '100%' : 'auto' }}>
+                                <input placeholder="Search..." value={faSearch} onChange={e => setFaSearch(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && fetchFreeAgents(faLeague || yahooLeagues[0]?.leagueKey, faPos, faSearch)}
+                                    style={{ ...inputStyle, flex: 1 }} />
+                                <button onClick={() => fetchFreeAgents(faLeague || yahooLeagues[0]?.leagueKey, faPos, faSearch)} style={btnStyle}>Go</button>
+                            </div>
+                            {ownershipLoading && <span style={{ fontSize: 11, color: C.gray400 }}>Checking...</span>}
                         </div>
-                        <div style={tableCard}>
-                            <table style={tableStyle}>
-                                <thead>
-                                    <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
-                                        {['Player', 'Position', 'Overall', 'Lg Rank', 'Status', 'League Availability', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {faLoading
-                                        ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: C.gray400 }}>Loading free agents...</td></tr>
-                                        : visibleFreeAgents.length === 0
-                                            ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: C.gray400 }}>No players found</td></tr>
-                                            : visibleFreeAgents.map(p => (
-                                                <tr key={p.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer' }}
-                                                    onClick={() => openPlayer(p.playerKey, p.name)}
-                                                    onMouseEnter={e => e.currentTarget.style.background = C.gray50}
-                                                    onMouseLeave={e => e.currentTarget.style.background = C.white}>
-                                                    <td style={tdStyle}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                            <PlayerAvatar imageUrl={getResImg(p)} name={p.name} size={44} />
-                                                            <span style={{ fontWeight: 500 }}>{p.name || '—'}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td style={tdStyle}><Tag text={p.position || '—'} /></td>
-                                                    <td style={tdStyle}><RankBadge rank={p.overallRank} /></td>
-                                                    <td style={tdStyle}><RankBadge rank={p.leagueRank} /></td>
-                                                    <td style={tdStyle}><StatusBadge status={p.injuryStatus} /></td>
-                                                    <td style={tdStyle}>
+
+                        {isMobile ? (
+                            <div style={{ background: C.white, borderRadius: 10, border: `1px solid ${C.gray200}`, overflow: 'hidden' }}>
+                                {faLoading
+                                    ? <div style={{ padding: '2rem', textAlign: 'center', color: C.gray400 }}>Loading...</div>
+                                    : visibleFreeAgents.length === 0
+                                        ? <div style={{ padding: '2rem', textAlign: 'center', color: C.gray400 }}>No players found</div>
+                                        : visibleFreeAgents.map(p => (
+                                            <div key={p.playerKey} onClick={() => openPlayer(p.playerKey, p.name)}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer' }}
+                                                onMouseEnter={e => e.currentTarget.style.background = C.gray50}
+                                                onMouseLeave={e => e.currentTarget.style.background = C.white}>
+                                                <PlayerAvatar imageUrl={getResImg(p)} name={p.name} size={38} />
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
+                                                    <div style={{ display: 'flex', gap: 4, marginTop: 3, alignItems: 'center' }}>
+                                                        <Tag text={p.position || '—'} />
+                                                        <span style={{ fontSize: 11, color: C.gray400 }}>{p.proTeam}</span>
+                                                        <StatusBadge status={p.injuryStatus} />
+                                                    </div>
+                                                    <div style={{ marginTop: 4 }}>
                                                         <AvailabilityBadges playerKey={p.playerKey} ownership={ownership} leagues={leagueSummary.filter(l => !l.leagueKey.startsWith('espn'))} />
-                                                    </td>
-                                                    <td style={tdStyle} onClick={e => e.stopPropagation()}>
-                                                        <button disabled style={{ padding: '3px 10px', fontSize: 11, borderRadius: 3, background: C.gray100, color: C.gray400, border: `1px solid ${C.gray200}`, cursor: 'not-allowed' }}>Add</button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                                    <RankBadge rank={p.overallRank} />
+                                                </div>
+                                            </div>
+                                        ))}
+                            </div>
+                        ) : (
+                            <div style={tableCard}>
+                                <table style={tableStyle}>
+                                    <thead>
+                                        <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
+                                            {['Player', 'Position', 'Overall', 'Lg Rank', 'Status', 'Availability', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {faLoading
+                                            ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: C.gray400 }}>Loading...</td></tr>
+                                            : visibleFreeAgents.length === 0
+                                                ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: C.gray400 }}>No players found</td></tr>
+                                                : visibleFreeAgents.map(p => (
+                                                    <tr key={p.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer' }}
+                                                        onClick={() => openPlayer(p.playerKey, p.name)}
+                                                        onMouseEnter={e => e.currentTarget.style.background = C.gray50}
+                                                        onMouseLeave={e => e.currentTarget.style.background = C.white}>
+                                                        <td style={tdStyle}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                <PlayerAvatar imageUrl={getResImg(p)} name={p.name} size={36} />
+                                                                <span style={{ fontWeight: 500 }}>{p.name}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td style={tdStyle}><Tag text={p.position || '—'} /></td>
+                                                        <td style={tdStyle}><RankBadge rank={p.overallRank} /></td>
+                                                        <td style={tdStyle}><RankBadge rank={p.leagueRank} /></td>
+                                                        <td style={tdStyle}><StatusBadge status={p.injuryStatus} /></td>
+                                                        <td style={tdStyle}><AvailabilityBadges playerKey={p.playerKey} ownership={ownership} leagues={leagueSummary.filter(l => !l.leagueKey.startsWith('espn'))} /></td>
+                                                        <td style={tdStyle} onClick={e => e.stopPropagation()}>
+                                                            <button disabled style={{ padding: '3px 10px', fontSize: 11, borderRadius: 3, background: C.gray100, color: C.gray400, border: `1px solid ${C.gray200}`, cursor: 'not-allowed' }}>Add</button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </>
                 )}
             </div>
@@ -1254,8 +1150,8 @@ export default function Dashboard({ api }) {
 
 const tableCard = { background: C.white, borderRadius: 8, border: `1px solid ${C.gray200}`, overflow: 'hidden' }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
-const thStyle = { padding: '7px 14px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em' }
-const tdStyle = { padding: '8px 14px', fontSize: 13, verticalAlign: 'middle', background: 'inherit' }
-const inputStyle = { padding: '6px 10px', border: `1px solid ${C.gray200}`, borderRadius: 5, fontSize: 12, outline: 'none', color: C.gray800 }
-const selStyle = { padding: '6px 8px', border: `1px solid ${C.gray200}`, borderRadius: 5, fontSize: 12, background: C.white, outline: 'none', cursor: 'pointer', color: C.gray800 }
-const btnStyle = { padding: '6px 14px', borderRadius: 5, border: `1px solid ${C.gray200}`, background: C.white, cursor: 'pointer', fontSize: 12, color: C.gray600, fontWeight: 500 }
+const thStyle = { padding: '6px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em' }
+const tdStyle = { padding: '8px 12px', fontSize: 13, verticalAlign: 'middle', background: 'inherit' }
+const inputStyle = { padding: '8px 10px', border: `1px solid ${C.gray200}`, borderRadius: 8, fontSize: 13, outline: 'none', color: C.gray800, background: C.white }
+const selStyle = { padding: '7px 8px', border: `1px solid ${C.gray200}`, borderRadius: 8, fontSize: 12, background: C.white, outline: 'none', cursor: 'pointer', color: C.gray800 }
+const btnStyle = { padding: '7px 14px', borderRadius: 8, border: `1px solid ${C.gray200}`, background: C.white, cursor: 'pointer', fontSize: 13, color: C.gray600, fontWeight: 500 }
