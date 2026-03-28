@@ -67,29 +67,13 @@ router.get('/callback', async (req, res) => {
         saveTokens(tokens);
 
         const isProd = process.env.NODE_ENV === 'production';
-        const destination = isProd ? '/' : 'https://localhost:5173';
         req.session.save((err) => {
             if (err) console.error('Session save error:', err);
-            // Use HTML meta-refresh instead of 302 redirect
-            // This gives Safari time to commit the session cookie before navigating
-            res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta http-equiv="refresh" content="0;url=${destination}">
-        </head>
-        <body>
-            <script>window.location.href = "${destination}";</script>
-            <p>Redirecting...</p>
-        </body>
-        </html>
-    `);
+            res.redirect(isProd ? '/' : 'https://localhost:5173');
         });
     } catch (err) {
-        console.error('OAuth error full:', JSON.stringify(err.response?.data || err.message));
-        console.error('OAuth redirect URI used:', YAHOO_REDIRECT_URI);
-        console.error('OAuth client ID:', YAHOO_CLIENT_ID?.slice(0, 10) + '...');
-        res.status(500).send(`Authentication failed: ${JSON.stringify(err.response?.data || err.message)}`);
+        console.error('OAuth error:', err.response?.data || err.message);
+        res.status(500).send('Authentication failed');
     }
 });
 
