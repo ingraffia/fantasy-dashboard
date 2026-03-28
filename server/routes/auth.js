@@ -68,8 +68,10 @@ router.get('/callback', async (req, res) => {
 
         res.redirect('http://localhost:5173');
     } catch (err) {
-        console.error('OAuth error:', err.response?.data || err.message);
-        res.status(500).send('Authentication failed');
+        console.error('OAuth error full:', JSON.stringify(err.response?.data || err.message));
+        console.error('OAuth redirect URI used:', YAHOO_REDIRECT_URI);
+        console.error('OAuth client ID:', YAHOO_CLIENT_ID?.slice(0, 10) + '...');
+        res.status(500).send(`Authentication failed: ${JSON.stringify(err.response?.data || err.message)}`);
     }
 });
 
