@@ -8,6 +8,7 @@ const { router: authRoutes } = require('./routes/auth');
 const fantasyRoutes = require('./routes/fantasy');
 
 const app = express();
+app.set('trust proxy', 1)
 const isProd = process.env.NODE_ENV === 'production';
 
 app.use(cors({

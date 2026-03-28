@@ -8,10 +8,12 @@ const { YAHOO_CLIENT_ID, YAHOO_CLIENT_SECRET, YAHOO_REDIRECT_URI } = process.env
 const TOKEN_FILE = path.join(__dirname, '../.tokens.json');
 
 function saveTokens(tokens) {
+    if (process.env.NODE_ENV === 'production') return;
     fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2));
 }
 
 function loadTokens() {
+    if (process.env.NODE_ENV === 'production') return null;
     try {
         if (fs.existsSync(TOKEN_FILE)) {
             return JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
