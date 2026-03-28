@@ -2,6 +2,7 @@ node_modules
 client/node_modules
 client/dist
 server/.tokens.json
+server/.token-store.json
 server/.env
 .env
 *.pem

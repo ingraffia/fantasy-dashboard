@@ -6,14 +6,30 @@ const crypto = require('crypto');
 const router = express.Router();
 
 const { YAHOO_CLIENT_ID, YAHOO_CLIENT_SECRET, YAHOO_REDIRECT_URI } = process.env;
-const TOKEN_FILE = path.join(__dirname, '../.tokens.json');
+const TOKEN_STORE_FILE = path.join(__dirname, '../.token-store.json');
 
-// In-memory token store: authToken -> yahooTokens
+// Persistent token store: authToken -> yahooTokens
 const tokenStore = new Map();
+
+// Load persisted tokens on startup
+try {
+    const raw = fs.readFileSync(TOKEN_STORE_FILE, 'utf8');
+    const saved = JSON.parse(raw);
+    Object.entries(saved).forEach(([k, v]) => tokenStore.set(k, v));
+    console.log(`Loaded ${tokenStore.size} token(s) from disk`);
+} catch (e) { /* no saved tokens yet */ }
+
+function persistTokenStore() {
+    try {
+        const obj = Object.fromEntries(tokenStore);
+        fs.writeFileSync(TOKEN_STORE_FILE, JSON.stringify(obj));
+    } catch (e) { console.error('Failed to persist token store:', e.message); }
+}
 
 function storeTokens(yahooTokens) {
     const authToken = crypto.randomBytes(32).toString('hex');
     tokenStore.set(authToken, yahooTokens);
+    persistTokenStore();
     return authToken;
 }
 
@@ -23,15 +39,12 @@ function getTokens(authToken) {
 
 function updateTokens(authToken, yahooTokens) {
     tokenStore.set(authToken, yahooTokens);
+    persistTokenStore();
 }
 
 function removeTokens(authToken) {
     tokenStore.delete(authToken);
-}
-
-function saveTokensToFile(tokens) {
-    if (process.env.NODE_ENV === 'production') return;
-    try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2)); } catch (e) { }
+    persistTokenStore();
 }
 
 router.get('/login', (req, res) => {
@@ -67,7 +80,6 @@ router.get('/callback', async (req, res) => {
         };
 
         const authToken = storeTokens(yahooTokens);
-        saveTokensToFile(yahooTokens);
 
         const isProd = process.env.NODE_ENV === 'production';
         const base = isProd ? '' : 'https://localhost:5173';
@@ -107,7 +119,6 @@ router.get('/logout', (req, res) => {
     const authHeader = req.headers.authorization;
     const authToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
     if (authToken) removeTokens(authToken);
-    try { fs.unlinkSync(TOKEN_FILE); } catch (e) { }
     res.json({ ok: true });
 });
 
