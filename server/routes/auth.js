@@ -2,33 +2,36 @@ const express = require('express');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const router = express.Router();
 
 const { YAHOO_CLIENT_ID, YAHOO_CLIENT_SECRET, YAHOO_REDIRECT_URI } = process.env;
 const TOKEN_FILE = path.join(__dirname, '../.tokens.json');
 
-function saveTokens(tokens) {
+// In-memory token store: authToken -> yahooTokens
+const tokenStore = new Map();
+
+function storeTokens(yahooTokens) {
+    const authToken = crypto.randomBytes(32).toString('hex');
+    tokenStore.set(authToken, yahooTokens);
+    return authToken;
+}
+
+function getTokens(authToken) {
+    return tokenStore.get(authToken) || null;
+}
+
+function updateTokens(authToken, yahooTokens) {
+    tokenStore.set(authToken, yahooTokens);
+}
+
+function removeTokens(authToken) {
+    tokenStore.delete(authToken);
+}
+
+function saveTokensToFile(tokens) {
     if (process.env.NODE_ENV === 'production') return;
-    fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2));
-}
-
-function loadTokens() {
-    if (process.env.NODE_ENV === 'production') return null;
-    try {
-        if (fs.existsSync(TOKEN_FILE)) {
-            return JSON.parse(fs.readFileSync(TOKEN_FILE, 'utf8'));
-        }
-    } catch (e) {
-        console.warn('Could not load tokens file:', e.message);
-    }
-    return null;
-}
-
-function injectTokens(req) {
-    if (!req.session.tokens) {
-        const saved = loadTokens();
-        if (saved) req.session.tokens = saved;
-    }
+    try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2)); } catch (e) { }
 }
 
 router.get('/login', (req, res) => {
@@ -57,27 +60,25 @@ router.get('/callback', async (req, res) => {
             { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
         );
 
-        const tokens = {
+        const yahooTokens = {
             access_token: data.access_token,
             refresh_token: data.refresh_token,
             expires_at: Date.now() + data.expires_in * 1000
         };
 
-        req.session.tokens = tokens;
-        saveTokens(tokens);
+        const authToken = storeTokens(yahooTokens);
+        saveTokensToFile(yahooTokens);
 
         const isProd = process.env.NODE_ENV === 'production';
-        req.session.save((err) => {
-            if (err) console.error('Session save error:', err);
-            res.redirect(isProd ? '/' : 'https://localhost:5173');
-        });
+        const base = isProd ? '' : 'https://localhost:5173';
+        res.redirect(`${base}/?auth=${authToken}`);
     } catch (err) {
         console.error('OAuth error:', err.response?.data || err.message);
         res.status(500).send('Authentication failed');
     }
 });
 
-async function refreshTokens(current) {
+async function refreshYahooTokens(current) {
     const credentials = Buffer.from(`${YAHOO_CLIENT_ID}:${YAHOO_CLIENT_SECRET}`).toString('base64');
     const { data } = await axios.post(
         'https://api.login.yahoo.com/oauth2/get_token',
@@ -87,7 +88,6 @@ async function refreshTokens(current) {
         }),
         { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
-
     return {
         access_token: data.access_token,
         refresh_token: data.refresh_token || current.refresh_token,
@@ -95,30 +95,20 @@ async function refreshTokens(current) {
     };
 }
 
-router.post('/refresh', async (req, res) => {
-    injectTokens(req);
-    if (!req.session.tokens?.refresh_token) return res.status(401).json({ error: 'Not authenticated' });
-
-    try {
-        const tokens = await refreshTokens(req.session.tokens);
-        req.session.tokens = tokens;
-        saveTokens(tokens);
-        res.json({ ok: true });
-    } catch (err) {
-        res.status(500).json({ error: 'Token refresh failed' });
-    }
-});
-
 router.get('/status', (req, res) => {
-    injectTokens(req);
-    res.json({ authenticated: !!req.session.tokens?.access_token });
+    const authHeader = req.headers.authorization;
+    const authToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!authToken) return res.json({ authenticated: false });
+    const tokens = getTokens(authToken);
+    res.json({ authenticated: !!tokens?.access_token });
 });
 
 router.get('/logout', (req, res) => {
+    const authHeader = req.headers.authorization;
+    const authToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (authToken) removeTokens(authToken);
     try { fs.unlinkSync(TOKEN_FILE); } catch (e) { }
-    req.session.destroy();
-    const isProd = process.env.NODE_ENV === 'production';
-    res.redirect(isProd ? '/' : 'https://localhost:5173');
+    res.json({ ok: true });
 });
 
-module.exports = { router, injectTokens, refreshTokens, saveTokens, loadTokens };
+module.exports = { router, getTokens, updateTokens, refreshYahooTokens, storeTokens };

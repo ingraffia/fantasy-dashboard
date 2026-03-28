@@ -499,7 +499,7 @@ const sectionLabelRow = (text, color = C.gray600) => (
 
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 
-export default function Dashboard({ api }) {
+export default function Dashboard({ api, onLogout }) {
     const isMobile = useIsMobile()
     const [data, setData] = useState([])
     const [loading, setLoading] = useState(true)
@@ -809,9 +809,9 @@ export default function Dashboard({ api }) {
                         fontSize: isMobile ? 11 : 12, fontWeight: 700, padding: isMobile ? '6px 12px' : '7px 16px',
                         borderRadius: 20, border: 'none', background: C.navy, color: C.white, cursor: 'pointer',
                     }}>↻ {isMobile ? '' : 'Refresh'}</button>
-                    <a href={`${api}/auth/logout`} style={{ fontSize: isMobile ? 11 : 12, fontWeight: 600, color: C.gray600, textDecoration: 'none', padding: '6px 10px', background: C.gray100, borderRadius: 12 }}>
+                    <button onClick={onLogout} style={{ fontSize: isMobile ? 11 : 12, fontWeight: 600, color: C.gray600, border: 'none', padding: '6px 10px', background: C.gray100, borderRadius: 12, cursor: 'pointer' }}>
                         {isMobile ? '↪' : 'Sign Out'}
-                    </a>
+                    </button>
                 </div>
             </div>
 
