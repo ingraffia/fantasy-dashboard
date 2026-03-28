@@ -66,7 +66,11 @@ router.get('/callback', async (req, res) => {
         req.session.tokens = tokens;
         saveTokens(tokens);
 
-        res.redirect('http://localhost:5173');
+        const isProd = process.env.NODE_ENV === 'production';
+        req.session.save((err) => {
+            if (err) console.error('Session save error:', err);
+            res.redirect(isProd ? '/' : 'https://localhost:5173');
+        });
     } catch (err) {
         console.error('OAuth error full:', JSON.stringify(err.response?.data || err.message));
         console.error('OAuth redirect URI used:', YAHOO_REDIRECT_URI);
@@ -112,10 +116,11 @@ router.get('/status', (req, res) => {
     res.json({ authenticated: !!req.session.tokens?.access_token });
 });
 
-router.post('/logout', (req, res) => {
+router.get('/logout', (req, res) => {
     try { fs.unlinkSync(TOKEN_FILE); } catch (e) { }
     req.session.destroy();
-    res.json({ ok: true });
+    const isProd = process.env.NODE_ENV === 'production';
+    res.redirect(isProd ? '/' : 'https://localhost:5173');
 });
 
 module.exports = { router, injectTokens, refreshTokens, saveTokens, loadTokens };
