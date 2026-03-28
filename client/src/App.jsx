@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import Dashboard from './Dashboard'
 
-const API = 'https://localhost:3001'
+const API = import.meta.env.DEV ? 'https://localhost:3001' : ''
 
 export default function App() {
   const [authed, setAuthed] = useState(null)
