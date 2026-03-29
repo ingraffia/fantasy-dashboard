@@ -449,6 +449,296 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
     )
 }
 
+
+// ─── ESPN Trade Analyzer ─────────────────────────────────────────────────────
+
+const ESPN_CAT_LABELS = ['R', 'TB', 'RBI', 'SB', 'OBP', 'K', 'W', 'SV', 'ERA', 'WHIP']
+const RATE_CATS = ['OBP', 'ERA', 'WHIP']
+const LOW_BETTER_CATS = ['ERA', 'WHIP']
+
+function CatRankBar({ label, rank, total = 12 }) {
+    const pct = ((total - rank) / (total - 1)) * 100
+    const isWeak = rank >= 7
+    const isStrong = rank <= 4
+    const color = isStrong ? C.green : isWeak ? C.red : C.amber
+    const bg = isStrong ? C.greenLight : isWeak ? C.redLight : C.amberLight
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: C.gray600, width: 36, flexShrink: 0 }}>{label}</span>
+            <div style={{ flex: 1, background: C.gray100, borderRadius: 99, height: 8, overflow: 'hidden' }}>
+                <div style={{ width: `${pct}%`, background: color, height: '100%', borderRadius: 99, transition: 'width 0.4s ease' }} />
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 800, color, background: bg, padding: '1px 7px', borderRadius: 99, minWidth: 28, textAlign: 'center' }}>#{rank}</span>
+        </div>
+    )
+}
+
+function CatImpactPill({ label, value }) {
+    if (!value && value !== 0) return null
+    const isRate = RATE_CATS.includes(label)
+    const isLowBetter = LOW_BETTER_CATS.includes(label)
+    const isGood = isLowBetter ? value < -0.02 : value > 0
+    const isBad = isLowBetter ? value > 0.02 : value < 0
+    const isNeutral = !isGood && !isBad
+
+    if (Math.abs(value) < (isRate ? 0.005 : 1)) return null
+
+    const sign = isLowBetter ? (value < 0 ? '+' : '') : (value > 0 ? '+' : '')
+    const display = isRate ? `${sign}${value.toFixed(3)}` : `${sign}${Math.round(value)}`
+    const color = isGood ? C.green : isBad ? C.red : C.gray400
+    const bg = isGood ? C.greenLight : isBad ? C.redLight : C.gray100
+
+    return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color, background: bg, padding: '1px 6px', borderRadius: 4, margin: '2px' }}>
+            {label} {display}
+        </span>
+    )
+}
+
+function SuggestionCard({ suggestion, expanded, onToggle }) {
+    const { giving, receiving, fromTeam, catImpact, weaknessesFilled, strengthsHurt, netScore } = suggestion
+    const keeperSurplus = receiving.keeperValue && receiving.auctionValue
+        ? Math.round(receiving.auctionValue - receiving.keeperValue)
+        : null
+
+    return (
+        <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderLeft: `4px solid ${C.green}`, borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+            {/* Header */}
+            <div onClick={onToggle} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
+                onMouseEnter={e => e.currentTarget.style.background = C.gray50}
+                onMouseLeave={e => e.currentTarget.style.background = C.white}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 12, color: C.red, fontWeight: 600 }}>Give</span>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: C.gray800 }}>{giving.name}</span>
+                        <span style={{ fontSize: 11, color: C.gray400 }}>({giving.position})</span>
+                        <span style={{ fontSize: 12, color: C.gray400 }}>→</span>
+                        <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>Get</span>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: C.gray800 }}>{receiving.name}</span>
+                        <span style={{ fontSize: 11, color: C.gray400 }}>({receiving.position})</span>
+                        <span style={{ fontSize: 10, color: C.gray400 }}>from {fromTeam}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {weaknessesFilled.length > 0 && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '1px 6px', borderRadius: 4 }}>
+                                ↑ {weaknessesFilled.join(', ')}
+                            </span>
+                        )}
+                        {strengthsHurt.length > 0 && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: C.red, background: C.redLight, padding: '1px 6px', borderRadius: 4 }}>
+                                ↓ {strengthsHurt.join(', ')}
+                            </span>
+                        )}
+                        {keeperSurplus !== null && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: keeperSurplus >= 10 ? C.green : keeperSurplus >= 0 ? C.amber : C.red, background: keeperSurplus >= 10 ? C.greenLight : keeperSurplus >= 0 ? C.amberLight : C.redLight, padding: '1px 6px', borderRadius: 4 }}>
+                                {keeperSurplus >= 0 ? `+$${keeperSurplus}` : `-$${Math.abs(keeperSurplus)}`} keeper
+                            </span>
+                        )}
+                    </div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.green }}>Score {Math.round(netScore)}</div>
+                    <div style={{ fontSize: 10, color: C.gray400 }}>{expanded ? '▲' : '▼'}</div>
+                </div>
+            </div>
+
+            {/* Expanded detail */}
+            {expanded && (
+                <div style={{ borderTop: `1px solid ${C.gray100}`, padding: '12px 14px' }}>
+                    {/* Side by side player comparison */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                        {[{ player: giving, label: 'Giving', color: C.red }, { player: receiving, label: 'Receiving', color: C.green }].map(({ player, label, color }) => (
+                            <div key={player.playerKey} style={{ background: C.gray50, borderRadius: 8, padding: '10px 12px' }}>
+                                <div style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                    <PlayerAvatar imageUrl={player.imageUrl} name={player.name} size={32} />
+                                    <div>
+                                        <div style={{ fontWeight: 700, fontSize: 13 }}>{player.name}</div>
+                                        <div style={{ fontSize: 11, color: C.gray400 }}>{player.position} · {player.proTeam}</div>
+                                    </div>
+                                </div>
+                                {/* 2025 stats */}
+                                <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>2025</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                                    {Object.keys(player.stats2025 || {}).length === 0
+                                        ? <span style={{ fontSize: 11, color: C.gray400 }}>No data</span>
+                                        : [
+                                            { id: '20', l: 'R' }, { id: '8', l: 'TB' }, { id: '21', l: 'RBI' },
+                                            { id: '23', l: 'SB' }, { id: '17', l: 'OBP' },
+                                            { id: '27', l: 'K' }, { id: '19', l: 'W' }, { id: '35', l: 'SV' },
+                                            { id: '47', l: 'ERA' }, { id: '41', l: 'WHIP' }
+                                        ].map(({ id, l }) => {
+                                            const v = player.stats2025?.[id]
+                                            if (!v && v !== 0) return null
+                                            const display = RATE_CATS.includes(l) ? parseFloat(v).toFixed(2) : Math.round(v)
+                                            if (display === 0 || display === '0.00') return null
+                                            return <span key={id} style={{ fontSize: 10, background: C.gray100, padding: '1px 5px', borderRadius: 3 }}><span style={{ color: C.gray400 }}>{l} </span><span style={{ fontWeight: 700 }}>{display}</span></span>
+                                        })
+                                    }
+                                </div>
+                                {/* 2026 */}
+                                <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>2026</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                    {[
+                                        { id: '20', l: 'R' }, { id: '8', l: 'TB' }, { id: '21', l: 'RBI' },
+                                        { id: '23', l: 'SB' }, { id: '17', l: 'OBP' },
+                                        { id: '27', l: 'K' }, { id: '19', l: 'W' }, { id: '35', l: 'SV' },
+                                        { id: '47', l: 'ERA' }, { id: '41', l: 'WHIP' }
+                                    ].map(({ id, l }) => {
+                                        const v = player.stats2026?.[id]
+                                        if (!v && v !== 0) return null
+                                        const display = RATE_CATS.includes(l) ? parseFloat(v).toFixed(2) : Math.round(v)
+                                        if (display === 0 || display === '0.00') return null
+                                        return <span key={id} style={{ fontSize: 10, background: C.accentLight, padding: '1px 5px', borderRadius: 3 }}><span style={{ color: C.gray400 }}>{l} </span><span style={{ fontWeight: 700 }}>{display}</span></span>
+                                    })}
+                                </div>
+                                {/* Keeper value */}
+                                {player.keeperValue && player.auctionValue && (() => {
+                                    const surplus = Math.round(player.auctionValue - player.keeperValue)
+                                    const color2 = surplus >= 10 ? C.green : surplus >= 0 ? C.amber : C.red
+                                    const bg2 = surplus >= 10 ? C.greenLight : surplus >= 0 ? C.amberLight : C.redLight
+                                    return (
+                                        <div style={{ marginTop: 8, fontSize: 11 }}>
+                                            <span style={{ color: C.gray400 }}>Keeper: </span>
+                                            <span style={{ fontWeight: 700, color: color2, background: bg2, padding: '1px 6px', borderRadius: 4 }}>
+                                                ${player.keeperValue} keep / ${Math.round(player.auctionValue)} mkt ({surplus >= 0 ? '+' : ''}${surplus})
+                                            </span>
+                                        </div>
+                                    )
+                                })()}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Category impact */}
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', marginBottom: 6 }}>Category Impact</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {ESPN_CAT_LABELS.map(label => (
+                            <CatImpactPill key={label} label={label} value={catImpact[label]} />
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+function ESPNTradeAnalyzer({ api }) {
+    const [tradeData, setTradeData] = useState(null)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState(null)
+    const [expandedIdx, setExpandedIdx] = useState(null)
+    const [filterCat, setFilterCat] = useState('All')
+
+    const load = () => {
+        setLoading(true)
+        setError(null)
+        axios.get(`${api}/api/espn-trade-suggest`, { withCredentials: true })
+            .then(r => { setTradeData(r.data); setLoading(false) })
+            .catch(e => { setError(e.response?.data?.error || e.message); setLoading(false) })
+    }
+
+    const visible = tradeData?.suggestions?.filter(s =>
+        filterCat === 'All' || s.weaknessesFilled.includes(filterCat)
+    ) || []
+
+    if (!tradeData && !loading) return (
+        <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>⚾</div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: C.navy, marginBottom: 6 }}>ESPN Trade Analyzer</div>
+            <div style={{ fontSize: 13, color: C.gray400, marginBottom: 20, maxWidth: 400, margin: '0 auto 20px' }}>
+                Analyzes your team's weaknesses across all 10 categories and suggests specific trades to fill them — based on 2025 stats and 2026 projections.
+            </div>
+            <button onClick={load} style={{ padding: '12px 40px', borderRadius: 10, border: 'none', background: C.navy, color: C.white, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                ⚡ Generate Trade Suggestions
+            </button>
+        </div>
+    )
+
+    if (loading) return (
+        <div style={{ textAlign: 'center', padding: '3rem', color: C.gray400 }}>
+            <div style={{ fontSize: 13, marginBottom: 8 }}>Analyzing all 12 rosters...</div>
+            <div style={{ fontSize: 11 }}>Blending 2025 stats with 2026 projections</div>
+        </div>
+    )
+
+    if (error) return (
+        <div style={{ padding: '1rem', background: C.redLight, borderRadius: 8, color: C.red, fontSize: 13 }}>
+            Error: {error} <button onClick={load} style={btnStyle}>Retry</button>
+        </div>
+    )
+
+    const { myTeam } = tradeData
+
+    return (
+        <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: C.navy }}>ESPN Trade Analyzer</div>
+                    <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>
+                        {myTeam.teamName} · {visible.length} suggestions
+                    </div>
+                </div>
+                <button onClick={load} style={{ ...btnStyle, fontSize: 11 }}>↻ Refresh</button>
+            </div>
+
+            {/* Category profile */}
+            <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                    Your Category Rankings (1 = best in league)
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
+                    {ESPN_CAT_LABELS.map(label => (
+                        <CatRankBar key={label} label={label} rank={myTeam.catRanks[label] || 6} />
+                    ))}
+                </div>
+                {myTeam.weaknesses.length > 0 && (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.gray100}` }}>
+                        <span style={{ fontSize: 11, color: C.gray400 }}>Weaknesses: </span>
+                        {myTeam.weaknesses.map(w => (
+                            <Tag key={w} text={w} bg={C.redLight} color={C.red} />
+                        ))}
+                        {' '}
+                        <span style={{ fontSize: 11, color: C.gray400, marginLeft: 8 }}>Strengths: </span>
+                        {myTeam.strengths.map(s => (
+                            <Tag key={s} text={s} bg={C.greenLight} color={C.green} />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Filter by category */}
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: C.gray400, fontWeight: 600 }}>Filter by weakness:</span>
+                {['All', ...myTeam.weaknesses].map(cat => (
+                    <button key={cat} onClick={() => setFilterCat(cat)} style={{
+                        padding: '3px 10px', fontSize: 11, borderRadius: 99, cursor: 'pointer', fontWeight: 600,
+                        background: filterCat === cat ? C.navy : C.white,
+                        color: filterCat === cat ? C.white : C.gray600,
+                        border: `1px solid ${filterCat === cat ? C.navy : C.gray200}`,
+                    }}>{cat}</button>
+                ))}
+            </div>
+
+            {/* Suggestions */}
+            {visible.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: C.gray400, fontSize: 13 }}>
+                    No suggestions found for this category filter.
+                </div>
+            ) : (
+                visible.map((s, i) => (
+                    <SuggestionCard
+                        key={`${s.giving.playerKey}-${s.receiving.playerKey}`}
+                        suggestion={s}
+                        expanded={expandedIdx === i}
+                        onToggle={() => setExpandedIdx(expandedIdx === i ? null : i)}
+                    />
+                ))
+            )}
+        </div>
+    )
+}
+
 // ─── Trade Analyzer ─────────────────────────────────────────────────────────
 
 const ESPN_LEAGUE_KEY_PREFIX = 'espn.l.'
@@ -1585,12 +1875,7 @@ export default function Dashboard({ api }) {
 
                 {/* TRADE ANALYZER */}
                 {activeTab === 'trade' && (
-                    <TradeAnalyzer
-                        api={api}
-                        data={data}
-                        allRosterPlayers={allRosterPlayers}
-                        getResImg={getResImg}
-                    />
+                    <ESPNTradeAnalyzer api={api} />
                 )}
             </div>
         </div>

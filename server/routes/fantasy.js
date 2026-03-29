@@ -625,4 +625,279 @@ router.post('/trade-analyze', requireAuth, async (req, res) => {
     }
 });
 
+
+// Add this before module.exports = router in fantasy.js
+
+const ESPN_CATS = {
+    hitter: [
+        { id: '20', label: 'R', better: 'high' },
+        { id: '8', label: 'TB', better: 'high' },
+        { id: '21', label: 'RBI', better: 'high' },
+        { id: '23', label: 'SB', better: 'high' },
+        { id: '17', label: 'OBP', better: 'high', rate: true },
+    ],
+    pitcher: [
+        { id: '27', label: 'K', better: 'high' },
+        { id: '19', label: 'W', better: 'high' },
+        { id: '35', label: 'SV', better: 'high' },
+        { id: '47', label: 'ERA', better: 'low', rate: true },
+        { id: '41', label: 'WHIP', better: 'low', rate: true },
+    ],
+};
+
+function getPlayerStats(player, seasonId) {
+    if (!player?.stats) return {};
+    const s = player.stats.find(st => st.id === seasonId && st.statSourceId === 0);
+    return s?.stats || {};
+}
+
+function blendStats(s2025, s2026, games2026) {
+    // Convert 2026 current to 162-game projection, blend 70/30
+    const scale = games2026 > 0 ? 162 / games2026 : 0;
+    const blended = {};
+    const allKeys = new Set([...Object.keys(s2025), ...Object.keys(s2026)]);
+    allKeys.forEach(k => {
+        const v25 = parseFloat(s2025[k] || 0);
+        const v26 = parseFloat(s2026[k] || 0);
+        const proj26 = v26 * scale;
+        // For rate stats (OBP, ERA, WHIP, AVG) don't scale
+        const rateStats = ['2', '17', '9', '47', '41'];
+        if (rateStats.includes(k)) {
+            // Weight by AB/IP if available, else simple average
+            blended[k] = games2026 > 3 ? (v25 * 0.7 + v26 * 0.3) : v25;
+        } else {
+            blended[k] = games2026 > 3 ? (v25 * 0.7 + proj26 * 0.3) : v25;
+        }
+    });
+    return blended;
+}
+
+function calcTeamCats(players) {
+    const totals = {};
+    const hitterCats = ESPN_CATS.hitter;
+    const pitcherCats = ESPN_CATS.pitcher;
+
+    hitterCats.forEach(c => { totals[c.label] = 0; });
+    pitcherCats.forEach(c => { totals[c.label] = 0; });
+
+    let hitterABs = 0, pitcherIP = 0;
+    let obpNumer = 0, obpDenom = 0;
+    let eraER = 0, eraIP = 0;
+    let whipWHIP = 0, whipIP = 0;
+
+    players.forEach(p => {
+        const stats = p.blendedStats || {};
+        const isP = ['SP', 'RP', 'P'].includes(p.position) || p.defaultPositionId === 1 || p.defaultPositionId === 11;
+
+        if (!isP) {
+            totals['R'] += parseFloat(stats['20'] || 0);
+            totals['TB'] += parseFloat(stats['8'] || 0);
+            totals['RBI'] += parseFloat(stats['21'] || 0);
+            totals['SB'] += parseFloat(stats['23'] || 0);
+            const ab = parseFloat(stats['0'] || 0);
+            const obp = parseFloat(stats['17'] || 0);
+            if (ab > 0) { obpNumer += obp * ab; obpDenom += ab; }
+        } else {
+            totals['K'] += parseFloat(stats['27'] || 0);
+            totals['W'] += parseFloat(stats['19'] || 0);
+            totals['SV'] += parseFloat(stats['35'] || 0);
+            const ip = parseFloat(stats['34'] || 0);
+            const er = parseFloat(stats['48'] || 0); // earned runs
+            const h = parseFloat(stats['42'] || 0); // hits allowed
+            const bb = parseFloat(stats['39'] || 0); // BB allowed
+            if (ip > 0) {
+                eraER += er; eraIP += ip;
+                whipWHIP += (h + bb); whipIP += ip;
+            }
+        }
+    });
+
+    totals['OBP'] = obpDenom > 0 ? obpNumer / obpDenom : 0;
+    totals['ERA'] = eraIP > 0 ? (eraER * 9 / eraIP) : 0;
+    totals['WHIP'] = whipIP > 0 ? (whipWHIP / whipIP) : 0;
+
+    return totals;
+}
+
+router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
+    try {
+        const MY_TEAM_ID = 7;
+
+        // Fetch all teams at once
+        const [allRosterData, teamData] = await Promise.all([
+            espnGet({ view: 'mRoster' }),
+            espnGet({ view: 'mTeam' }),
+        ]);
+
+        // Build player map with blended stats
+        const teamRosters = {};
+        for (const team of (allRosterData.teams || [])) {
+            const entries = team.roster?.entries || [];
+            const players = entries.map(entry => {
+                const player = entry.playerPoolEntry?.player;
+                if (!player) return null;
+
+                const s2025 = getPlayerStats(player, '002025');
+                const s2026 = getPlayerStats(player, '002026');
+                const games2026 = parseFloat(s2026['67'] || 0) || // games played
+                    Math.round(parseFloat(s2026['0'] || s2026['34'] || 0) / 4);
+
+                const blendedStats = blendStats(s2025, s2026, games2026);
+
+                return {
+                    playerId: entry.playerId,
+                    playerKey: `espn.p.${entry.playerId}`,
+                    name: player.fullName,
+                    position: ESPN_POS_MAP[player.defaultPositionId] || 'UTIL',
+                    defaultPositionId: player.defaultPositionId,
+                    proTeam: ESPN_TEAM_MAP[player.proTeamId] || '—',
+                    selectedPosition: ESPN_SLOT_MAP[entry.lineupSlotId] || 'BN',
+                    imageUrl: `https://a.espncdn.com/i/headshots/mlb/players/full/${entry.playerId}.png`,
+                    injuryStatus: ESPN_INJURY_MAP[player.injuryStatus] ?? null,
+                    keeperValue: entry.playerPoolEntry?.keeperValue || null,
+                    auctionValue: player.ownership?.auctionValueAverage || null,
+                    stats2025: s2025,
+                    stats2026: s2026,
+                    blendedStats,
+                    percentOwned: player.ownership?.percentOwned || 0,
+                    isUndroppable: !entry.playerPoolEntry?.droppable,
+                };
+            }).filter(Boolean);
+
+            teamRosters[team.id] = {
+                teamId: team.id,
+                teamName: teamData.teams.find(t => t.id === team.id)?.name || `Team ${team.id}`,
+                players,
+                record: teamData.teams.find(t => t.id === team.id)?.record?.overall || {},
+            };
+        }
+
+        const myRoster = teamRosters[MY_TEAM_ID];
+        if (!myRoster) return res.status(400).json({ error: 'My team not found' });
+
+        // Calculate category totals for all teams
+        Object.values(teamRosters).forEach(team => {
+            team.catTotals = calcTeamCats(team.players);
+        });
+
+        // Rank all teams 1-12 per category
+        const allCats = [...ESPN_CATS.hitter, ...ESPN_CATS.pitcher];
+        const catRankings = {};
+        allCats.forEach(cat => {
+            const sorted = Object.values(teamRosters).sort((a, b) => {
+                const av = a.catTotals[cat.label] || 0;
+                const bv = b.catTotals[cat.label] || 0;
+                return cat.better === 'high' ? bv - av : av - bv;
+            });
+            catRankings[cat.label] = {};
+            sorted.forEach((team, idx) => {
+                catRankings[cat.label][team.teamId] = idx + 1;
+            });
+        });
+
+        // My category ranks
+        const myCatRanks = {};
+        allCats.forEach(cat => {
+            myCatRanks[cat.label] = catRankings[cat.label][MY_TEAM_ID] || 6;
+        });
+
+        // My weaknesses = categories ranked 7-12
+        const weaknesses = allCats
+            .filter(c => myCatRanks[c.label] >= 7)
+            .sort((a, b) => myCatRanks[b.label] - myCatRanks[a.label])
+            .map(c => c.label);
+
+        const strengths = allCats
+            .filter(c => myCatRanks[c.label] <= 4)
+            .map(c => c.label);
+
+        // Generate trade suggestions
+        // For each player on other teams, evaluate swapping with each of my players
+        const suggestions = [];
+        const myActivePlayers = myRoster.players.filter(p => !['IL', 'IL10', 'IL15', 'IL60', 'NA'].includes(p.selectedPosition));
+
+        Object.values(teamRosters).forEach(otherTeam => {
+            if (otherTeam.teamId === MY_TEAM_ID) return;
+
+            otherTeam.players.forEach(theirPlayer => {
+                if (theirPlayer.percentOwned < 20) return; // skip nobodies
+                if (theirPlayer.isUndroppable) return;
+
+                myActivePlayers.forEach(myPlayer => {
+                    // Only swap similar positions (rough check)
+                    const myIsP = [1, 11].includes(myPlayer.defaultPositionId);
+                    const theirIsP = [1, 11].includes(theirPlayer.defaultPositionId);
+                    if (myIsP !== theirIsP) return; // don't swap pitchers for hitters
+
+                    // Calculate net category impact
+                    const catImpact = {};
+                    let weaknessScore = 0;
+                    let strengthPenalty = 0;
+
+                    allCats.forEach(cat => {
+                        const myVal = parseFloat(myPlayer.blendedStats[cat.id] || 0);
+                        const theirVal = parseFloat(theirPlayer.blendedStats[cat.id] || 0);
+
+                        if (cat.rate) {
+                            // For rate stats, just compare directly
+                            const diff = cat.better === 'high' ? theirVal - myVal : myVal - theirVal;
+                            catImpact[cat.label] = diff;
+                            if (weaknesses.includes(cat.label)) weaknessScore += diff * 2;
+                            if (strengths.includes(cat.label) && diff < 0) strengthPenalty += Math.abs(diff);
+                        } else {
+                            const diff = theirVal - myVal;
+                            const normalizedDiff = cat.better === 'high' ? diff : -diff;
+                            catImpact[cat.label] = normalizedDiff;
+                            if (weaknesses.includes(cat.label)) weaknessScore += normalizedDiff;
+                            if (strengths.includes(cat.label) && normalizedDiff < -5) strengthPenalty += Math.abs(normalizedDiff) * 0.5;
+                        }
+                    });
+
+                    const netScore = weaknessScore - strengthPenalty;
+                    if (netScore > 0) {
+                        suggestions.push({
+                            giving: myPlayer,
+                            receiving: theirPlayer,
+                            fromTeam: otherTeam.teamName,
+                            netScore,
+                            weaknessScore,
+                            strengthPenalty,
+                            catImpact,
+                            weaknessesFilled: weaknesses.filter(w => (catImpact[w] || 0) > 0),
+                            strengthsHurt: strengths.filter(s => (catImpact[s] || 0) < -5),
+                        });
+                    }
+                });
+            });
+        });
+
+        // Sort and dedupe — best suggestion per "receiving player"
+        suggestions.sort((a, b) => b.netScore - a.netScore);
+        const seen = new Set();
+        const topSuggestions = suggestions.filter(s => {
+            const key = s.receiving.playerKey;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        }).slice(0, 10);
+
+        res.json({
+            myTeam: {
+                teamId: MY_TEAM_ID,
+                teamName: myRoster.teamName,
+                catTotals: myRoster.catTotals,
+                catRanks: myCatRanks,
+                weaknesses,
+                strengths,
+                players: myRoster.players,
+            },
+            suggestions: topSuggestions,
+            allCats: allCats.map(c => c.label),
+        });
+    } catch (err) {
+        console.error('ESPN trade suggest error:', err.response?.data || err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
