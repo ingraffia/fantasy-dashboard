@@ -623,4 +623,16 @@ router.post('/trade-analyze', requireAuth, async (req, res) => {
     }
 });
 
+router.get('/espn-debug-roster', requireAuth, async (req, res) => {
+    const MY_TEAM_ID = 7;
+    const data = await espnGet({ view: 'mRoster', forTeamId: MY_TEAM_ID });
+    const myTeam = data.teams?.find(t => t.id === MY_TEAM_ID);
+    const entry = myTeam?.roster?.entries?.[0];
+    res.json({
+        sampleEntry: entry,
+        poolEntry: entry?.playerPoolEntry,
+        keys: Object.keys(entry?.playerPoolEntry || {}),
+    });
+});
+
 module.exports = router;
