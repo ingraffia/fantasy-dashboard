@@ -723,12 +723,21 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
     try {
         const MY_TEAM_ID = 7;
 
-        // Fetch all teams at once
-        const [allRosterData, teamData] = await Promise.all([
-            espnGet({ view: 'mRoster' }),
-            espnGet({ view: 'mTeam' }),
-        ]);
+        const teamData = await espnGet({ view: 'mTeam' });
+        const teamIds = teamData.teams.map(t => t.id);
 
+        // Fetch all rosters in parallel — ESPN requires forTeamId per team
+        const rosterResponses = await Promise.all(
+            teamIds.map(id => espnGet({ view: 'mRoster', forTeamId: id }))
+        );
+
+        // Normalize into same shape as allRosterData.teams
+        const allRosterData = {
+            teams: rosterResponses.map((r, i) => ({
+                id: teamIds[i],
+                roster: r.teams?.find(t => t.id === teamIds[i])?.roster || r.teams?.[0]?.roster,
+            }))
+        };
         // Build player map with blended stats
         const teamRosters = {};
         for (const team of (allRosterData.teams || [])) {
