@@ -391,6 +391,8 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
                 ownership: player?.ownership?.percentOwned ?? null,
                 stats: parseEspnStats(player),
                 overallRank: espnRanks.overallRank || null, leagueRank: espnRanks.leagueRank || null,
+                keeperValue: entry.playerPoolEntry?.keeperValue || null,
+                auctionValue: player?.ownership?.auctionValueAverage || null,
             };
         });
         let matchup = null;
@@ -619,24 +621,6 @@ router.post('/trade-analyze', requireAuth, async (req, res) => {
         });
     } catch (err) {
         console.error('Trade analyze error:', err.response?.data || err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.get('/espn-debug-roster', requireAuth, async (req, res) => {
-    try {
-        const MY_TEAM_ID = 7;
-        const data = await espnGet({ view: 'mRoster', forTeamId: MY_TEAM_ID });
-        const myTeam = data.teams?.find(t => t.id === MY_TEAM_ID);
-        const entry = myTeam?.roster?.entries?.[0];
-        res.json({
-            sampleEntry: entry,
-            poolEntryKeys: Object.keys(entry?.playerPoolEntry || {}),
-            acquisitionType: entry?.acquisitionType,
-            acquisitionBid: entry?.acquisitionBid,
-            playerPoolEntry: entry?.playerPoolEntry,
-        });
-    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
