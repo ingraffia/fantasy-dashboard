@@ -75,15 +75,36 @@ router.get('/callback', async (req, res) => {
 
     try {
         const credentials = Buffer.from(`${YAHOO_CLIENT_ID}:${YAHOO_CLIENT_SECRET}`).toString('base64');
-        const { data } = await axios.post(
-            'https://api.login.yahoo.com/oauth2/get_token',
-            new URLSearchParams({
-                grant_type: 'authorization_code',
-                code,
-                redirect_uri: YAHOO_REDIRECT_URI
-            }),
-            { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
-        );
+
+        // Retry up to 3 times with delays — handles Railway cold start network issues
+        let data;
+        let lastErr;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            try {
+                const resp = await axios.post(
+                    'https://api.login.yahoo.com/oauth2/get_token',
+                    new URLSearchParams({
+                        grant_type: 'authorization_code',
+                        code,
+                        redirect_uri: YAHOO_REDIRECT_URI
+                    }),
+                    {
+                        headers: {
+                            Authorization: `Basic ${credentials}`,
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
+                        timeout: 10000
+                    }
+                );
+                data = resp.data;
+                break;
+            } catch (e) {
+                lastErr = e;
+                console.error(`OAuth attempt ${attempt} failed:`, e.message || e.code);
+                if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
+            }
+        }
+        if (!data) throw lastErr;
 
         const yahooTokens = {
             access_token: data.access_token,
@@ -101,6 +122,7 @@ router.get('/callback', async (req, res) => {
         console.error('OAuth error:', JSON.stringify(err.response?.data) || err.message);
         console.error('OAuth status:', err.response?.status);
         console.error('OAuth message:', err.message);
+        console.error('OAuth code:', err.code);
         res.status(500).send('Authentication failed');
     }
 });
@@ -113,7 +135,13 @@ async function refreshYahooTokens(current) {
             grant_type: 'refresh_token',
             refresh_token: current.refresh_token
         }),
-        { headers: { Authorization: `Basic ${credentials}`, 'Content-Type': 'application/x-www-form-urlencoded' } }
+        {
+            headers: {
+                Authorization: `Basic ${credentials}`,
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            timeout: 10000
+        }
     );
     return {
         access_token: data.access_token,
