@@ -6,25 +6,32 @@ const crypto = require('crypto');
 const router = express.Router();
 
 const { YAHOO_CLIENT_ID, YAHOO_CLIENT_SECRET, YAHOO_REDIRECT_URI } = process.env;
-const TOKEN_STORE_FILE = path.join(__dirname, '../.token-store.json');
+const TOKEN_FILE = path.join(__dirname, '../.tokens.json');
+const STORE_FILE = path.join(__dirname, '../.token-store.json');
 
-// Persistent token store: authToken -> yahooTokens
+// In-memory token store: authToken -> yahooTokens
 const tokenStore = new Map();
 
-// Load persisted tokens on startup
-try {
-    const raw = fs.readFileSync(TOKEN_STORE_FILE, 'utf8');
-    const saved = JSON.parse(raw);
-    Object.entries(saved).forEach(([k, v]) => tokenStore.set(k, v));
-    console.log(`Loaded ${tokenStore.size} token(s) from disk`);
-} catch (e) { /* no saved tokens yet */ }
+// Load persisted tokens on startup so logins survive Railway restarts
+function loadTokenStore() {
+    try {
+        if (fs.existsSync(STORE_FILE)) {
+            const saved = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
+            Object.entries(saved).forEach(([k, v]) => tokenStore.set(k, v));
+            console.log(`Loaded ${tokenStore.size} token(s) from disk`);
+        }
+    } catch (e) { console.warn('Could not load token store:', e.message); }
+}
 
 function persistTokenStore() {
     try {
-        const obj = Object.fromEntries(tokenStore);
-        fs.writeFileSync(TOKEN_STORE_FILE, JSON.stringify(obj));
-    } catch (e) { console.error('Failed to persist token store:', e.message); }
+        const obj = {};
+        tokenStore.forEach((v, k) => { obj[k] = v; });
+        fs.writeFileSync(STORE_FILE, JSON.stringify(obj, null, 2));
+    } catch (e) { console.warn('Could not persist token store:', e.message); }
 }
+
+loadTokenStore();
 
 function storeTokens(yahooTokens) {
     const authToken = crypto.randomBytes(32).toString('hex');
@@ -45,6 +52,11 @@ function updateTokens(authToken, yahooTokens) {
 function removeTokens(authToken) {
     tokenStore.delete(authToken);
     persistTokenStore();
+}
+
+function saveTokensToFile(tokens) {
+    if (process.env.NODE_ENV === 'production') return;
+    try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2)); } catch (e) { }
 }
 
 router.get('/login', (req, res) => {
@@ -80,6 +92,7 @@ router.get('/callback', async (req, res) => {
         };
 
         const authToken = storeTokens(yahooTokens);
+        saveTokensToFile(yahooTokens);
 
         const isProd = process.env.NODE_ENV === 'production';
         const base = isProd ? '' : 'https://localhost:5173';
@@ -121,6 +134,7 @@ router.get('/logout', (req, res) => {
     const authHeader = req.headers.authorization;
     const authToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
     if (authToken) removeTokens(authToken);
+    try { fs.unlinkSync(TOKEN_FILE); } catch (e) { }
     res.json({ ok: true });
 });
 
