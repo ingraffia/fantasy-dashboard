@@ -52,7 +52,8 @@ router.get('/login', (req, res) => {
         client_id: YAHOO_CLIENT_ID,
         redirect_uri: YAHOO_REDIRECT_URI,
         response_type: 'code',
-        language: 'en-us'
+        language: 'en-us',
+        prompt: 'login'
     });
     res.redirect(`https://api.login.yahoo.com/oauth2/request_auth?${params}`);
 });
