@@ -87,6 +87,7 @@ router.get('/callback', async (req, res) => {
     } catch (err) {
         console.error('OAuth error:', JSON.stringify(err.response?.data) || err.message);
         console.error('OAuth status:', err.response?.status);
+        console.error('OAuth message:', err.message);
         res.status(500).send('Authentication failed');
     }
 });
