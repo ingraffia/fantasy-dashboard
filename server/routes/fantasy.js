@@ -510,4 +510,117 @@ router.get('/boxscore/:gamePk', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ─── Trade Analyzer Routes ───────────────────────────────────────────────────
+
+router.get('/player-search', requireAuth, async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q || q.length < 2) return res.json([]);
+        const leagues = await getUserLeagues(req.session);
+        const firstLeague = leagues[0]?.league?.[0];
+        if (!firstLeague) return res.json([]);
+        const data = await yahooGet(req.session,
+            `/league/${firstLeague.league_key}/players;search=${encodeURIComponent(q)};count=10;out=ranks`
+        );
+        const playersRaw = data.fantasy_content.league[1].players;
+        const players = [];
+        Object.values(playersRaw).forEach(p => {
+            if (typeof p !== 'object' || !p.player) return;
+            const meta = flattenMeta(p.player[0]);
+            const ranks = parseRanks(p.player[1]?.player_ranks);
+            players.push({
+                playerKey: meta.player_key,
+                name: meta.name?.full,
+                position: meta.display_position,
+                proTeam: meta.editorial_team_abbr,
+                injuryStatus: meta.status || null,
+                imageUrl: meta.headshot?.url || null,
+                overallRank: ranks.overallRank || null,
+                leagueRank: ranks.leagueRank || null,
+                eligiblePositions: meta.eligible_positions?.map(e => e.position) || [],
+            });
+        });
+        res.json(players);
+    } catch (err) {
+        console.error('Player search error:', err.response?.data || err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/trade-analyze', requireAuth, async (req, res) => {
+    try {
+        const { givingKeys, receivingKeys } = req.body;
+        const allKeys = [...givingKeys, ...receivingKeys].filter(k => k && !k.startsWith('espn.'));
+        if (allKeys.length === 0) return res.json({ giving: [], receiving: [], leagueKeys: [] });
+
+        const leagues = await getUserLeagues(req.session);
+
+        // Fetch stats + meta for each player
+        const playerData = {};
+        await Promise.all(allKeys.map(async playerKey => {
+            try {
+                const [statsRes, percentRes] = await Promise.all([
+                    yahooGet(req.session, `/player/${playerKey}/stats`),
+                    yahooGet(req.session, `/player/${playerKey}/percent_owned`),
+                ]);
+                const playerRaw = statsRes.fantasy_content.player;
+                const meta = flattenMeta(playerRaw[0]);
+                const stats = playerRaw[1]?.player_stats?.stats || {};
+                const statMap = {};
+                Object.values(stats).forEach(s => { if (s?.stat) statMap[s.stat.stat_id] = s.stat.value; });
+                const percentOwned = percentRes.fantasy_content.player[1]?.percent_owned?.[1]?.value || '0';
+                playerData[playerKey] = {
+                    playerKey, name: meta.name?.full, position: meta.display_position,
+                    proTeam: meta.editorial_team_full_name, proTeamAbbr: meta.editorial_team_abbr,
+                    injuryStatus: meta.status || null, imageUrl: meta.headshot?.url || null,
+                    percentOwned: parseFloat(percentOwned).toFixed(0), stats: statMap,
+                    eligiblePositions: meta.eligible_positions?.map(e => e.position) || [],
+                    experience: meta.professional_experience || null,
+                };
+            } catch (e) { console.warn('Player fetch failed for', playerKey); }
+        }));
+
+        // Fetch ranks per league
+        const ranksByLeague = {};
+        await Promise.all(leagues.map(async leagueObj => {
+            const leagueData = leagueObj.league?.[0];
+            if (!leagueData) return;
+            try {
+                const rankMap = await fetchRanksForKeys(req.session, leagueData.league_key, allKeys);
+                ranksByLeague[leagueData.league_key] = {
+                    leagueName: leagueData.name,
+                    scoringType: leagueData.scoring_type,
+                    ranks: rankMap,
+                };
+            } catch (e) { console.warn('Ranks failed for', leagueData.name); }
+        }));
+
+        const buildPlayerResult = (key) => ({
+            ...(playerData[key] || { playerKey: key, name: key }),
+            ranksByLeague: Object.entries(ranksByLeague).reduce((acc, [lk, ld]) => {
+                acc[lk] = {
+                    leagueName: ld.leagueName,
+                    scoringType: ld.scoringType,
+                    overallRank: ld.ranks[key]?.overallRank || null,
+                    leagueRank: ld.ranks[key]?.leagueRank || null,
+                };
+                return acc;
+            }, {}),
+        });
+
+        res.json({
+            giving: givingKeys.filter(k => !k.startsWith('espn.')).map(buildPlayerResult),
+            receiving: receivingKeys.filter(k => !k.startsWith('espn.')).map(buildPlayerResult),
+            leagueKeys: Object.keys(ranksByLeague).map(lk => ({
+                leagueKey: lk,
+                leagueName: ranksByLeague[lk].leagueName,
+                scoringType: ranksByLeague[lk].scoringType,
+            })),
+        });
+    } catch (err) {
+        console.error('Trade analyze error:', err.response?.data || err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

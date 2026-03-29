@@ -449,6 +449,443 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
     )
 }
 
+// ─── Trade Analyzer ─────────────────────────────────────────────────────────
+
+const ESPN_LEAGUE_KEY_PREFIX = 'espn.l.'
+const KEEPER_LEAGUE_KEY = 'espn' // only ESPN is keeper
+
+const HITTER_CAT = [
+    { id: '12', label: 'HR', better: 'high' },
+    { id: '13', label: 'RBI', better: 'high' },
+    { id: '7', label: 'R', better: 'high' },
+    { id: '16', label: 'SB', better: 'high' },
+    { id: '4', label: 'OBP', better: 'high' },
+    { id: '8', label: 'H', better: 'high' },
+]
+const PITCHER_CAT = [
+    { id: '26', label: 'K', better: 'high' },
+    { id: '27', label: 'ERA', better: 'low' },
+    { id: '29', label: 'WHIP', better: 'low' },
+    { id: '42', label: 'SV', better: 'high' },
+    { id: '28', label: 'IP', better: 'high' },
+]
+
+function keeperTier(experience) {
+    if (!experience) return null
+    const exp = parseInt(experience)
+    if (exp <= 2) return { label: 'Elite Keeper', color: C.green, bg: C.greenLight }
+    if (exp <= 4) return { label: 'Good Keeper', color: C.accent, bg: C.accentLight }
+    if (exp <= 6) return { label: 'Fair Keeper', color: C.amber, bg: C.amberLight }
+    return null
+}
+
+function TradePlayerCard({ player, onRemove, isEspn }) {
+    const tier = isEspn ? keeperTier(player.experience) : null
+    return (
+        <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <PlayerAvatar imageUrl={player.imageUrl} name={player.name} size={36} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, fontSize: 13, color: C.gray800 }}>{player.name}</span>
+                    <Tag text={player.position || '—'} />
+                    {player.injuryStatus && <Tag text={player.injuryStatus} bg={C.redLight} color={C.red} />}
+                </div>
+                <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>{player.proTeamAbbr || player.proTeam}</div>
+                {tier && (
+                    <div style={{ marginTop: 4 }}>
+                        <Tag text={tier.label} bg={tier.bg} color={tier.color} />
+                    </div>
+                )}
+                {player.overallRank && (
+                    <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>
+                        Overall <RankBadge rank={player.overallRank} />
+                    </div>
+                )}
+            </div>
+            <button onClick={() => onRemove(player.playerKey)} style={{ background: C.redLight, border: 'none', color: C.red, cursor: 'pointer', borderRadius: 4, padding: '3px 7px', fontSize: 12, flexShrink: 0 }}>✕</button>
+        </div>
+    )
+}
+
+function TradeLeagueVerdict({ leagueKey, leagueName, scoringType, givingPlayers, receivingPlayers }) {
+    const isEspn = leagueKey.startsWith(ESPN_LEAGUE_KEY_PREFIX)
+    const isKeeper = isEspn
+
+    // Calculate rank delta for this league
+    const getRank = (p) => p.ranksByLeague?.[leagueKey]?.overallRank || p.overallRank || null
+
+    const givingRanks = givingPlayers.map(p => getRank(p)).filter(Boolean)
+    const receivingRanks = receivingPlayers.map(p => getRank(p)).filter(Boolean)
+
+    const avgGiving = givingRanks.length ? givingRanks.reduce((a, b) => a + b, 0) / givingRanks.length : null
+    const avgReceiving = receivingRanks.length ? receivingRanks.reduce((a, b) => a + b, 0) / receivingRanks.length : null
+
+    let verdict = null
+    let verdictColor = C.gray400
+    let verdictBg = C.gray50
+    let verdictText = 'Incomplete'
+
+    if (avgGiving !== null && avgReceiving !== null) {
+        const delta = avgGiving - avgReceiving // positive = you're getting better players (lower rank = better)
+        if (delta > 30) { verdict = 'Win'; verdictColor = C.green; verdictBg = C.greenLight; verdictText = `You win (+${Math.round(delta)} rank)` }
+        else if (delta > 10) { verdict = 'Slight Win'; verdictColor = C.green; verdictBg = C.greenLight; verdictText = `Slight win (+${Math.round(delta)})` }
+        else if (delta < -30) { verdict = 'Loss'; verdictColor = C.red; verdictBg = C.redLight; verdictText = `You lose (${Math.round(delta)} rank)` }
+        else if (delta < -10) { verdict = 'Slight Loss'; verdictColor = C.red; verdictBg = C.redLight; verdictText = `Slight loss (${Math.round(delta)})` }
+        else { verdict = 'Even'; verdictColor = C.amber; verdictBg = C.amberLight; verdictText = `Even trade (${delta >= 0 ? '+' : ''}${Math.round(delta)})` }
+    }
+
+    return (
+        <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 10, overflow: 'hidden' }}>
+            <div style={{ padding: '8px 14px', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {isEspn
+                        ? <img src="https://a.espncdn.com/favicon.ico" width={12} height={12} alt="ESPN" />
+                        : <img src="https://s.yimg.com/cv/apiv2/default/icons/favicon_y19_32x32_custom.svg" width={12} height={12} alt="Yahoo" />}
+                    <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{leagueName}</span>
+                    {isKeeper && <Tag text="Keeper" bg="#7c3aed20" color="#7c3aed" />}
+                </div>
+                {verdict && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: verdictColor, background: verdictBg, padding: '2px 10px', borderRadius: 99 }}>
+                        {verdictText}
+                    </span>
+                )}
+            </div>
+            <div style={{ padding: '10px 14px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'start' }}>
+                {/* Giving */}
+                <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.red, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Giving</div>
+                    {givingPlayers.map(p => {
+                        const rank = getRank(p)
+                        return (
+                            <div key={p.playerKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: `1px solid ${C.gray100}` }}>
+                                <span style={{ fontSize: 12, fontWeight: 500, color: C.gray800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>{p.name}</span>
+                                <RankBadge rank={rank} />
+                            </div>
+                        )
+                    })}
+                    {avgGiving && <div style={{ fontSize: 11, color: C.gray400, marginTop: 6 }}>Avg rank: #{Math.round(avgGiving)}</div>}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 20 }}>
+                    <span style={{ fontSize: 16, color: C.gray300, fontWeight: 700 }}>⇄</span>
+                </div>
+
+                {/* Receiving */}
+                <div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Receiving</div>
+                    {receivingPlayers.map(p => {
+                        const rank = getRank(p)
+                        return (
+                            <div key={p.playerKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: `1px solid ${C.gray100}` }}>
+                                <span style={{ fontSize: 12, fontWeight: 500, color: C.gray800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>{p.name}</span>
+                                <RankBadge rank={rank} />
+                            </div>
+                        )
+                    })}
+                    {avgReceiving && <div style={{ fontSize: 11, color: C.gray400, marginTop: 6 }}>Avg rank: #{Math.round(avgReceiving)}</div>}
+                </div>
+            </div>
+
+            {/* Keeper tier for ESPN */}
+            {isKeeper && (givingPlayers.some(p => keeperTier(p.experience)) || receivingPlayers.some(p => keeperTier(p.experience))) && (
+                <div style={{ padding: '8px 14px', borderTop: `1px solid ${C.gray200}`, background: '#faf5ff' }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Keeper Value</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <div>
+                            {givingPlayers.map(p => {
+                                const tier = keeperTier(p.experience)
+                                return tier ? <div key={p.playerKey} style={{ fontSize: 11, marginBottom: 2 }}><span style={{ color: C.gray600 }}>{p.name?.split(' ')[1] || p.name}:</span> <Tag text={tier.label} bg={tier.bg} color={tier.color} /></div> : null
+                            })}
+                        </div>
+                        <div>
+                            {receivingPlayers.map(p => {
+                                const tier = keeperTier(p.experience)
+                                return tier ? <div key={p.playerKey} style={{ fontSize: 11, marginBottom: 2 }}><span style={{ color: C.gray600 }}>{p.name?.split(' ')[1] || p.name}:</span> <Tag text={tier.label} bg={tier.bg} color={tier.color} /></div> : null
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+function TradeAnalyzer({ api, data, allRosterPlayers, getResImg }) {
+    const [givingKeys, setGivingKeys] = useState([])
+    const [receivingKeys, setReceivingKeys] = useState([])
+    const [givingSearch, setGivingSearch] = useState('')
+    const [receivingSearch, setReceivingSearch] = useState('')
+    const [givingResults, setGivingResults] = useState([])
+    const [receivingResults, setReceivingResults] = useState([])
+    const [givingSearching, setGivingSearching] = useState(false)
+    const [receivingSearching, setReceivingSearching] = useState(false)
+    const [analysisResult, setAnalysisResult] = useState(null)
+    const [analyzing, setAnalyzing] = useState(false)
+
+    // Debounced search
+    useEffect(() => {
+        if (givingSearch.length < 2) { setGivingResults([]); return }
+        const t = setTimeout(() => {
+            setGivingSearching(true)
+            axios.get(`${api}/api/player-search?q=${encodeURIComponent(givingSearch)}`, { withCredentials: true })
+                .then(r => { setGivingResults(r.data); setGivingSearching(false) })
+                .catch(() => setGivingSearching(false))
+        }, 300)
+        return () => clearTimeout(t)
+    }, [givingSearch])
+
+    useEffect(() => {
+        if (receivingSearch.length < 2) { setReceivingResults([]); return }
+        const t = setTimeout(() => {
+            setReceivingSearching(true)
+            axios.get(`${api}/api/player-search?q=${encodeURIComponent(receivingSearch)}`, { withCredentials: true })
+                .then(r => { setReceivingResults(r.data); setReceivingSearching(false) })
+                .catch(() => setReceivingSearching(false))
+        }, 300)
+        return () => clearTimeout(t)
+    }, [receivingSearch])
+
+    const [givingPlayers, setGivingPlayers] = useState([])
+    const [receivingPlayers, setReceivingPlayers] = useState([])
+
+    const addPlayer = (side, player) => {
+        if (side === 'giving') {
+            if (givingPlayers.find(p => p.playerKey === player.playerKey)) return
+            setGivingPlayers(prev => [...prev, player])
+            setGivingKeys(prev => [...prev, player.playerKey])
+            setGivingSearch('')
+            setGivingResults([])
+        } else {
+            if (receivingPlayers.find(p => p.playerKey === player.playerKey)) return
+            setReceivingPlayers(prev => [...prev, player])
+            setReceivingKeys(prev => [...prev, player.playerKey])
+            setReceivingSearch('')
+            setReceivingResults([])
+        }
+        setAnalysisResult(null)
+    }
+
+    const removePlayer = (side, playerKey) => {
+        if (side === 'giving') {
+            setGivingPlayers(prev => prev.filter(p => p.playerKey !== playerKey))
+            setGivingKeys(prev => prev.filter(k => k !== playerKey))
+        } else {
+            setReceivingPlayers(prev => prev.filter(p => p.playerKey !== playerKey))
+            setReceivingKeys(prev => prev.filter(k => k !== playerKey))
+        }
+        setAnalysisResult(null)
+    }
+
+    const analyze = async () => {
+        if (givingPlayers.length === 0 || receivingPlayers.length === 0) return
+        setAnalyzing(true)
+        try {
+            const r = await axios.post(`${api}/api/trade-analyze`,
+                { givingKeys: givingPlayers.map(p => p.playerKey), receivingKeys: receivingPlayers.map(p => p.playerKey) },
+                { withCredentials: true }
+            )
+            setAnalysisResult(r.data)
+        } catch (e) {
+            console.error('Trade analyze failed:', e.message)
+        }
+        setAnalyzing(false)
+    }
+
+    const reset = () => {
+        setGivingPlayers([]); setReceivingPlayers([])
+        setGivingKeys([]); setReceivingKeys([])
+        setGivingSearch(''); setReceivingSearch('')
+        setAnalysisResult(null)
+    }
+
+    const espnLeague = data.find(l => l.leagueKey.startsWith('espn.l.'))
+    const isEspnPlayer = (playerKey) => playerKey.startsWith('espn.')
+
+    const SearchDropdown = ({ results, onSelect, loading }) => {
+        if (!results.length && !loading) return null
+        return (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 100, maxHeight: 280, overflowY: 'auto' }}>
+                {loading ? (
+                    <div style={{ padding: '12px 14px', fontSize: 12, color: C.gray400 }}>Searching...</div>
+                ) : results.map(p => (
+                    <div key={p.playerKey} onClick={() => onSelect(p)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${C.gray100}` }}
+                        onMouseEnter={e => e.currentTarget.style.background = C.gray50}
+                        onMouseLeave={e => e.currentTarget.style.background = C.white}>
+                        <PlayerAvatar imageUrl={p.imageUrl} name={p.name} size={28} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
+                            <div style={{ fontSize: 11, color: C.gray400 }}>{p.position} · {p.proTeam}</div>
+                        </div>
+                        {p.overallRank && <RankBadge rank={p.overallRank} />}
+                    </div>
+                ))}
+            </div>
+        )
+    }
+
+    // Merge analysis result data back into player cards
+    const enrichedGiving = analysisResult
+        ? givingPlayers.map(p => ({ ...p, ...(analysisResult.giving.find(r => r.playerKey === p.playerKey) || {}) }))
+        : givingPlayers
+    const enrichedReceiving = analysisResult
+        ? receivingPlayers.map(p => ({ ...p, ...(analysisResult.receiving.find(r => r.playerKey === p.playerKey) || {}) }))
+        : receivingPlayers
+
+    return (
+        <div>
+            <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                    <div style={{ fontWeight: 800, fontSize: 16, color: C.navy }}>Trade Analyzer</div>
+                    <div style={{ fontSize: 12, color: C.gray400, marginTop: 2 }}>Add players to both sides, then analyze across all your leagues</div>
+                </div>
+                {(givingPlayers.length > 0 || receivingPlayers.length > 0) && (
+                    <button onClick={reset} style={{ ...btnStyle, fontSize: 11, color: C.red, borderColor: C.red }}>Reset</button>
+                )}
+            </div>
+
+            {/* Player selection — two columns */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                {/* Giving */}
+                <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.red, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                        You're Giving
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                        {givingPlayers.map(p => (
+                            <TradePlayerCard key={p.playerKey} player={p} onRemove={(k) => removePlayer('giving', k)} isEspn={isEspnPlayer(p.playerKey)} />
+                        ))}
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                        <input
+                            placeholder="Search player to add..."
+                            value={givingSearch}
+                            onChange={e => setGivingSearch(e.target.value)}
+                            style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', borderColor: C.red, borderStyle: 'dashed' }}
+                        />
+                        <SearchDropdown results={givingResults} onSelect={(p) => addPlayer('giving', p)} loading={givingSearching} />
+                    </div>
+                </div>
+
+                {/* Receiving */}
+                <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                        You're Receiving
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+                        {receivingPlayers.map(p => (
+                            <TradePlayerCard key={p.playerKey} player={p} onRemove={(k) => removePlayer('receiving', k)} isEspn={isEspnPlayer(p.playerKey)} />
+                        ))}
+                    </div>
+                    <div style={{ position: 'relative' }}>
+                        <input
+                            placeholder="Search player to add..."
+                            value={receivingSearch}
+                            onChange={e => setReceivingSearch(e.target.value)}
+                            style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', borderColor: C.green, borderStyle: 'dashed' }}
+                        />
+                        <SearchDropdown results={receivingResults} onSelect={(p) => addPlayer('receiving', p)} loading={receivingSearching} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Analyze button */}
+            {givingPlayers.length > 0 && receivingPlayers.length > 0 && (
+                <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                    <button onClick={analyze} disabled={analyzing} style={{
+                        padding: '12px 40px', borderRadius: 10, border: 'none',
+                        background: analyzing ? C.gray200 : C.navy, color: analyzing ? C.gray400 : C.white,
+                        fontSize: 14, fontWeight: 700, cursor: analyzing ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.15s',
+                    }}>
+                        {analyzing ? 'Analyzing...' : '⚡ Analyze Trade'}
+                    </button>
+                    {!analysisResult && !analyzing && (
+                        <div style={{ fontSize: 11, color: C.gray400, marginTop: 6 }}>
+                            Fetches rankings across all {data.length} leagues
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Results per league */}
+            {analysisResult && (
+                <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                        Verdict by League
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {/* Yahoo leagues from analysis result */}
+                        {analysisResult.leagueKeys.map(lk => (
+                            <TradeLeagueVerdict
+                                key={lk.leagueKey}
+                                leagueKey={lk.leagueKey}
+                                leagueName={lk.leagueName}
+                                scoringType={lk.scoringType}
+                                givingPlayers={enrichedGiving}
+                                receivingPlayers={enrichedReceiving}
+                            />
+                        ))}
+                        {/* ESPN league — separate since it doesn't use Yahoo ranks */}
+                        {espnLeague && (
+                            <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 10, padding: '12px 14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                                    <img src="https://a.espncdn.com/favicon.ico" width={12} height={12} alt="ESPN" />
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{espnLeague.leagueName}</span>
+                                    <Tag text="Keeper" bg="#7c3aed20" color="#7c3aed" />
+                                </div>
+                                <div style={{ fontSize: 12, color: C.gray600, marginBottom: 8 }}>
+                                    ESPN uses draft ranks (ADP) — keeper value is the primary consideration here.
+                                </div>
+                                {/* Show keeper tiers for all players */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                    <div>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: C.red, textTransform: 'uppercase', marginBottom: 6 }}>Giving</div>
+                                        {enrichedGiving.map(p => {
+                                            const tier = keeperTier(p.experience)
+                                            return (
+                                                <div key={p.playerKey} style={{ fontSize: 12, marginBottom: 4 }}>
+                                                    <div style={{ fontWeight: 600 }}>{p.name}</div>
+                                                    {tier
+                                                        ? <Tag text={tier.label} bg={tier.bg} color={tier.color} />
+                                                        : <span style={{ fontSize: 11, color: C.gray400 }}>Veteran / no keeper value</span>}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 10, fontWeight: 700, color: C.green, textTransform: 'uppercase', marginBottom: 6 }}>Receiving</div>
+                                        {enrichedReceiving.map(p => {
+                                            const tier = keeperTier(p.experience)
+                                            return (
+                                                <div key={p.playerKey} style={{ fontSize: 12, marginBottom: 4 }}>
+                                                    <div style={{ fontWeight: 600 }}>{p.name}</div>
+                                                    {tier
+                                                        ? <Tag text={tier.label} bg={tier.bg} color={tier.color} />
+                                                        : <span style={{ fontSize: 11, color: C.gray400 }}>Veteran / no keeper value</span>}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Empty state */}
+            {givingPlayers.length === 0 && receivingPlayers.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: C.gray400 }}>
+                    <div style={{ fontSize: 32, marginBottom: 10 }}>⚖️</div>
+                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, color: C.gray600 }}>Build a trade to analyze</div>
+                    <div style={{ fontSize: 12 }}>Search for players on both sides, then hit Analyze to see verdicts across all your leagues</div>
+                </div>
+            )}
+        </div>
+    )
+}
+
 // ─── Mobile Player Card ──────────────────────────────────────────────────────
 
 function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
@@ -499,7 +936,7 @@ const sectionLabelRow = (text, color = C.gray600) => (
 
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 
-export default function Dashboard({ api, onLogout }) {
+export default function Dashboard({ api }) {
     const isMobile = useIsMobile()
     const [data, setData] = useState([])
     const [loading, setLoading] = useState(true)
@@ -809,9 +1246,9 @@ export default function Dashboard({ api, onLogout }) {
                         fontSize: isMobile ? 11 : 12, fontWeight: 700, padding: isMobile ? '6px 12px' : '7px 16px',
                         borderRadius: 20, border: 'none', background: C.navy, color: C.white, cursor: 'pointer',
                     }}>↻ {isMobile ? '' : 'Refresh'}</button>
-                    <button onClick={onLogout} style={{ fontSize: isMobile ? 11 : 12, fontWeight: 600, color: C.gray600, border: 'none', padding: '6px 10px', background: C.gray100, borderRadius: 12, cursor: 'pointer' }}>
+                    <a href={`${api}/auth/logout`} style={{ fontSize: isMobile ? 11 : 12, fontWeight: 600, color: C.gray600, textDecoration: 'none', padding: '6px 10px', background: C.gray100, borderRadius: 12 }}>
                         {isMobile ? '↪' : 'Sign Out'}
-                    </button>
+                    </a>
                 </div>
             </div>
 
@@ -885,7 +1322,7 @@ export default function Dashboard({ api, onLogout }) {
             {/* Tabs */}
             <div style={{ padding: `16px ${px} 12px`, display: 'flex', justifyContent: 'center', background: C.white, borderBottom: `1px solid ${C.gray100}`, position: 'sticky', top: isMobile ? 52 : 60, zIndex: 30 }}>
                 <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: 5, borderRadius: 14, width: isMobile ? '100%' : 'auto' }}>
-                    {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }].map(tab => {
+                    {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }, { id: 'trade', label: 'Trade' }].map(tab => {
                         const isActive = activeTab === tab.id
                         return (
                             <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
@@ -1142,6 +1579,16 @@ export default function Dashboard({ api, onLogout }) {
                             </div>
                         )}
                     </>
+                )}
+
+                {/* TRADE ANALYZER */}
+                {activeTab === 'trade' && (
+                    <TradeAnalyzer
+                        api={api}
+                        data={data}
+                        allRosterPlayers={allRosterPlayers}
+                        getResImg={getResImg}
+                    />
                 )}
             </div>
         </div>
