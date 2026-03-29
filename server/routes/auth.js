@@ -85,7 +85,8 @@ router.get('/callback', async (req, res) => {
         const base = isProd ? '' : 'https://localhost:5173';
         res.redirect(`${base}/?auth=${authToken}`);
     } catch (err) {
-        console.error('OAuth error:', err.response?.data || err.message);
+        console.error('OAuth error:', JSON.stringify(err.response?.data) || err.message);
+        console.error('OAuth status:', err.response?.status);
         res.status(500).send('Authentication failed');
     }
 });
