@@ -637,14 +637,13 @@ const ESPN_CATS = {
         { id: '17', label: 'OBP', better: 'high', rate: true },
     ],
     pitcher: [
-        { id: '27', label: 'K', better: 'high' },
-        { id: '19', label: 'W', better: 'high' },
-        { id: '35', label: 'SV', better: 'high' },
+        { id: '48', label: 'K', better: 'high' },
+        { id: '53', label: 'W', better: 'high' },
+        { id: '51', label: 'SV', better: 'high' },
         { id: '47', label: 'ERA', better: 'low', rate: true },
         { id: '41', label: 'WHIP', better: 'low', rate: true },
     ],
 };
-
 function getPlayerStats(player, seasonId) {
     if (!player?.stats) return {};
     const s = player.stats.find(st => st.id === seasonId && st.statSourceId === 0);
@@ -673,49 +672,38 @@ function blendStats(s2025, s2026, games2026) {
 }
 
 function calcTeamCats(players) {
-    const totals = {};
-    const hitterCats = ESPN_CATS.hitter;
-    const pitcherCats = ESPN_CATS.pitcher;
-
-    hitterCats.forEach(c => { totals[c.label] = 0; });
-    pitcherCats.forEach(c => { totals[c.label] = 0; });
-
-    let hitterABs = 0, pitcherIP = 0;
+    const totals = { R: 0, TB: 0, RBI: 0, SB: 0, OBP: 0, K: 0, W: 0, SV: 0, ERA: 0, WHIP: 0 };
     let obpNumer = 0, obpDenom = 0;
     let eraER = 0, eraIP = 0;
-    let whipWHIP = 0, whipIP = 0;
+    let whipH = 0, whipBB = 0, whipIP = 0;
 
     players.forEach(p => {
-        const stats = p.blendedStats || {};
-        const isP = ['SP', 'RP', 'P'].includes(p.position) || p.defaultPositionId === 1 || p.defaultPositionId === 11;
-
+        const s = p.blendedStats || {};
+        const isP = [1, 11].includes(p.defaultPositionId);
         if (!isP) {
-            totals['R'] += parseFloat(stats['20'] || 0);
-            totals['TB'] += parseFloat(stats['8'] || 0);
-            totals['RBI'] += parseFloat(stats['21'] || 0);
-            totals['SB'] += parseFloat(stats['23'] || 0);
-            const ab = parseFloat(stats['0'] || 0);
-            const obp = parseFloat(stats['17'] || 0);
+            totals['R'] += parseFloat(s['20'] || 0);
+            totals['TB'] += parseFloat(s['8'] || 0);
+            totals['RBI'] += parseFloat(s['21'] || 0);
+            totals['SB'] += parseFloat(s['23'] || 0);
+            const ab = parseFloat(s['0'] || 0);
+            const obp = parseFloat(s['17'] || 0);
             if (ab > 0) { obpNumer += obp * ab; obpDenom += ab; }
         } else {
-            totals['K'] += parseFloat(stats['27'] || 0);
-            totals['W'] += parseFloat(stats['19'] || 0);
-            totals['SV'] += parseFloat(stats['35'] || 0);
-            const ip = parseFloat(stats['34'] || 0);
-            const er = parseFloat(stats['48'] || 0); // earned runs
-            const h = parseFloat(stats['42'] || 0); // hits allowed
-            const bb = parseFloat(stats['39'] || 0); // BB allowed
-            if (ip > 0) {
-                eraER += er; eraIP += ip;
-                whipWHIP += (h + bb); whipIP += ip;
-            }
+            totals['K'] += parseFloat(s['48'] || 0);
+            totals['W'] += parseFloat(s['53'] || 0);
+            totals['SV'] += parseFloat(s['51'] || 0);
+            const outs = parseFloat(s['34'] || 0);
+            const ip = outs / 3;
+            const er = parseFloat(s['45'] || 0);
+            const h = parseFloat(s['37'] || 0);
+            const bb = parseFloat(s['39'] || 0);
+            if (ip > 0) { eraER += er; eraIP += ip; whipH += h; whipBB += bb; whipIP += ip; }
         }
     });
 
     totals['OBP'] = obpDenom > 0 ? obpNumer / obpDenom : 0;
     totals['ERA'] = eraIP > 0 ? (eraER * 9 / eraIP) : 0;
-    totals['WHIP'] = whipIP > 0 ? (whipWHIP / whipIP) : 0;
-
+    totals['WHIP'] = whipIP > 0 ? ((whipH + whipBB) / whipIP) : 0;
     return totals;
 }
 
