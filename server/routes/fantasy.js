@@ -628,15 +628,13 @@ router.post('/trade-analyze', requireAuth, async (req, res) => {
 
 // ─── ESPN Trade Analyzer ─────────────────────────────────────────────────────
 
-// Your league's scoring categories with correct ESPN stat IDs
+// Scoring categories with verified ESPN stat IDs
 const ESPN_CATS = [
-    // Hitter cats
     { id: '20', label: 'R', better: 'high', isPitcher: false },
     { id: '8', label: 'TB', better: 'high', isPitcher: false },
     { id: '21', label: 'RBI', better: 'high', isPitcher: false },
     { id: '23', label: 'SB', better: 'high', isPitcher: false },
     { id: '17', label: 'OBP', better: 'high', isPitcher: false, rate: true },
-    // Pitcher cats
     { id: '48', label: 'K', better: 'high', isPitcher: true },
     { id: '53', label: 'W', better: 'high', isPitcher: true },
     { id: '51', label: 'SV', better: 'high', isPitcher: true },
@@ -650,102 +648,100 @@ function getPlayerStats(player, seasonId) {
     return s?.stats || {};
 }
 
-// Project 2026 partial stats to full season, blend with 2025
+// Project 2026 partial stats to full season, blend 60% 2025 / 40% projected 2026
 function buildProjectedStats(s2025, s2026, player) {
-    // Games played — use stat 67 (games) or estimate from ABs/outs
     const gamesPlayed2026 = parseFloat(s2026['67'] || s2026['110'] || 0);
     const outsPitched2026 = parseFloat(s2026['34'] || 0);
     const absBatted2026 = parseFloat(s2026['0'] || 0);
-
-    // Estimate games from what we have
     const gamesEst = gamesPlayed2026 > 0 ? gamesPlayed2026
-        : outsPitched2026 > 0 ? Math.round(outsPitched2026 / 9)  // ~9 outs per game appearance
-            : absBatted2026 > 0 ? Math.round(absBatted2026 / 3.8)
-                : 0;
-
-    const seasonGames = 162;
-    const scale26 = gamesEst >= 3 ? Math.min(seasonGames / gamesEst, 6) : 0; // cap at 6x to avoid insane projections
-
+        : outsPitched2026 > 0 ? Math.round(outsPitched2026 / 9)
+            : absBatted2026 > 0 ? Math.round(absBatted2026 / 3.8) : 0;
+    const scale26 = gamesEst >= 3 ? Math.min(162 / gamesEst, 8) : 0;
+    const rateStats = new Set(['17', '9', '2', '47', '41', '38', '43']);
     const blended = {};
     const allKeys = new Set([...Object.keys(s2025), ...Object.keys(s2026)]);
-
-    // Rate stats — weighted average, not scaled
-    const rateStats = new Set(['17', '9', '2', '47', '41', '38', '43']);
-
     allKeys.forEach(k => {
         const v25 = parseFloat(s2025[k] || 0);
         const v26 = parseFloat(s2026[k] || 0);
-
         if (rateStats.has(k)) {
-            // For rate stats: if we have 2026 data use 50/50, else use 2025
-            blended[k] = gamesEst >= 5 ? (v25 * 0.6 + v26 * 0.4) : v25;
+            blended[k] = gamesEst >= 5 ? v25 * 0.6 + v26 * 0.4 : v25;
         } else {
-            const proj26 = v26 * scale26;
-            blended[k] = gamesEst >= 3 ? (v25 * 0.6 + proj26 * 0.4) : v25;
+            blended[k] = gamesEst >= 3 ? v25 * 0.6 + v26 * scale26 * 0.4 : v25;
         }
     });
-
     return blended;
 }
 
-// Prospect multiplier based on age (birth year from ESPN)
-function prospectMultiplier(player) {
-    const birthYear = player?.proExperience
-        ? (2026 - parseInt(player.proExperience))  // proExperience = years in league
-        : null;
-
-    // Try to infer age from years of experience
+// Prospect upside multiplier based on years of pro experience
+function prospectMult(player) {
     const exp = parseInt(player?.proExperience || 99);
-    if (exp <= 1) return 1.35;  // rookie / 1st year — high upside
-    if (exp <= 2) return 1.20;  // 2nd year
-    if (exp <= 3) return 1.10;  // 3rd year
-    return 1.0;                 // veteran
+    if (exp <= 1) return 1.35;
+    if (exp <= 2) return 1.20;
+    if (exp <= 3) return 1.10;
+    return 1.0;
 }
 
-// Injury discount
-function injuryDiscount(player) {
-    const status = player?.injuryStatus;
-    if (!status || status === 'ACTIVE' || status === 'NORMAL') return 1.0;
-    if (status === 'SIXTY_DAY_DL') return 0.3;
-    if (status === 'FIFTEEN_DAY_DL') return 0.6;
-    if (status === 'TEN_DAY_DL') return 0.7;
-    if (status === 'DAY_TO_DAY') return 0.9;
-    return 0.8;
+// Injury discount on value
+function injuryMult(player) {
+    const s = player?.injuryStatus;
+    if (!s || s === 'ACTIVE' || s === 'NORMAL') return 1.0;
+    if (s === 'SIXTY_DAY_DL') return 0.25;
+    if (s === 'FIFTEEN_DAY_DL') return 0.55;
+    if (s === 'TEN_DAY_DL') return 0.70;
+    if (s === 'DAY_TO_DAY') return 0.90;
+    return 0.75;
 }
 
-// Calculate a player\'s category contributions as an object
-function playerCatContribs(projStats, isP) {
-    const cats = ESPN_CATS.filter(c => c.isPitcher === isP);
-    const result = {};
-    cats.forEach(c => {
-        const val = parseFloat(projStats[c.id] || 0);
-        result[c.label] = val;
+// Compute z-score based value for a player vs all players at same type (H or P)
+function computeZScore(p, peerGroup) {
+    const isP = [1, 11].includes(p.defaultPositionId);
+    const cats = ESPN_CATS.filter(c => c.isPitcher === isP && !c.rate);
+    let totalZ = 0;
+    let catCount = 0;
+
+    cats.forEach(cat => {
+        const myVal = parseFloat(p.projStats?.[cat.id] || 0);
+        const vals = peerGroup.map(x => parseFloat(x.projStats?.[cat.id] || 0)).filter(v => v > 0);
+        if (vals.length < 3) return;
+        const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+        const variance = vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length;
+        const std = Math.sqrt(variance) || 1;
+        const z = cat.better === 'high' ? (myVal - mean) / std : (mean - myVal) / std;
+        totalZ += z;
+        catCount++;
     });
 
-    // For pitchers, IP is stored as outs — convert
+    // Rate stats as separate z-scores
+    const rateCats = ESPN_CATS.filter(c => c.isPitcher === isP && c.rate);
+    rateCats.forEach(cat => {
+        const myVal = parseFloat(p.projStats?.[cat.id] || 0);
+        if (myVal === 0) return;
+        const vals = peerGroup.map(x => parseFloat(x.projStats?.[cat.id] || 0)).filter(v => v > 0);
+        if (vals.length < 3) return;
+        const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+        const variance = vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length;
+        const std = Math.sqrt(variance) || 0.1;
+        const z = cat.better === 'high' ? (myVal - mean) / std : (mean - myVal) / std;
+        totalZ += z * 0.7; // rate stats slightly downweighted vs counting stats
+        catCount += 0.7;
+    });
+
+    // SV scarcity bonus — closers are rare and valuable
     if (isP) {
-        const outs = parseFloat(projStats['34'] || 0);
-        const ip = outs / 3;
-        const er = parseFloat(projStats['45'] || 0);
-        const h = parseFloat(projStats['37'] || 0);
-        const bb = parseFloat(projStats['39'] || 0);
-        if (ip > 0) {
-            result['ERA'] = er * 9 / ip;
-            result['WHIP'] = (h + bb) / ip;
-        } else {
-            result['ERA'] = result['ERA'] || 0;
-            result['WHIP'] = result['WHIP'] || 0;
-        }
+        const sv = parseFloat(p.projStats?.['51'] || 0);
+        if (sv >= 25) totalZ += 2.0;
+        else if (sv >= 15) totalZ += 1.2;
+        else if (sv >= 5) totalZ += 0.5;
     }
 
-    return result;
+    const rawZ = catCount > 0 ? totalZ / catCount : 0;
+    return rawZ * p.injuryDiscount * p.upside;
 }
 
-// Sum category contributions across a roster
+// Team category totals from player roster
 function teamCatTotals(players) {
     const totals = {};
     ESPN_CATS.forEach(c => { totals[c.label] = 0; });
-
     let obpABs = 0, obpSum = 0;
     let eraER = 0, eraIP = 0;
     let whipHBB = 0, whipIP = 0;
@@ -753,7 +749,6 @@ function teamCatTotals(players) {
     players.forEach(p => {
         const s = p.projStats || {};
         const isP = [1, 11].includes(p.defaultPositionId);
-
         if (!isP) {
             totals['R'] += parseFloat(s['20'] || 0);
             totals['TB'] += parseFloat(s['8'] || 0);
@@ -771,83 +766,36 @@ function teamCatTotals(players) {
             const er = parseFloat(s['45'] || 0);
             const h = parseFloat(s['37'] || 0);
             const bb = parseFloat(s['39'] || 0);
-            if (ip > 0) {
-                eraER += er; eraIP += ip;
-                whipHBB += (h + bb); whipIP += ip;
-            }
+            if (ip > 0) { eraER += er; eraIP += ip; whipHBB += (h + bb); whipIP += ip; }
         }
     });
 
-    totals['OBP'] = obpABs > 0 ? obpSum / obpABs : 0.310; // league avg fallback
-    totals['ERA'] = eraIP > 0 ? (eraER * 9 / eraIP) : 4.00;
-    totals['WHIP'] = whipIP > 0 ? (whipHBB / whipIP) : 1.25;
-
+    totals['OBP'] = obpABs > 0 ? obpSum / obpABs : 0.315;
+    totals['ERA'] = eraIP > 0 ? (eraER * 9 / eraIP) : 4.20;
+    totals['WHIP'] = whipIP > 0 ? (whipHBB / whipIP) : 1.28;
     return totals;
 }
 
-// Count how many categories myTotals beats oppTotals
-function countCatWins(myTotals, oppTotals) {
-    let wins = 0, losses = 0, ties = 0;
-    ESPN_CATS.forEach(c => {
-        const mine = myTotals[c.label] || 0;
-        const theirs = oppTotals[c.label] || 0;
-        const diff = c.better === 'high' ? mine - theirs : theirs - mine;
-        if (diff > 0.001) wins++;
-        else if (diff < -0.001) losses++;
-        else ties++;
-    });
-    return { wins, losses, ties };
-}
-
-// Simulate expected category wins against all opponents
-function simulateVsLeague(myTotals, allTeamTotals, myTeamId) {
-    let totalWins = 0;
-    let matchups = 0;
-    Object.entries(allTeamTotals).forEach(([teamId, totals]) => {
-        if (parseInt(teamId) === myTeamId) return;
-        const { wins } = countCatWins(myTotals, totals);
-        totalWins += wins;
+// Count expected cat wins vs all opponents
+function simVsLeague(myTotals, allTeamTotals, myTeamId) {
+    let totalWins = 0, matchups = 0;
+    Object.entries(allTeamTotals).forEach(([tid, totals]) => {
+        if (parseInt(tid) === myTeamId) return;
+        ESPN_CATS.forEach(c => {
+            const mine = myTotals[c.label] || 0;
+            const theirs = totals[c.label] || 0;
+            const diff = c.better === 'high' ? mine - theirs : theirs - mine;
+            if (diff > 0.001) totalWins++;
+        });
         matchups++;
     });
     return matchups > 0 ? totalWins / matchups : 0;
-}
-
-// Build a player value score for display purposes
-function buildPlayerValue(p, allPlayers) {
-    const isP = [1, 11].includes(p.defaultPositionId);
-    const cats = ESPN_CATS.filter(c => c.isPitcher === isP);
-    let score = 0;
-
-    cats.forEach(c => {
-        const val = parseFloat(p.projStats?.[c.id] || 0);
-        if (c.rate) return; // handle separately
-        const allVals = allPlayers
-            .filter(x => [1, 11].includes(x.defaultPositionId) === isP)
-            .map(x => parseFloat(x.projStats?.[c.id] || 0))
-            .filter(v => v > 0);
-
-        if (allVals.length === 0) return;
-        const mean = allVals.reduce((a, b) => a + b, 0) / allVals.length;
-        const std = Math.sqrt(allVals.map(v => (v - mean) ** 2).reduce((a, b) => a + b, 0) / allVals.length) || 1;
-        const zScore = (val - mean) / std;
-        score += zScore;
-    });
-
-    // SV gets a scarcity bonus
-    if (isP) {
-        const sv = parseFloat(p.projStats?.['51'] || 0);
-        if (sv > 15) score += 1.5;
-        else if (sv > 5) score += 0.8;
-    }
-
-    return score * p.prospectMult * p.injuryMult;
 }
 
 router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
     try {
         const MY_TEAM_ID = 7;
 
-        // Fetch all rosters in parallel
         const teamData = await espnGet({ view: 'mTeam' });
         const teamIds = teamData.teams.map(t => t.id);
         const rosterResponses = await Promise.all(
@@ -858,20 +806,15 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             roster: r.teams?.find(t => t.id === teamIds[i])?.roster || r.teams?.[0]?.roster,
         }));
 
-        // Build enriched player objects with projected stats
+        // Build enriched player objects
         const teamRosters = {};
         for (const team of allRosterTeams) {
             const entries = team.roster?.entries || [];
             const players = entries.map(entry => {
                 const player = entry.playerPoolEntry?.player;
                 if (!player) return null;
-
                 const s2025 = getPlayerStats(player, '002025');
                 const s2026 = getPlayerStats(player, '002026');
-                const projStats = buildProjectedStats(s2025, s2026, player);
-                const prospectMult = prospectMultiplier(player);
-                const injuryMult = injuryDiscount(player);
-
                 return {
                     playerId: entry.playerId,
                     playerKey: `espn.p.${entry.playerId}`,
@@ -885,13 +828,12 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                     keeperValue: entry.playerPoolEntry?.keeperValue || null,
                     auctionValue: player.ownership?.auctionValueAverage || null,
                     percentOwned: player.ownership?.percentOwned || 0,
-                    isUndroppable: !entry.playerPoolEntry?.droppable,
+                    isUndroppable: false, // not used
                     proExperience: player.proExperience || null,
-                    prospectMult,
-                    injuryMult,
-                    s2025,
-                    s2026,
-                    projStats,
+                    upside: prospectMult(player),
+                    injuryDiscount: injuryMult(player),
+                    s2025, s2026,
+                    projStats: buildProjectedStats(s2025, s2026, player),
                 };
             }).filter(Boolean);
 
@@ -905,37 +847,38 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
         const myRoster = teamRosters[MY_TEAM_ID];
         if (!myRoster) return res.status(400).json({ error: 'My team not found' });
 
-        // All players across league for z-score calculation
         const allPlayers = Object.values(teamRosters).flatMap(t => t.players);
+        const hitters = allPlayers.filter(p => ![1, 11].includes(p.defaultPositionId));
+        const pitchers = allPlayers.filter(p => [1, 11].includes(p.defaultPositionId));
 
-        // Attach value scores
+        // Compute z-score value for every player
         allPlayers.forEach(p => {
-            p.valueScore = buildPlayerValue(p, allPlayers);
+            const isP = [1, 11].includes(p.defaultPositionId);
+            p.zScore = computeZScore(p, isP ? pitchers : hitters);
         });
 
-        // Current team category totals for all teams
+        // Team category totals
         const allTeamCatTotals = {};
         Object.values(teamRosters).forEach(team => {
             allTeamCatTotals[team.teamId] = teamCatTotals(team.players);
         });
 
-        // My current expected category wins vs league
         const myCurrentTotals = allTeamCatTotals[MY_TEAM_ID];
-        const myCurrentCatWins = simulateVsLeague(myCurrentTotals, allTeamCatTotals, MY_TEAM_ID);
+        const myCurrentCatWins = simVsLeague(myCurrentTotals, allTeamCatTotals, MY_TEAM_ID);
 
         // Category ranks for display
         const myCatRanks = {};
         ESPN_CATS.forEach(cat => {
-            const sorted = Object.entries(allTeamCatTotals).sort(([, a], [, b]) => {
-                return cat.better === 'high' ? (b[cat.label] || 0) - (a[cat.label] || 0) : (a[cat.label] || 0) - (b[cat.label] || 0);
-            });
+            const sorted = Object.entries(allTeamCatTotals).sort(([, a], [, b]) =>
+                cat.better === 'high' ? (b[cat.label] || 0) - (a[cat.label] || 0) : (a[cat.label] || 0) - (b[cat.label] || 0)
+            );
             myCatRanks[cat.label] = sorted.findIndex(([id]) => parseInt(id) === MY_TEAM_ID) + 1;
         });
 
         const weaknesses = ESPN_CATS.filter(c => myCatRanks[c.label] >= 7).map(c => c.label);
         const strengths = ESPN_CATS.filter(c => myCatRanks[c.label] <= 4).map(c => c.label);
 
-        // Generate trade suggestions — sim-based
+        // Generate suggestions
         const suggestions = [];
         const myActivePlayers = myRoster.players.filter(p =>
             !['IL', 'IL10', 'IL15', 'IL60', 'NA'].includes(p.selectedPosition)
@@ -948,44 +891,46 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                 if (theirPlayer.percentOwned < 5) return;
 
                 myActivePlayers.forEach(myPlayer => {
-                    // Sim: swap myPlayer for theirPlayer on my roster
+                    // ── Primary signal: z-score value delta ──────────────────
+                    const zDelta = (theirPlayer.zScore || 0) - (myPlayer.zScore || 0);
+
+                    // ── Secondary signal: category sim ────────────────────────
                     const newMyPlayers = myRoster.players.map(p =>
                         p.playerKey === myPlayer.playerKey ? theirPlayer : p
                     );
                     const newMyTotals = teamCatTotals(newMyPlayers);
-
-                    // Also update other team\'s totals
                     const newOtherPlayers = otherTeam.players.map(p =>
                         p.playerKey === theirPlayer.playerKey ? myPlayer : p
                     );
                     const newOtherTotals = teamCatTotals(newOtherPlayers);
-
-                    // Build modified league totals for simulation
                     const modifiedTotals = {
                         ...allTeamCatTotals,
                         [MY_TEAM_ID]: newMyTotals,
                         [otherTeam.teamId]: newOtherTotals,
                     };
+                    const newCatWins = simVsLeague(newMyTotals, modifiedTotals, MY_TEAM_ID);
+                    const catDelta = newCatWins - myCurrentCatWins;
 
-                    const newCatWins = simulateVsLeague(newMyTotals, modifiedTotals, MY_TEAM_ID);
-                    const netCatGain = newCatWins - myCurrentCatWins;
+                    // ── Tertiary signal: auction value fairness ───────────────
+                    const myAV = myPlayer.auctionValue || 1;
+                    const theirAV = theirPlayer.auctionValue || 1;
+                    const auctionDelta = theirAV - myAV;
+                    // Light penalty if giving away >$20 more than receiving
+                    const auctionPenalty = auctionDelta < -20 ? (auctionDelta + 20) * 0.03 : 0;
 
-                    // Keeper surplus impact
-                    const myKeeperSurplus = myPlayer.keeperValue && myPlayer.auctionValue
+                    // ── Keeper delta ──────────────────────────────────────────
+                    const myKS = myPlayer.keeperValue && myPlayer.auctionValue
                         ? myPlayer.auctionValue - myPlayer.keeperValue : 0;
-                    const theirKeeperSurplus = theirPlayer.keeperValue && theirPlayer.auctionValue
+                    const theirKS = theirPlayer.keeperValue && theirPlayer.auctionValue
                         ? theirPlayer.auctionValue - theirPlayer.keeperValue : 0;
-                    const keeperDelta = theirKeeperSurplus - myKeeperSurplus;
+                    const keeperDelta = (theirKS - myKS) * 0.04;
 
-                    // Value score delta
-                    const valueDelta = (theirPlayer.valueScore || 0) - (myPlayer.valueScore || 0);
+                    // ── Combined score ─────────────────────────────────────────
+                    // z-score delta is primary (60%), cat sim secondary (30%), rest minor
+                    const totalScore = (zDelta * 0.60) + (catDelta * 0.30) + auctionPenalty + keeperDelta;
 
-                    // Combined score: sim result + keeper bonus + value bonus
-                    // Keeper is secondary, not primary driver
-                    const totalScore = netCatGain + (keeperDelta * 0.02) + (valueDelta * 0.05);
-
-                    if (totalScore > 0 || netCatGain > -0.3) {
-                        // Per-cat impact for display
+                    // Only surface trades that improve value or cats meaningfully
+                    if (totalScore > 0.1 || (zDelta > 0.3 && catDelta > -1)) {
                         const catImpact = {};
                         ESPN_CATS.forEach(c => {
                             const before = myCurrentTotals[c.label] || 0;
@@ -997,30 +942,30 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                             giving: myPlayer,
                             receiving: theirPlayer,
                             fromTeam: otherTeam.teamName,
-                            netCatGain: Math.round(netCatGain * 100) / 100,
-                            keeperDelta: Math.round(keeperDelta),
-                            valueDelta: Math.round(valueDelta * 10) / 10,
+                            zDelta: Math.round(zDelta * 100) / 100,
+                            catDelta: Math.round(catDelta * 100) / 100,
+                            auctionDelta: Math.round(auctionDelta),
+                            keeperDelta: Math.round(theirKS - myKS),
                             totalScore,
                             catImpact,
-                            weaknessesFilled: weaknesses.filter(w => (catImpact[w] || 0) > 0.01),
-                            strengthsHurt: strengths.filter(s => (catImpact[s] || 0) < -0.01),
+                            weaknessesFilled: weaknesses.filter(w => (catImpact[w] || 0) > 0.1),
+                            strengthsHurt: strengths.filter(s => (catImpact[s] || 0) < -0.1),
                         });
                     }
                 });
             });
         });
 
-        // Sort by total score
         suggestions.sort((a, b) => b.totalScore - a.totalScore);
 
-        // Dedupe — max 3 per giving player, unique receiving players
+        // Dedupe — max 2 per giving player, unique receiving
         const seenReceiving = new Set();
         const givingCount = {};
         const topSuggestions = suggestions.filter(s => {
             const rKey = s.receiving.playerKey;
             const gKey = s.giving.playerKey;
             if (seenReceiving.has(rKey)) return false;
-            if ((givingCount[gKey] || 0) >= 3) return false;
+            if ((givingCount[gKey] || 0) >= 2) return false;
             seenReceiving.add(rKey);
             givingCount[gKey] = (givingCount[gKey] || 0) + 1;
             return true;
@@ -1045,6 +990,7 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 
 
 module.exports = router;
