@@ -865,11 +865,16 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 
         // Sort and dedupe — best suggestion per "receiving player"
         suggestions.sort((a, b) => b.netScore - a.netScore);
-        const seen = new Set();
+        // Dedupe by both giving and receiving — max 2 suggestions per giving player
+        const seenReceiving = new Set();
+        const givingCount = {};
         const topSuggestions = suggestions.filter(s => {
-            const key = s.receiving.playerKey;
-            if (seen.has(key)) return false;
-            seen.add(key);
+            const rKey = s.receiving.playerKey;
+            const gKey = s.giving.playerKey;
+            if (seenReceiving.has(rKey)) return false;
+            if ((givingCount[gKey] || 0) >= 2) return false;
+            seenReceiving.add(rKey);
+            givingCount[gKey] = (givingCount[gKey] || 0) + 1;
             return true;
         }).slice(0, 15);
 
