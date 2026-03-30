@@ -1286,7 +1286,18 @@ export default function Dashboard({ api }) {
     const [rankMap, setRankMap] = useState({})
     const [ranksLoading, setRanksLoading] = useState(false)
     const [games, setGames] = useState([])
-    const [boxscores, setBoxscores] = useState({})
+    const [boxscores, setBoxscores] = useState(() => {
+        // Restore today's boxscores from localStorage on mount
+        try {
+            const stored = localStorage.getItem('boxscores_cache')
+            if (stored) {
+                const { date, data } = JSON.parse(stored)
+                const today = new Date().toISOString().split('T')[0]
+                if (date === today) return data
+            }
+        } catch (e) { }
+        return {}
+    })
 
     const fetchAllRankings = useCallback(async (leagues) => {
         setRanksLoading(true)
@@ -1345,7 +1356,15 @@ export default function Dashboard({ api }) {
         )).then(results => {
             const nb = {}
             results.forEach(r => { if (r) nb[r.gamePk] = r.data })
-            setBoxscores(prev => ({ ...prev, ...nb }))
+            setBoxscores(prev => {
+                const updated = { ...prev, ...nb }
+                // Persist to localStorage with today's date so stats survive page refresh
+                try {
+                    const today = new Date().toISOString().split('T')[0]
+                    localStorage.setItem('boxscores_cache', JSON.stringify({ date: today, data: updated }))
+                } catch (e) { }
+                return updated
+            })
         })
     }, [api])
 
@@ -1358,6 +1377,7 @@ export default function Dashboard({ api }) {
     useEffect(() => {
         loadScoreboard()
         const interval = setInterval(() => {
+            // Keep refreshing — stops being noisy once all final but persists cache
             const allFinal = games.length > 0 && games.every(g => g.isFinal)
             if (!allFinal) loadScoreboard()
         }, 60 * 1000)
