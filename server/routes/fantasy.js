@@ -881,13 +881,13 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             const theirTotalZ = receiving.reduce((sum, p) => sum + (p.zScore || 0), 0);
             const zDelta = theirTotalZ - myTotalZ;
 
-            // FAIRNESS GATE: symmetric value check
-            if (zDelta > 0.8) return null;   // other manager won't accept
-            if (zDelta < -0.8) return null;  // John losing too much value
+            // FAIRNESS GATE: asymmetric — protect John's value
+            if (zDelta > 1.0) return null;   // other manager won't accept (too lopsided against them)
+            if (zDelta < -0.4) return null;  // John losing too much value
 
-            // Extra gate: when giving 1 player for multiple, don't give away elite talent for scraps
+            // Extra gate: when giving 1 player for multiple, John should come out even or ahead
             if (giving.length === 1 && receiving.length >= 2) {
-                if (zDelta < -0.3) return null; // can't lose more than 0.3 z when giving 1
+                if (zDelta < -0.1) return null; // giving 1, getting many — must be roughly fair
             }
 
             // Category sim
@@ -926,8 +926,16 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                 catImpact[c.label] = c.better === 'high' ? after - before : before - after;
             });
 
-            const weaknessesFilled = weaknesses.filter(w => (catImpact[w] || 0) > 0.1);
-            const strengthsHurt = strengths.filter(s => (catImpact[s] || 0) < -0.1);
+            const weaknessesFilled = weaknesses.filter(w => {
+                const val = catImpact[w] || 0;
+                const cat = ESPN_CATS.find(c => c.label === w);
+                return cat?.rate ? val > 0.002 : val > 0.5;
+            });
+            const strengthsHurt = strengths.filter(s => {
+                const val = catImpact[s] || 0;
+                const cat = ESPN_CATS.find(c => c.label === s);
+                return cat?.rate ? val < -0.002 : val < -0.5;
+            });
 
             // Bonus for filling actual weaknesses — this is the primary goal
             const weaknessFillBonus = weaknessesFilled.length * 0.2;
@@ -963,7 +971,7 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 
             // Their tradeable players sorted by zScore descending
             const theirTradeable = otherTeam.players
-                .filter(p => p.percentOwned >= 5)
+                .filter(p => p.percentOwned >= 40)
                 .sort((a, b) => (b.zScore || 0) - (a.zScore || 0));
 
             if (theirTradeable.length === 0) return;
