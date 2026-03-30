@@ -736,13 +736,24 @@ function computeZScore(p, peerGroup) {
 
     const statZ = catCount > 0 ? (totalZ / catCount) * p.injuryDiscount * p.upside : 0;
 
-    // ── Keeper surplus bonus — baked into total value ──────────────────────
-    // In a keeper league, a player's real value = what they produce + what you save next year
-    // $10 of surplus ≈ 0.5 z-score equivalent (meaningful but stats still primary)
+    // ── Keeper surplus bonus — only meaningful for elite players ───────────
+    // Logic: a $5 keeper who's worth $8 is irrelevant.
+    // A $5 keeper who's worth $50 is a cheat code (+$45 surplus on an elite player).
+    // Bonus = (surplus / 20) * qualityMultiplier, where quality scales with statZ.
+    // Elite players (statZ > 1.5): full surplus weight
+    // Good players (statZ 0.5-1.5): partial surplus weight
+    // Fringe/replacement (statZ < 0.5): negligible surplus weight
     let keeperBonus = 0;
-    if (p.keeperValue && p.auctionValue) {
+    if (p.keeperValue && p.auctionValue && p.auctionValue > p.keeperValue) {
         const surplus = p.auctionValue - p.keeperValue;
-        keeperBonus = surplus / 20; // $20 surplus = +1.0 z bonus, $50 surplus = +2.5 z bonus
+        const rawBonus = surplus / 20; // $20 surplus = 1.0 base bonus
+        // Quality gate: only elite players get meaningful keeper credit
+        const qualityMult = statZ >= 2.0 ? 1.0      // elite: full keeper bonus
+            : statZ >= 1.5 ? 0.75      // great: 75%
+                : statZ >= 1.0 ? 0.45      // good: 45%
+                    : statZ >= 0.5 ? 0.20      // ok: 20%
+                        : 0.05;                    // fringe: nearly nothing
+        keeperBonus = rawBonus * qualityMult;
     }
 
     return statZ + keeperBonus;
@@ -888,111 +899,163 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
         const weaknesses = ESPN_CATS.filter(c => myCatRanks[c.label] >= 7).map(c => c.label);
         const strengths = ESPN_CATS.filter(c => myCatRanks[c.label] <= 4).map(c => c.label);
 
+        // ── Helper: evaluate any N-for-M trade ─────────────────────────────────
+        function evalTrade(giving, receiving, otherTeam) {
+            // giving/receiving are arrays of player objects
+
+            // Value delta — use zScore as primary (not auctionValue which can be stale/wrong)
+            const myTotalZ = giving.reduce((sum, p) => sum + (p.zScore || 0), 0);
+            const theirTotalZ = receiving.reduce((sum, p) => sum + (p.zScore || 0), 0);
+            const zDelta = theirTotalZ - myTotalZ;
+
+            // FAIRNESS GATE: both sides must get roughly equal value
+            // Allow slight advantage to John (+0.8 max), but block lopsided gives
+            if (zDelta > 0.9) return null;   // John getting way more — other manager won't accept
+            if (zDelta < -1.5) return null;  // John giving way too much — not worth it
+
+            // Auction value fairness — use as secondary sanity check
+            // Only block if auction gap is egregious (>$35 against John)
+            const myAV = giving.reduce((sum, p) => sum + (p.auctionValue || 0), 0);
+            const theirAV = receiving.reduce((sum, p) => sum + (p.auctionValue || 0), 0);
+            const auctionDelta = theirAV - myAV;
+            if (auctionDelta < -35) return null;
+
+            // Category sim
+            const newMyPlayers = myRoster.players
+                .filter(p => !giving.find(g => g.playerKey === p.playerKey))
+                .concat(receiving);
+            const newMyTotals = teamCatTotals(newMyPlayers);
+
+            const newOtherPlayers = otherTeam.players
+                .filter(p => !receiving.find(r => r.playerKey === p.playerKey))
+                .concat(giving);
+            const newOtherTotals = teamCatTotals(newOtherPlayers);
+
+            const modifiedTotals = {
+                ...allTeamCatTotals,
+                [MY_TEAM_ID]: newMyTotals,
+                [otherTeam.teamId]: newOtherTotals,
+            };
+
+            const newCatWins = simVsLeague(newMyTotals, modifiedTotals, MY_TEAM_ID);
+            const catDelta = newCatWins - myCurrentCatWins;
+            if (catDelta < -0.3) return null; // John's cats must improve or be neutral
+
+            // Other manager check
+            const otherCurrentCatWins = simVsLeague(
+                allTeamCatTotals[otherTeam.teamId], allTeamCatTotals, otherTeam.teamId
+            );
+            const newOtherCatWins = simVsLeague(newOtherTotals, modifiedTotals, otherTeam.teamId);
+            const otherCatDelta = newOtherCatWins - otherCurrentCatWins;
+            if (otherCatDelta < -2.0) return null; // Other manager can't get crushed
+
+            // Keeper delta
+            const myKS = giving.reduce((sum, p) =>
+                sum + (p.keeperValue && p.auctionValue ? p.auctionValue - p.keeperValue : 0), 0);
+            const theirKS = receiving.reduce((sum, p) =>
+                sum + (p.keeperValue && p.auctionValue ? p.auctionValue - p.keeperValue : 0), 0);
+
+            // Score: cat improvement is primary, value delta secondary
+            const totalScore = (catDelta * 0.55) + (zDelta * 0.30) +
+                (otherCatDelta * 0.10) + ((theirKS - myKS) * 0.005);
+
+            if (totalScore <= 0 && catDelta <= 0.2) return null;
+
+            const catImpact = {};
+            ESPN_CATS.forEach(c => {
+                const before = myCurrentTotals[c.label] || 0;
+                const after = newMyTotals[c.label] || 0;
+                catImpact[c.label] = c.better === 'high' ? after - before : before - after;
+            });
+
+            return {
+                giving,
+                receiving,
+                fromTeam: otherTeam.teamName,
+                zDelta: Math.round(zDelta * 100) / 100,
+                catDelta: Math.round(catDelta * 100) / 100,
+                auctionDelta: Math.round(auctionDelta),
+                myKeeperSurplus: Math.round(myKS),
+                theirKeeperSurplus: Math.round(theirKS),
+                totalScore,
+                catImpact,
+                tradeSize: `${giving.length}for${receiving.length}`,
+                weaknessesFilled: weaknesses.filter(w => (catImpact[w] || 0) > 0.1),
+                strengthsHurt: strengths.filter(s => (catImpact[s] || 0) < -0.1),
+            };
+        }
+
+        // ── Candidate pool ────────────────────────────────────────────────────
+        // My tradeable players: active, not IL, sorted by zScore
+        const myActive = myRoster.players
+            .filter(p => !['IL', 'IL10', 'IL15', 'IL60', 'NA'].includes(p.selectedPosition))
+            .sort((a, b) => (b.zScore || 0) - (a.zScore || 0));
+
         // Generate suggestions
         const suggestions = [];
-        const myActivePlayers = myRoster.players.filter(p =>
-            !['IL', 'IL10', 'IL15', 'IL60', 'NA'].includes(p.selectedPosition)
-        );
 
         Object.values(teamRosters).forEach(otherTeam => {
             if (otherTeam.teamId === MY_TEAM_ID) return;
 
-            otherTeam.players.forEach(theirPlayer => {
-                if (theirPlayer.percentOwned < 5) return;
+            // Their tradeable players sorted by zScore descending
+            const theirTradeable = otherTeam.players
+                .filter(p => p.percentOwned >= 5)
+                .sort((a, b) => (b.zScore || 0) - (a.zScore || 0));
 
-                myActivePlayers.forEach(myPlayer => {
-                    const myZ = myPlayer.zScore || 0;
-                    const theirZ = theirPlayer.zScore || 0;
+            if (theirTradeable.length === 0) return;
 
-                    // ── FAIRNESS GATE: would the other manager accept this? ───
-                    // A trade only happens if both sides get roughly equal value.
-                    // zDelta = how much better the player John receives is vs gives.
-                    // If John is getting significantly more value, the other manager won't accept.
-                    // Fairness window: zDelta must be within -0.6 to +0.8
-                    // (slight advantage to John is ok, big advantage is unrealistic)
-                    const zDelta = theirZ - myZ;
-                    if (zDelta > 0.8) return;   // John getting way more — other manager won't accept
-                    if (zDelta < -1.2) return;  // John getting way less — not worth proposing
-
-                    // ── Category sim: does John's team actually improve? ──────
-                    const newMyPlayers = myRoster.players.map(p =>
-                        p.playerKey === myPlayer.playerKey ? theirPlayer : p
-                    );
-                    const newMyTotals = teamCatTotals(newMyPlayers);
-                    const newOtherPlayers = otherTeam.players.map(p =>
-                        p.playerKey === theirPlayer.playerKey ? myPlayer : p
-                    );
-                    const newOtherTotals = teamCatTotals(newOtherPlayers);
-                    const modifiedTotals = {
-                        ...allTeamCatTotals,
-                        [MY_TEAM_ID]: newMyTotals,
-                        [otherTeam.teamId]: newOtherTotals,
-                    };
-                    const newCatWins = simVsLeague(newMyTotals, modifiedTotals, MY_TEAM_ID);
-                    const catDelta = newCatWins - myCurrentCatWins;
-
-                    // John's team must actually improve in categories
-                    if (catDelta < -0.5) return;
-
-                    // ── Check other manager also has motivation to trade ──────
-                    // Their team should improve or at least not get crushed
-                    const otherCurrentCatWins = simVsLeague(
-                        allTeamCatTotals[otherTeam.teamId], allTeamCatTotals, otherTeam.teamId
-                    );
-                    const newOtherCatWins = simVsLeague(newOtherTotals, modifiedTotals, otherTeam.teamId);
-                    const otherCatDelta = newOtherCatWins - otherCurrentCatWins;
-                    // Other manager must not lose more than 1.5 expected cats
-                    if (otherCatDelta < -1.5) return;
-
-                    // ── Auction value fairness (light check) ─────────────────
-                    const myAV = myPlayer.auctionValue || 1;
-                    const theirAV = theirPlayer.auctionValue || 1;
-                    const auctionDelta = theirAV - myAV;
-                    // Hard block if auction gap is > $30 against John
-                    if (auctionDelta < -30) return;
-
-                    // ── Keeper surplus ────────────────────────────────────────
-                    const myKS = myPlayer.keeperValue && myPlayer.auctionValue
-                        ? myPlayer.auctionValue - myPlayer.keeperValue : 0;
-                    const theirKS = theirPlayer.keeperValue && theirPlayer.auctionValue
-                        ? theirPlayer.auctionValue - theirPlayer.keeperValue : 0;
-
-                    // ── Combined score ────────────────────────────────────────
-                    // Cat improvement is now primary (since fairness gate ensures value equity)
-                    // zDelta secondary (within fair range, prefer getting slightly better player)
-                    const totalScore = (catDelta * 0.55) + (zDelta * 0.30) + (otherCatDelta * 0.10) + ((theirKS - myKS) * 0.005);
-
-                    // Must improve John's cats to surface
-                    if (totalScore > 0 || catDelta > 0.2) {
-                        const catImpact = {};
-                        ESPN_CATS.forEach(c => {
-                            const before = myCurrentTotals[c.label] || 0;
-                            const after = newMyTotals[c.label] || 0;
-                            catImpact[c.label] = c.better === 'high' ? after - before : before - after;
-                        });
-
-                        const myKeeperSurplus = myPlayer.keeperValue && myPlayer.auctionValue
-                            ? Math.round(myPlayer.auctionValue - myPlayer.keeperValue) : null;
-                        const theirKeeperSurplus = theirPlayer.keeperValue && theirPlayer.auctionValue
-                            ? Math.round(theirPlayer.auctionValue - theirPlayer.keeperValue) : null;
-
-                        suggestions.push({
-                            giving: myPlayer,
-                            receiving: theirPlayer,
-                            fromTeam: otherTeam.teamName,
-                            zDelta: Math.round(zDelta * 100) / 100,
-                            catDelta: Math.round(catDelta * 100) / 100,
-                            auctionDelta: Math.round(auctionDelta),
-                            myKeeperSurplus,
-                            theirKeeperSurplus,
-                            totalScore,
-                            catImpact,
-                            weaknessesFilled: weaknesses.filter(w => (catImpact[w] || 0) > 0.1),
-                            strengthsHurt: strengths.filter(s => (catImpact[s] || 0) < -0.1),
-                        });
-                    }
+            // ── 1-for-1 ───────────────────────────────────────────────────────
+            myActive.forEach(myP => {
+                theirTradeable.forEach(theirP => {
+                    const result = evalTrade([myP], [theirP], otherTeam);
+                    if (result) suggestions.push(result);
                 });
             });
+
+            // ── 2-for-1 (I give 2, I get 1) ──────────────────────────────────
+            // I give 2 middling players, get 1 better player
+            // Limit to top 12 of mine vs top 8 of theirs for performance
+            const my12 = myActive.slice(0, 12);
+            const their8 = theirTradeable.slice(0, 8);
+            for (let i = 0; i < my12.length; i++) {
+                for (let j = i + 1; j < my12.length; j++) {
+                    their8.forEach(theirP => {
+                        const result = evalTrade([my12[i], my12[j]], [theirP], otherTeam);
+                        if (result) suggestions.push(result);
+                    });
+                }
+            }
+
+            // ── 1-for-2 (I give 1, I get 2) ──────────────────────────────────
+            const my8 = myActive.slice(0, 8);
+            const their12 = theirTradeable.slice(0, 12);
+            my8.forEach(myP => {
+                for (let i = 0; i < their12.length; i++) {
+                    for (let j = i + 1; j < their12.length; j++) {
+                        const result = evalTrade([myP], [their12[i], their12[j]], otherTeam);
+                        if (result) suggestions.push(result);
+                    }
+                }
+            });
+
+            // ── 2-for-2 ────────────────────────────────────────────────────────
+            // Limit to top 10 each side for performance
+            const my10 = myActive.slice(0, 10);
+            const their10 = theirTradeable.slice(0, 10);
+            for (let i = 0; i < my10.length; i++) {
+                for (let j = i + 1; j < my10.length; j++) {
+                    for (let k = 0; k < their10.length; k++) {
+                        for (let l = k + 1; l < their10.length; l++) {
+                            const result = evalTrade(
+                                [my10[i], my10[j]],
+                                [their10[k], their10[l]],
+                                otherTeam
+                            );
+                            if (result) suggestions.push(result);
+                        }
+                    }
+                }
+            }
         });
 
         suggestions.sort((a, b) => b.totalScore - a.totalScore);

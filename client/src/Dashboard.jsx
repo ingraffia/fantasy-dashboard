@@ -507,14 +507,25 @@ function KeeperTag({ value, auctionValue }) {
     )
 }
 
+function PlayerPill({ player }) {
+    return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontWeight: 800, fontSize: 13, color: C.gray800 }}>{player.name}</span>
+            <span style={{ fontSize: 11, color: C.gray400 }}>({player.position})</span>
+            {player.keeperValue && player.auctionValue && (() => {
+                const surplus = Math.round(player.auctionValue - player.keeperValue)
+                if (Math.abs(surplus) < 3) return null
+                const color = surplus >= 15 ? C.green : surplus >= 3 ? C.amber : C.red
+                const bg = surplus >= 15 ? C.greenLight : surplus >= 3 ? C.amberLight : C.redLight
+                return <span style={{ fontSize: 10, fontWeight: 700, color, background: bg, padding: '1px 5px', borderRadius: 3 }}>${player.keeperValue}k +${surplus}</span>
+            })()}
+        </span>
+    )
+}
+
 function SuggestionCard({ suggestion, expanded, onToggle }) {
     const { giving, receiving, fromTeam, catImpact, weaknessesFilled, strengthsHurt,
-        zDelta, catDelta, auctionDelta, myKeeperSurplus, theirKeeperSurplus, totalScore } = suggestion
-
-    const theirSurplus = theirKeeperSurplus ?? (receiving.keeperValue && receiving.auctionValue
-        ? Math.round(receiving.auctionValue - receiving.keeperValue) : null)
-    const mySurplus = myKeeperSurplus ?? (giving.keeperValue && giving.auctionValue
-        ? Math.round(giving.auctionValue - giving.keeperValue) : null)
+        zDelta, catDelta, auctionDelta, totalScore, tradeSize } = suggestion
 
     const borderColor = totalScore > 1 ? C.green : totalScore > 0 ? C.amber : C.gray200
 
@@ -525,32 +536,34 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
                 onMouseEnter={e => e.currentTarget.style.background = C.gray50}
                 onMouseLeave={e => e.currentTarget.style.background = C.white}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Player names */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 12, color: C.red, fontWeight: 600 }}>Give</span>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: C.gray800 }}>{giving.name}</span>
-                        <span style={{ fontSize: 11, color: C.gray400 }}>({giving.position})</span>
-                        <span style={{ fontSize: 12, color: C.gray400 }}>→</span>
-                        <span style={{ fontSize: 12, color: C.green, fontWeight: 600 }}>Get</span>
-                        <span style={{ fontSize: 13, fontWeight: 800, color: C.gray800 }}>{receiving.name}</span>
-                        <span style={{ fontSize: 11, color: C.gray400 }}>({receiving.position})</span>
+                    {/* Give side */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, color: C.red, fontWeight: 700, flexShrink: 0 }}>Give</span>
+                        {giving.map((p, i) => (
+                            <span key={p.playerKey} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                {i > 0 && <span style={{ fontSize: 11, color: C.gray300 }}>+</span>}
+                                <PlayerPill player={p} />
+                            </span>
+                        ))}
+                    </div>
+                    {/* Get side */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+                        <span style={{ fontSize: 11, color: C.green, fontWeight: 700, flexShrink: 0 }}>Get</span>
+                        {receiving.map((p, i) => (
+                            <span key={p.playerKey} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                {i > 0 && <span style={{ fontSize: 11, color: C.gray300 }}>+</span>}
+                                <PlayerPill player={p} />
+                            </span>
+                        ))}
                         <span style={{ fontSize: 10, color: C.gray400 }}>from {fromTeam}</span>
                     </div>
-                    {/* Keeper values — shown prominently */}
-                    <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {mySurplus !== null && (
-                            <span style={{ fontSize: 10, color: C.gray400 }}>
-                                Give: <KeeperTag value={giving.keeperValue} auctionValue={giving.auctionValue} />
+                    {/* Tags */}
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {tradeSize && tradeSize !== '1for1' && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', padding: '1px 6px', borderRadius: 4 }}>
+                                {tradeSize.replace('for', '-for-')}
                             </span>
                         )}
-                        {theirSurplus !== null && (
-                            <span style={{ fontSize: 10, color: C.gray400 }}>
-                                Get: <KeeperTag value={receiving.keeperValue} auctionValue={receiving.auctionValue} />
-                            </span>
-                        )}
-                    </div>
-                    {/* Category tags */}
-                    <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
                         {weaknessesFilled.length > 0 && (
                             <span style={{ fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '1px 6px', borderRadius: 4 }}>
                                 ↑ {weaknessesFilled.join(', ')}
@@ -561,7 +574,7 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
                                 ↓ {strengthsHurt.join(', ')}
                             </span>
                         )}
-                        {auctionDelta !== undefined && Math.abs(auctionDelta) > 5 && (
+                        {auctionDelta !== undefined && Math.abs(auctionDelta) > 8 && (
                             <span style={{ fontSize: 10, fontWeight: 700, color: auctionDelta > 0 ? C.green : C.red, background: auctionDelta > 0 ? C.greenLight : C.redLight, padding: '1px 6px', borderRadius: 4 }}>
                                 {auctionDelta > 0 ? `+$${auctionDelta}` : `-$${Math.abs(auctionDelta)}`} value
                             </span>
@@ -569,7 +582,7 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
                     </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 10, color: C.gray400, marginBottom: 2 }}>Value {zDelta > 0 ? '+' : ''}{zDelta}</div>
+                    <div style={{ fontSize: 10, color: C.gray400, marginBottom: 2 }}>Val {zDelta > 0 ? '+' : ''}{zDelta}</div>
                     <div style={{ fontSize: 10, color: C.gray400 }}>{catDelta > 0 ? '+' : ''}{catDelta} cats</div>
                     <div style={{ fontSize: 10, color: C.gray400, marginTop: 2 }}>{expanded ? '▲' : '▼'}</div>
                 </div>
@@ -578,71 +591,64 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
             {/* Expanded detail */}
             {expanded && (
                 <div style={{ borderTop: `1px solid ${C.gray100}`, padding: '12px 14px' }}>
-                    {/* Side by side player comparison */}
+                    {/* Player cards — support multiple players per side */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                        {[{ player: giving, label: 'Giving', color: C.red }, { player: receiving, label: 'Receiving', color: C.green }].map(({ player, label, color }) => (
-                            <div key={player.playerKey} style={{ background: C.gray50, borderRadius: 8, padding: '10px 12px' }}>
+                        {[{ players: giving, label: 'Giving', color: C.red }, { players: receiving, label: 'Receiving', color: C.green }].map(({ players, label, color }) => (
+                            <div key={label} style={{ background: C.gray50, borderRadius: 8, padding: '10px 12px' }}>
                                 <div style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                                    <PlayerAvatar imageUrl={player.imageUrl} name={player.name} size={32} />
-                                    <div>
-                                        <div style={{ fontWeight: 700, fontSize: 13 }}>{player.name}</div>
-                                        <div style={{ fontSize: 11, color: C.gray400 }}>{player.position} · {player.proTeam}</div>
-                                    </div>
-                                </div>
-                                {/* 2025 stats */}
-                                <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>2025</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-                                    {Object.keys(player.stats2025 || {}).length === 0
-                                        ? <span style={{ fontSize: 11, color: C.gray400 }}>No data</span>
-                                        : [
-                                            { id: '20', l: 'R' }, { id: '8', l: 'TB' }, { id: '21', l: 'RBI' },
-                                            { id: '23', l: 'SB' }, { id: '17', l: 'OBP' },
-                                            { id: '27', l: 'K' }, { id: '19', l: 'W' }, { id: '35', l: 'SV' },
-                                            { id: '47', l: 'ERA' }, { id: '41', l: 'WHIP' }
-                                        ].map(({ id, l }) => {
-                                            const v = player.stats2025?.[id]
-                                            if (!v && v !== 0) return null
-                                            const display = RATE_CATS.includes(l) ? parseFloat(v).toFixed(2) : Math.round(v)
-                                            if (display === 0 || display === '0.00') return null
-                                            return <span key={id} style={{ fontSize: 10, background: C.gray100, padding: '1px 5px', borderRadius: 3 }}><span style={{ color: C.gray400 }}>{l} </span><span style={{ fontWeight: 700 }}>{display}</span></span>
-                                        })
-                                    }
-                                </div>
-                                {/* 2026 */}
-                                <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase', marginBottom: 4 }}>2026</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                    {[
-                                        { id: '20', l: 'R' }, { id: '8', l: 'TB' }, { id: '21', l: 'RBI' },
-                                        { id: '23', l: 'SB' }, { id: '17', l: 'OBP' },
-                                        { id: '27', l: 'K' }, { id: '19', l: 'W' }, { id: '35', l: 'SV' },
-                                        { id: '47', l: 'ERA' }, { id: '41', l: 'WHIP' }
-                                    ].map(({ id, l }) => {
-                                        const v = player.stats2026?.[id]
-                                        if (!v && v !== 0) return null
-                                        const display = RATE_CATS.includes(l) ? parseFloat(v).toFixed(2) : Math.round(v)
-                                        if (display === 0 || display === '0.00') return null
-                                        return <span key={id} style={{ fontSize: 10, background: C.accentLight, padding: '1px 5px', borderRadius: 3 }}><span style={{ color: C.gray400 }}>{l} </span><span style={{ fontWeight: 700 }}>{display}</span></span>
-                                    })}
-                                </div>
-                                {/* Keeper value */}
-                                {player.keeperValue && player.auctionValue && (() => {
-                                    const surplus = Math.round(player.auctionValue - player.keeperValue)
-                                    const color2 = surplus >= 10 ? C.green : surplus >= 0 ? C.amber : C.red
-                                    const bg2 = surplus >= 10 ? C.greenLight : surplus >= 0 ? C.amberLight : C.redLight
-                                    return (
-                                        <div style={{ marginTop: 8, fontSize: 11 }}>
-                                            <span style={{ color: C.gray400 }}>Keeper: </span>
-                                            <span style={{ fontWeight: 700, color: color2, background: bg2, padding: '1px 6px', borderRadius: 4 }}>
-                                                ${player.keeperValue} keep / ${Math.round(player.auctionValue)} mkt ({surplus >= 0 ? '+' : ''}${surplus})
-                                            </span>
+                                {players.map(player => (
+                                    <div key={player.playerKey} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.gray200}` }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                            <PlayerAvatar imageUrl={player.imageUrl} name={player.name} size={28} />
+                                            <div>
+                                                <div style={{ fontWeight: 700, fontSize: 12 }}>{player.name}</div>
+                                                <div style={{ fontSize: 11, color: C.gray400 }}>{player.position} · {player.proTeam}</div>
+                                            </div>
                                         </div>
-                                    )
-                                })()}
+                                        <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>2025</div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 6 }}>
+                                            {Object.keys(player.s2025 || {}).length === 0
+                                                ? <span style={{ fontSize: 10, color: C.gray400 }}>No data</span>
+                                                : [
+                                                    { id: '20', l: 'R' }, { id: '8', l: 'TB' }, { id: '21', l: 'RBI' },
+                                                    { id: '23', l: 'SB' }, { id: '17', l: 'OBP' },
+                                                    { id: '48', l: 'K' }, { id: '53', l: 'W' }, { id: '51', l: 'SV' },
+                                                    { id: '47', l: 'ERA' }, { id: '41', l: 'WHIP' }
+                                                ].map(({ id, l }) => {
+                                                    const v = player.s2025?.[id]
+                                                    if (!v && v !== 0) return null
+                                                    const display = RATE_CATS.includes(l) ? parseFloat(v).toFixed(2) : Math.round(v)
+                                                    if (display === 0 || display === '0.00') return null
+                                                    return <span key={id} style={{ fontSize: 10, background: C.gray100, padding: '1px 4px', borderRadius: 3 }}><span style={{ color: C.gray400 }}>{l} </span><span style={{ fontWeight: 700 }}>{display}</span></span>
+                                                })
+                                            }
+                                        </div>
+                                        <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>2026</div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 4 }}>
+                                            {[
+                                                { id: '20', l: 'R' }, { id: '8', l: 'TB' }, { id: '21', l: 'RBI' },
+                                                { id: '23', l: 'SB' }, { id: '17', l: 'OBP' },
+                                                { id: '48', l: 'K' }, { id: '53', l: 'W' }, { id: '51', l: 'SV' },
+                                                { id: '47', l: 'ERA' }, { id: '41', l: 'WHIP' }
+                                            ].map(({ id, l }) => {
+                                                const v = player.s2026?.[id]
+                                                if (!v && v !== 0) return null
+                                                const display = RATE_CATS.includes(l) ? parseFloat(v).toFixed(2) : Math.round(v)
+                                                if (display === 0 || display === '0.00') return null
+                                                return <span key={id} style={{ fontSize: 10, background: C.accentLight, padding: '1px 4px', borderRadius: 3 }}><span style={{ color: C.gray400 }}>{l} </span><span style={{ fontWeight: 700 }}>{display}</span></span>
+                                            })}
+                                        </div>
+                                        {player.keeperValue && player.auctionValue && (() => {
+                                            const surplus = Math.round(player.auctionValue - player.keeperValue)
+                                            const c2 = surplus >= 10 ? C.green : surplus >= 0 ? C.amber : C.red
+                                            const b2 = surplus >= 10 ? C.greenLight : surplus >= 0 ? C.amberLight : C.redLight
+                                            return <div style={{ fontSize: 10 }}><span style={{ color: C.gray400 }}>Keeper: </span><span style={{ fontWeight: 700, color: c2, background: b2, padding: '1px 5px', borderRadius: 3 }}>${player.keeperValue}k · ${Math.round(player.auctionValue)}mkt · {surplus >= 0 ? '+' : ''}${surplus}</span></div>
+                                        })()}
+                                    </div>
+                                ))}
                             </div>
                         ))}
                     </div>
-
                     {/* Category impact */}
                     <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', marginBottom: 6 }}>Category Impact</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
