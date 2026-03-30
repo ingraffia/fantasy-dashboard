@@ -626,7 +626,6 @@ router.post('/trade-analyze', requireAuth, async (req, res) => {
 });
 
 
-// Add this before module.exports = router in fantasy.js
 
 const ESPN_CATS = {
     hitter: [
@@ -644,6 +643,7 @@ const ESPN_CATS = {
         { id: '41', label: 'WHIP', better: 'low', rate: true },
     ],
 };
+
 function getPlayerStats(player, seasonId) {
     if (!player?.stats) return {};
     const s = player.stats.find(st => st.id === seasonId && st.statSourceId === 0);
@@ -692,6 +692,7 @@ function calcTeamCats(players) {
             totals['K'] += parseFloat(s['48'] || 0);
             totals['W'] += parseFloat(s['53'] || 0);
             totals['SV'] += parseFloat(s['51'] || 0);
+            // IP stored as outs in ESPN, divide by 3
             const outs = parseFloat(s['34'] || 0);
             const ip = outs / 3;
             const er = parseFloat(s['45'] || 0);
@@ -711,24 +712,20 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
     try {
         const MY_TEAM_ID = 7;
 
+        // Fetch team info first, then all rosters in parallel (ESPN requires forTeamId)
         const teamData = await espnGet({ view: 'mTeam' });
         const teamIds = teamData.teams.map(t => t.id);
-
-        // Fetch all rosters in parallel — ESPN requires forTeamId per team
         const rosterResponses = await Promise.all(
             teamIds.map(id => espnGet({ view: 'mRoster', forTeamId: id }))
         );
+        const allRosterTeams = rosterResponses.map((r, i) => ({
+            id: teamIds[i],
+            roster: r.teams?.find(t => t.id === teamIds[i])?.roster || r.teams?.[0]?.roster,
+        }));
 
-        // Normalize into same shape as allRosterData.teams
-        const allRosterData = {
-            teams: rosterResponses.map((r, i) => ({
-                id: teamIds[i],
-                roster: r.teams?.find(t => t.id === teamIds[i])?.roster || r.teams?.[0]?.roster,
-            }))
-        };
         // Build player map with blended stats
         const teamRosters = {};
-        for (const team of (allRosterData.teams || [])) {
+        for (const team of allRosterTeams) {
             const entries = team.roster?.entries || [];
             const players = entries.map(entry => {
                 const player = entry.playerPoolEntry?.player;
@@ -817,41 +814,40 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             if (otherTeam.teamId === MY_TEAM_ID) return;
 
             otherTeam.players.forEach(theirPlayer => {
-                if (theirPlayer.percentOwned < 20) return; // skip nobodies
+                if (theirPlayer.percentOwned < 5) return; // skip true nobodies
                 if (theirPlayer.isUndroppable) return;
 
                 myActivePlayers.forEach(myPlayer => {
-                    // Only swap similar positions (rough check)
                     const myIsP = [1, 11].includes(myPlayer.defaultPositionId);
                     const theirIsP = [1, 11].includes(theirPlayer.defaultPositionId);
-                    if (myIsP !== theirIsP) return; // don't swap pitchers for hitters
+                    const positionMismatch = myIsP !== theirIsP;
+                    // Penalize position mismatches but don't block them
+                    const mismatchPenalty = positionMismatch ? 50 : 0;
 
-                    // Calculate net category impact
                     const catImpact = {};
                     let weaknessScore = 0;
                     let strengthPenalty = 0;
 
                     allCats.forEach(cat => {
-                        const myVal = parseFloat(myPlayer.blendedStats[cat.id] || 0);
-                        const theirVal = parseFloat(theirPlayer.blendedStats[cat.id] || 0);
+                        const myVal = parseFloat(myPlayer.blendedStats?.[cat.id] || 0);
+                        const theirVal = parseFloat(theirPlayer.blendedStats?.[cat.id] || 0);
 
                         if (cat.rate) {
-                            // For rate stats, just compare directly
                             const diff = cat.better === 'high' ? theirVal - myVal : myVal - theirVal;
                             catImpact[cat.label] = diff;
-                            if (weaknesses.includes(cat.label)) weaknessScore += diff * 2;
-                            if (strengths.includes(cat.label) && diff < 0) strengthPenalty += Math.abs(diff);
+                            if (weaknesses.includes(cat.label)) weaknessScore += diff * 30;
+                            if (strengths.includes(cat.label) && diff < -0.02) strengthPenalty += Math.abs(diff) * 20;
                         } else {
                             const diff = theirVal - myVal;
                             const normalizedDiff = cat.better === 'high' ? diff : -diff;
                             catImpact[cat.label] = normalizedDiff;
                             if (weaknesses.includes(cat.label)) weaknessScore += normalizedDiff;
-                            if (strengths.includes(cat.label) && normalizedDiff < -5) strengthPenalty += Math.abs(normalizedDiff) * 0.5;
+                            if (strengths.includes(cat.label) && normalizedDiff < -10) strengthPenalty += Math.abs(normalizedDiff) * 0.3;
                         }
                     });
 
-                    const netScore = weaknessScore - strengthPenalty;
-                    if (netScore > 0) {
+                    const netScore = weaknessScore - strengthPenalty - mismatchPenalty;
+                    if (netScore > -10) {
                         suggestions.push({
                             giving: myPlayer,
                             receiving: theirPlayer,
@@ -861,7 +857,7 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                             strengthPenalty,
                             catImpact,
                             weaknessesFilled: weaknesses.filter(w => (catImpact[w] || 0) > 0),
-                            strengthsHurt: strengths.filter(s => (catImpact[s] || 0) < -5),
+                            strengthsHurt: strengths.filter(s => (catImpact[s] || 0) < -10),
                         });
                     }
                 });
@@ -876,7 +872,7 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             if (seen.has(key)) return false;
             seen.add(key);
             return true;
-        }).slice(0, 10);
+        }).slice(0, 15);
 
         res.json({
             myTeam: {
@@ -893,24 +889,6 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
         });
     } catch (err) {
         console.error('ESPN trade suggest error:', err.response?.data || err.message);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-router.get('/espn-trade-debug', requireAuth, async (req, res) => {
-    try {
-        const MY_TEAM_ID = 7;
-        const rosterData = await espnGet({ view: 'mRoster', forTeamId: MY_TEAM_ID });
-        const myTeam = rosterData.teams?.find(t => t.id === MY_TEAM_ID);
-        const entry = myTeam?.roster?.entries?.find(e => {
-            const pos = e.playerPoolEntry?.player?.defaultPositionId;
-            return pos === 1 || pos === 11;
-        });
-        const player = entry?.playerPoolEntry?.player;
-        const s2025 = player?.stats?.find(s => s.id === '002025' && s.statSourceId === 0)?.stats || {};
-        const s2026 = player?.stats?.find(s => s.id === '002026' && s.statSourceId === 0)?.stats || {};
-        res.json({ name: player?.fullName, s2025: s2025, s2026: s2026 });
-    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
