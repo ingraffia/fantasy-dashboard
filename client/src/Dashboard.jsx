@@ -495,19 +495,37 @@ function CatImpactPill({ label, value }) {
     )
 }
 
+function KeeperTag({ value, auctionValue }) {
+    if (!value || !auctionValue) return null
+    const surplus = Math.round(auctionValue - value)
+    const color = surplus >= 20 ? C.green : surplus >= 5 ? C.amber : surplus < 0 ? C.red : C.gray400
+    const bg = surplus >= 20 ? C.greenLight : surplus >= 5 ? C.amberLight : surplus < 0 ? C.redLight : C.gray100
+    return (
+        <span style={{ fontSize: 10, fontWeight: 700, color, background: bg, padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
+            ${value} keep · ${Math.round(auctionValue)} mkt · {surplus >= 0 ? `+$${surplus}` : `-$${Math.abs(surplus)}`}
+        </span>
+    )
+}
+
 function SuggestionCard({ suggestion, expanded, onToggle }) {
-    const { giving, receiving, fromTeam, catImpact, weaknessesFilled, strengthsHurt, netScore } = suggestion
-    const keeperSurplus = receiving.keeperValue && receiving.auctionValue
-        ? Math.round(receiving.auctionValue - receiving.keeperValue)
-        : null
+    const { giving, receiving, fromTeam, catImpact, weaknessesFilled, strengthsHurt,
+        zDelta, catDelta, auctionDelta, myKeeperSurplus, theirKeeperSurplus, totalScore } = suggestion
+
+    const theirSurplus = theirKeeperSurplus ?? (receiving.keeperValue && receiving.auctionValue
+        ? Math.round(receiving.auctionValue - receiving.keeperValue) : null)
+    const mySurplus = myKeeperSurplus ?? (giving.keeperValue && giving.auctionValue
+        ? Math.round(giving.auctionValue - giving.keeperValue) : null)
+
+    const borderColor = totalScore > 1 ? C.green : totalScore > 0 ? C.amber : C.gray200
 
     return (
-        <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderLeft: `4px solid ${C.green}`, borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
+        <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderLeft: `4px solid ${borderColor}`, borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
             {/* Header */}
             <div onClick={onToggle} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
                 onMouseEnter={e => e.currentTarget.style.background = C.gray50}
                 onMouseLeave={e => e.currentTarget.style.background = C.white}>
                 <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Player names */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 12, color: C.red, fontWeight: 600 }}>Give</span>
                         <span style={{ fontSize: 13, fontWeight: 800, color: C.gray800 }}>{giving.name}</span>
@@ -518,6 +536,20 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
                         <span style={{ fontSize: 11, color: C.gray400 }}>({receiving.position})</span>
                         <span style={{ fontSize: 10, color: C.gray400 }}>from {fromTeam}</span>
                     </div>
+                    {/* Keeper values — shown prominently */}
+                    <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {mySurplus !== null && (
+                            <span style={{ fontSize: 10, color: C.gray400 }}>
+                                Give: <KeeperTag value={giving.keeperValue} auctionValue={giving.auctionValue} />
+                            </span>
+                        )}
+                        {theirSurplus !== null && (
+                            <span style={{ fontSize: 10, color: C.gray400 }}>
+                                Get: <KeeperTag value={receiving.keeperValue} auctionValue={receiving.auctionValue} />
+                            </span>
+                        )}
+                    </div>
+                    {/* Category tags */}
                     <div style={{ display: 'flex', gap: 4, marginTop: 5, flexWrap: 'wrap', alignItems: 'center' }}>
                         {weaknessesFilled.length > 0 && (
                             <span style={{ fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '1px 6px', borderRadius: 4 }}>
@@ -529,16 +561,17 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
                                 ↓ {strengthsHurt.join(', ')}
                             </span>
                         )}
-                        {keeperSurplus !== null && (
-                            <span style={{ fontSize: 10, fontWeight: 700, color: keeperSurplus >= 10 ? C.green : keeperSurplus >= 0 ? C.amber : C.red, background: keeperSurplus >= 10 ? C.greenLight : keeperSurplus >= 0 ? C.amberLight : C.redLight, padding: '1px 6px', borderRadius: 4 }}>
-                                {keeperSurplus >= 0 ? `+$${keeperSurplus}` : `-$${Math.abs(keeperSurplus)}`} keeper
+                        {auctionDelta !== undefined && Math.abs(auctionDelta) > 5 && (
+                            <span style={{ fontSize: 10, fontWeight: 700, color: auctionDelta > 0 ? C.green : C.red, background: auctionDelta > 0 ? C.greenLight : C.redLight, padding: '1px 6px', borderRadius: 4 }}>
+                                {auctionDelta > 0 ? `+$${auctionDelta}` : `-$${Math.abs(auctionDelta)}`} value
                             </span>
                         )}
                     </div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.green }}>Score {Math.round(netScore)}</div>
-                    <div style={{ fontSize: 10, color: C.gray400 }}>{expanded ? '▲' : '▼'}</div>
+                    <div style={{ fontSize: 10, color: C.gray400, marginBottom: 2 }}>Value {zDelta > 0 ? '+' : ''}{zDelta}</div>
+                    <div style={{ fontSize: 10, color: C.gray400 }}>{catDelta > 0 ? '+' : ''}{catDelta} cats</div>
+                    <div style={{ fontSize: 10, color: C.gray400, marginTop: 2 }}>{expanded ? '▲' : '▼'}</div>
                 </div>
             </div>
 

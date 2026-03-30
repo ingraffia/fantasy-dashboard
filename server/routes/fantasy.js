@@ -692,26 +692,27 @@ function injuryMult(player) {
     return 0.75;
 }
 
-// Compute z-score based value for a player vs all players at same type (H or P)
+// Compute total player value: z-score stats + keeper surplus bonus
+// Keeper surplus is baked INTO value — a $5 Skubal is worth more than a $40 Skubal
 function computeZScore(p, peerGroup) {
     const isP = [1, 11].includes(p.defaultPositionId);
     const cats = ESPN_CATS.filter(c => c.isPitcher === isP && !c.rate);
     let totalZ = 0;
     let catCount = 0;
 
+    // Counting stat z-scores
     cats.forEach(cat => {
         const myVal = parseFloat(p.projStats?.[cat.id] || 0);
         const vals = peerGroup.map(x => parseFloat(x.projStats?.[cat.id] || 0)).filter(v => v > 0);
         if (vals.length < 3) return;
         const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-        const variance = vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length;
-        const std = Math.sqrt(variance) || 1;
+        const std = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length) || 1;
         const z = cat.better === 'high' ? (myVal - mean) / std : (mean - myVal) / std;
         totalZ += z;
         catCount++;
     });
 
-    // Rate stats as separate z-scores
+    // Rate stat z-scores (slightly downweighted)
     const rateCats = ESPN_CATS.filter(c => c.isPitcher === isP && c.rate);
     rateCats.forEach(cat => {
         const myVal = parseFloat(p.projStats?.[cat.id] || 0);
@@ -719,14 +720,13 @@ function computeZScore(p, peerGroup) {
         const vals = peerGroup.map(x => parseFloat(x.projStats?.[cat.id] || 0)).filter(v => v > 0);
         if (vals.length < 3) return;
         const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-        const variance = vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length;
-        const std = Math.sqrt(variance) || 0.1;
+        const std = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length) || 0.1;
         const z = cat.better === 'high' ? (myVal - mean) / std : (mean - myVal) / std;
-        totalZ += z * 0.7; // rate stats slightly downweighted vs counting stats
+        totalZ += z * 0.7;
         catCount += 0.7;
     });
 
-    // SV scarcity bonus — closers are rare and valuable
+    // SV scarcity bonus
     if (isP) {
         const sv = parseFloat(p.projStats?.['51'] || 0);
         if (sv >= 25) totalZ += 2.0;
@@ -734,8 +734,18 @@ function computeZScore(p, peerGroup) {
         else if (sv >= 5) totalZ += 0.5;
     }
 
-    const rawZ = catCount > 0 ? totalZ / catCount : 0;
-    return rawZ * p.injuryDiscount * p.upside;
+    const statZ = catCount > 0 ? (totalZ / catCount) * p.injuryDiscount * p.upside : 0;
+
+    // ── Keeper surplus bonus — baked into total value ──────────────────────
+    // In a keeper league, a player's real value = what they produce + what you save next year
+    // $10 of surplus ≈ 0.5 z-score equivalent (meaningful but stats still primary)
+    let keeperBonus = 0;
+    if (p.keeperValue && p.auctionValue) {
+        const surplus = p.auctionValue - p.keeperValue;
+        keeperBonus = surplus / 20; // $20 surplus = +1.0 z bonus, $50 surplus = +2.5 z bonus
+    }
+
+    return statZ + keeperBonus;
 }
 
 // Team category totals from player roster
@@ -938,6 +948,11 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                             catImpact[c.label] = c.better === 'high' ? after - before : before - after;
                         });
 
+                        const myKeeperSurplus = myPlayer.keeperValue && myPlayer.auctionValue
+                            ? Math.round(myPlayer.auctionValue - myPlayer.keeperValue) : null;
+                        const theirKeeperSurplus = theirPlayer.keeperValue && theirPlayer.auctionValue
+                            ? Math.round(theirPlayer.auctionValue - theirPlayer.keeperValue) : null;
+
                         suggestions.push({
                             giving: myPlayer,
                             receiving: theirPlayer,
@@ -945,7 +960,8 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                             zDelta: Math.round(zDelta * 100) / 100,
                             catDelta: Math.round(catDelta * 100) / 100,
                             auctionDelta: Math.round(auctionDelta),
-                            keeperDelta: Math.round(theirKS - myKS),
+                            myKeeperSurplus,
+                            theirKeeperSurplus,
                             totalScore,
                             catImpact,
                             weaknessesFilled: weaknesses.filter(w => (catImpact[w] || 0) > 0.1),
