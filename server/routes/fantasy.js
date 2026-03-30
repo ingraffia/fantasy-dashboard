@@ -901,10 +901,20 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                 if (theirPlayer.percentOwned < 5) return;
 
                 myActivePlayers.forEach(myPlayer => {
-                    // ── Primary signal: z-score value delta ──────────────────
-                    const zDelta = (theirPlayer.zScore || 0) - (myPlayer.zScore || 0);
+                    const myZ = myPlayer.zScore || 0;
+                    const theirZ = theirPlayer.zScore || 0;
 
-                    // ── Secondary signal: category sim ────────────────────────
+                    // ── FAIRNESS GATE: would the other manager accept this? ───
+                    // A trade only happens if both sides get roughly equal value.
+                    // zDelta = how much better the player John receives is vs gives.
+                    // If John is getting significantly more value, the other manager won't accept.
+                    // Fairness window: zDelta must be within -0.6 to +0.8
+                    // (slight advantage to John is ok, big advantage is unrealistic)
+                    const zDelta = theirZ - myZ;
+                    if (zDelta > 0.8) return;   // John getting way more — other manager won't accept
+                    if (zDelta < -1.2) return;  // John getting way less — not worth proposing
+
+                    // ── Category sim: does John's team actually improve? ──────
                     const newMyPlayers = myRoster.players.map(p =>
                         p.playerKey === myPlayer.playerKey ? theirPlayer : p
                     );
@@ -921,26 +931,39 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                     const newCatWins = simVsLeague(newMyTotals, modifiedTotals, MY_TEAM_ID);
                     const catDelta = newCatWins - myCurrentCatWins;
 
-                    // ── Tertiary signal: auction value fairness ───────────────
+                    // John's team must actually improve in categories
+                    if (catDelta < -0.5) return;
+
+                    // ── Check other manager also has motivation to trade ──────
+                    // Their team should improve or at least not get crushed
+                    const otherCurrentCatWins = simVsLeague(
+                        allTeamCatTotals[otherTeam.teamId], allTeamCatTotals, otherTeam.teamId
+                    );
+                    const newOtherCatWins = simVsLeague(newOtherTotals, modifiedTotals, otherTeam.teamId);
+                    const otherCatDelta = newOtherCatWins - otherCurrentCatWins;
+                    // Other manager must not lose more than 1.5 expected cats
+                    if (otherCatDelta < -1.5) return;
+
+                    // ── Auction value fairness (light check) ─────────────────
                     const myAV = myPlayer.auctionValue || 1;
                     const theirAV = theirPlayer.auctionValue || 1;
                     const auctionDelta = theirAV - myAV;
-                    // Light penalty if giving away >$20 more than receiving
-                    const auctionPenalty = auctionDelta < -20 ? (auctionDelta + 20) * 0.03 : 0;
+                    // Hard block if auction gap is > $30 against John
+                    if (auctionDelta < -30) return;
 
-                    // ── Keeper delta ──────────────────────────────────────────
+                    // ── Keeper surplus ────────────────────────────────────────
                     const myKS = myPlayer.keeperValue && myPlayer.auctionValue
                         ? myPlayer.auctionValue - myPlayer.keeperValue : 0;
                     const theirKS = theirPlayer.keeperValue && theirPlayer.auctionValue
                         ? theirPlayer.auctionValue - theirPlayer.keeperValue : 0;
-                    const keeperDelta = (theirKS - myKS) * 0.04;
 
-                    // ── Combined score ─────────────────────────────────────────
-                    // z-score delta is primary (60%), cat sim secondary (30%), rest minor
-                    const totalScore = (zDelta * 0.60) + (catDelta * 0.30) + auctionPenalty + keeperDelta;
+                    // ── Combined score ────────────────────────────────────────
+                    // Cat improvement is now primary (since fairness gate ensures value equity)
+                    // zDelta secondary (within fair range, prefer getting slightly better player)
+                    const totalScore = (catDelta * 0.55) + (zDelta * 0.30) + (otherCatDelta * 0.10) + ((theirKS - myKS) * 0.005);
 
-                    // Only surface trades that improve value or cats meaningfully
-                    if (totalScore > 0.1 || (zDelta > 0.3 && catDelta > -1)) {
+                    // Must improve John's cats to surface
+                    if (totalScore > 0 || catDelta > 0.2) {
                         const catImpact = {};
                         ESPN_CATS.forEach(c => {
                             const before = myCurrentTotals[c.label] || 0;
