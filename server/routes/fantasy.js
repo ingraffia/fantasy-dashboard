@@ -1053,13 +1053,13 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             }
 
             // ── 3-for-1 ────────────────────────────────────────────────────────
-            const my8 = myActive.slice(0, 8);
-            const their6 = theirTradeable.slice(0, 6);
-            for (let i = 0; i < my8.length; i++) {
-                for (let j = i + 1; j < my8.length; j++) {
-                    for (let k = j + 1; k < my8.length; k++) {
-                        their6.forEach(theirP => {
-                            const result = evalTrade([my8[i], my8[j], my8[k]], [theirP], otherTeam);
+            const my8c = myActive.slice(0, 8);
+            const their6c = theirTradeable.slice(0, 6);
+            for (let i = 0; i < my8c.length; i++) {
+                for (let j = i + 1; j < my8c.length; j++) {
+                    for (let k = j + 1; k < my8c.length; k++) {
+                        their6c.forEach(theirP => {
+                            const result = evalTrade([my8c[i], my8c[j], my8c[k]], [theirP], otherTeam);
                             if (result) suggestions.push(result);
                         });
                     }
@@ -1067,13 +1067,13 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             }
 
             // ── 1-for-3 ────────────────────────────────────────────────────────
-            const my6 = myActive.slice(0, 6);
-            const their8 = theirTradeable.slice(0, 8);
-            my6.forEach(myP => {
-                for (let i = 0; i < their8.length; i++) {
-                    for (let j = i + 1; j < their8.length; j++) {
-                        for (let k = j + 1; k < their8.length; k++) {
-                            const result = evalTrade([myP], [their8[i], their8[j], their8[k]], otherTeam);
+            const my6d = myActive.slice(0, 6);
+            const their8d = theirTradeable.slice(0, 8);
+            my6d.forEach(myP => {
+                for (let i = 0; i < their8d.length; i++) {
+                    for (let j = i + 1; j < their8d.length; j++) {
+                        for (let k = j + 1; k < their8d.length; k++) {
+                            const result = evalTrade([myP], [their8d[i], their8d[j], their8d[k]], otherTeam);
                             if (result) suggestions.push(result);
                         }
                     }
