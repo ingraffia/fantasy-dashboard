@@ -893,4 +893,57 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
     }
 });
 
+router.get('/espn-trade-debug2', requireAuth, async (req, res) => {
+    try {
+        const MY_TEAM_ID = 7;
+        const teamData = await espnGet({ view: 'mTeam' });
+        const teamIds = teamData.teams.map(t => t.id);
+        const rosterResponses = await Promise.all(
+            teamIds.map(id => espnGet({ view: 'mRoster', forTeamId: id }))
+        );
+        const allRosterTeams = rosterResponses.map((r, i) => ({
+            id: teamIds[i],
+            roster: r.teams?.find(t => t.id === teamIds[i])?.roster || r.teams?.[0]?.roster,
+        }));
+
+        const teamRosters = {};
+        for (const team of allRosterTeams) {
+            const entries = team.roster?.entries || [];
+            const players = entries.map(entry => {
+                const player = entry.playerPoolEntry?.player;
+                if (!player) return null;
+                const s2025 = getPlayerStats(player, '002025');
+                const s2026 = getPlayerStats(player, '002026');
+                const games2026 = parseFloat(s2026['67'] || 0) || Math.round(parseFloat(s2026['0'] || s2026['34'] || 0) / 4);
+                const blendedStats = blendStats(s2025, s2026, games2026);
+                return {
+                    name: player.fullName,
+                    defaultPositionId: player.defaultPositionId,
+                    percentOwned: player.ownership?.percentOwned || 0,
+                    isUndroppable: !entry.playerPoolEntry?.droppable,
+                    k: blendedStats['48'], w: blendedStats['53'], sv: blendedStats['51'],
+                    r: blendedStats['20'], tb: blendedStats['8'],
+                };
+            }).filter(Boolean);
+            teamRosters[team.id] = { teamId: team.id, players };
+        }
+
+        const myTeam = teamRosters[MY_TEAM_ID];
+        const otherTeams = Object.values(teamRosters).filter(t => t.teamId !== MY_TEAM_ID);
+        const sampleOtherPitchers = otherTeams.flatMap(t =>
+            t.players.filter(p => [1, 11].includes(p.defaultPositionId)).map(p => ({ ...p, teamId: t.teamId }))
+        ).slice(0, 10);
+
+        res.json({
+            myTeamPlayerCount: myTeam?.players?.length,
+            myPitchers: myTeam?.players?.filter(p => [1, 11].includes(p.defaultPositionId)),
+            otherTeamCount: otherTeams.length,
+            sampleOtherPitchers,
+            totalOtherPlayers: otherTeams.reduce((a, t) => a + t.players.length, 0),
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
