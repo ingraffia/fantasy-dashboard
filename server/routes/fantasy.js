@@ -881,14 +881,18 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             const theirTotalZ = receiving.reduce((sum, p) => sum + (p.zScore || 0), 0);
             const zDelta = theirTotalZ - myTotalZ;
 
-            // FAIRNESS GATE: asymmetric — protect John's value
-            if (zDelta > 1.0) return null;   // other manager won't accept (too lopsided against them)
-            if (zDelta < -0.4) return null;  // John losing too much value
+            // No bums allowed in received package — every player must be above-average quality
+            const minReceivedZ = Math.min(...receiving.map(p => p.zScore || 0));
+            if (minReceivedZ < 0.4) return null;
 
-            // Extra gate: when giving 1 player for multiple, John should come out even or ahead
-            if (giving.length === 1 && receiving.length >= 2) {
-                if (zDelta < -0.1) return null; // giving 1, getting many — must be roughly fair
-            }
+            // FAIRNESS GATE: tiered star protection
+            if (zDelta > 1.0) return null;  // other manager won't accept
+            const givingTopPlayer = giving.some(p => topPlayerKeys.has(p.playerKey));
+            if (givingTopPlayer && zDelta < 0) return null;     // top-3 players: must break even or gain
+            if (!givingTopPlayer && zDelta < -0.3) return null; // other players: slight flexibility
+
+            // Extra gate: giving 1 for multiple — John must come out at least even
+            if (giving.length === 1 && receiving.length >= 2 && zDelta < -0.05) return null;
 
             // Category sim
             const newMyPlayers = myRoster.players
@@ -937,11 +941,12 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                 return cat?.rate ? val < -0.002 : val < -0.5;
             });
 
-            // Bonus for filling actual weaknesses — this is the primary goal
-            const weaknessFillBonus = weaknessesFilled.length * 0.2;
-            const totalScore = (catDelta * 0.55) + (zDelta * 0.25) + (otherCatDelta * 0.10) + weaknessFillBonus;
+            // Bonus for filling weaknesses (capped so it can't rescue bad-value trades)
+            const weaknessFillBonus = weaknessesFilled.length * 0.1;
+            // zDelta is primary: trades where John gains value score first
+            const totalScore = (zDelta * 0.45) + (catDelta * 0.30) + (otherCatDelta * 0.10) + weaknessFillBonus;
 
-            if (totalScore <= 0 && catDelta <= 0.2) return null;
+            if (totalScore <= 0 && catDelta <= 0.1) return null;
 
             return {
                 giving,
@@ -962,6 +967,9 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
         const myActive = myRoster.players
             .filter(p => !['IL', 'IL10', 'IL15', 'IL60', 'NA'].includes(p.selectedPosition))
             .sort((a, b) => (b.zScore || 0) - (a.zScore || 0));
+
+        // Top-3 star players — these require equal/better value in return
+        const topPlayerKeys = new Set(myActive.slice(0, 3).map(p => p.playerKey));
 
         // Generate suggestions
         const suggestions = [];
