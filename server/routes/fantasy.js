@@ -1039,19 +1039,90 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             });
 
             // ── 2-for-2 ────────────────────────────────────────────────────────
-            // Limit to top 10 each side for performance
             const my10 = myActive.slice(0, 10);
             const their10 = theirTradeable.slice(0, 10);
             for (let i = 0; i < my10.length; i++) {
                 for (let j = i + 1; j < my10.length; j++) {
                     for (let k = 0; k < their10.length; k++) {
                         for (let l = k + 1; l < their10.length; l++) {
-                            const result = evalTrade(
-                                [my10[i], my10[j]],
-                                [their10[k], their10[l]],
-                                otherTeam
-                            );
+                            const result = evalTrade([my10[i], my10[j]], [their10[k], their10[l]], otherTeam);
                             if (result) suggestions.push(result);
+                        }
+                    }
+                }
+            }
+
+            // ── 3-for-1 ────────────────────────────────────────────────────────
+            const my8 = myActive.slice(0, 8);
+            const their6 = theirTradeable.slice(0, 6);
+            for (let i = 0; i < my8.length; i++) {
+                for (let j = i + 1; j < my8.length; j++) {
+                    for (let k = j + 1; k < my8.length; k++) {
+                        their6.forEach(theirP => {
+                            const result = evalTrade([my8[i], my8[j], my8[k]], [theirP], otherTeam);
+                            if (result) suggestions.push(result);
+                        });
+                    }
+                }
+            }
+
+            // ── 1-for-3 ────────────────────────────────────────────────────────
+            const my6 = myActive.slice(0, 6);
+            const their8 = theirTradeable.slice(0, 8);
+            my6.forEach(myP => {
+                for (let i = 0; i < their8.length; i++) {
+                    for (let j = i + 1; j < their8.length; j++) {
+                        for (let k = j + 1; k < their8.length; k++) {
+                            const result = evalTrade([myP], [their8[i], their8[j], their8[k]], otherTeam);
+                            if (result) suggestions.push(result);
+                        }
+                    }
+                }
+            });
+
+            // ── 3-for-2 ────────────────────────────────────────────────────────
+            const my7 = myActive.slice(0, 7);
+            const their7 = theirTradeable.slice(0, 7);
+            for (let i = 0; i < my7.length; i++) {
+                for (let j = i + 1; j < my7.length; j++) {
+                    for (let k = j + 1; k < my7.length; k++) {
+                        for (let l = 0; l < their7.length; l++) {
+                            for (let m = l + 1; m < their7.length; m++) {
+                                const result = evalTrade([my7[i], my7[j], my7[k]], [their7[l], their7[m]], otherTeam);
+                                if (result) suggestions.push(result);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── 2-for-3 ────────────────────────────────────────────────────────
+            for (let i = 0; i < my7.length; i++) {
+                for (let j = i + 1; j < my7.length; j++) {
+                    for (let k = 0; k < their7.length; k++) {
+                        for (let l = k + 1; l < their7.length; l++) {
+                            for (let m = l + 1; m < their7.length; m++) {
+                                const result = evalTrade([my7[i], my7[j]], [their7[k], their7[l], their7[m]], otherTeam);
+                                if (result) suggestions.push(result);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── 3-for-3 ────────────────────────────────────────────────────────
+            const my6b = myActive.slice(0, 6);
+            const their6b = theirTradeable.slice(0, 6);
+            for (let i = 0; i < my6b.length; i++) {
+                for (let j = i + 1; j < my6b.length; j++) {
+                    for (let k = j + 1; k < my6b.length; k++) {
+                        for (let l = 0; l < their6b.length; l++) {
+                            for (let m = l + 1; m < their6b.length; m++) {
+                                for (let n = m + 1; n < their6b.length; n++) {
+                                    const result = evalTrade([my6b[i], my6b[j], my6b[k]], [their6b[l], their6b[m], their6b[n]], otherTeam);
+                                    if (result) suggestions.push(result);
+                                }
+                            }
                         }
                     }
                 }
@@ -1060,18 +1131,19 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 
         suggestions.sort((a, b) => b.totalScore - a.totalScore);
 
-        // Dedupe — max 2 per giving player, unique receiving
-        const seenReceiving = new Set();
-        const givingCount = {};
+        // Dedupe — unique trade combinations, max 3 appearances per giving player set
+        const seenTrades = new Set();
+        const givingSetCount = {};
         const topSuggestions = suggestions.filter(s => {
-            const rKey = s.receiving.playerKey;
-            const gKey = s.giving.playerKey;
-            if (seenReceiving.has(rKey)) return false;
-            if ((givingCount[gKey] || 0) >= 2) return false;
-            seenReceiving.add(rKey);
-            givingCount[gKey] = (givingCount[gKey] || 0) + 1;
+            const rKey = s.receiving.map(p => p.playerKey).sort().join('|');
+            const gKey = s.giving.map(p => p.playerKey).sort().join('|');
+            const tradeKey = gKey + '->' + rKey;
+            if (seenTrades.has(tradeKey)) return false;
+            if ((givingSetCount[gKey] || 0) >= 3) return false;
+            seenTrades.add(tradeKey);
+            givingSetCount[gKey] = (givingSetCount[gKey] || 0) + 1;
             return true;
-        }).slice(0, 12);
+        }).slice(0, 20);
 
         res.json({
             myTeam: {
