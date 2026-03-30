@@ -392,7 +392,6 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
                 stats: parseEspnStats(player),
                 overallRank: espnRanks.overallRank || null, leagueRank: espnRanks.leagueRank || null,
                 keeperValue: entry.playerPoolEntry?.keeperValue || null,
-                auctionValue: player?.ownership?.auctionValueAverage || null,
             };
         });
         let matchup = null;
@@ -734,29 +733,7 @@ function computeZScore(p, peerGroup) {
         else if (sv >= 5) totalZ += 0.5;
     }
 
-    const statZ = catCount > 0 ? (totalZ / catCount) * p.injuryDiscount * p.upside : 0;
-
-    // ── Keeper surplus bonus — only meaningful for elite players ───────────
-    // Logic: a $5 keeper who's worth $8 is irrelevant.
-    // A $5 keeper who's worth $50 is a cheat code (+$45 surplus on an elite player).
-    // Bonus = (surplus / 20) * qualityMultiplier, where quality scales with statZ.
-    // Elite players (statZ > 1.5): full surplus weight
-    // Good players (statZ 0.5-1.5): partial surplus weight
-    // Fringe/replacement (statZ < 0.5): negligible surplus weight
-    let keeperBonus = 0;
-    if (p.keeperValue && p.auctionValue && p.auctionValue > p.keeperValue) {
-        const surplus = p.auctionValue - p.keeperValue;
-        const rawBonus = surplus / 20; // $20 surplus = 1.0 base bonus
-        // Quality gate: only elite players get meaningful keeper credit
-        const qualityMult = statZ >= 2.0 ? 1.0      // elite: full keeper bonus
-            : statZ >= 1.5 ? 0.75      // great: 75%
-                : statZ >= 1.0 ? 0.45      // good: 45%
-                    : statZ >= 0.5 ? 0.20      // ok: 20%
-                        : 0.05;                    // fringe: nearly nothing
-        keeperBonus = rawBonus * qualityMult;
-    }
-
-    return statZ + keeperBonus;
+    return catCount > 0 ? (totalZ / catCount) * p.injuryDiscount * p.upside : 0;
 }
 
 // Team category totals from player roster
@@ -847,7 +824,6 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                     imageUrl: `https://a.espncdn.com/i/headshots/mlb/players/full/${entry.playerId}.png`,
                     injuryStatus: ESPN_INJURY_MAP[player.injuryStatus] ?? null,
                     keeperValue: entry.playerPoolEntry?.keeperValue || null,
-                    auctionValue: player.ownership?.auctionValueAverage || null,
                     percentOwned: player.ownership?.percentOwned || 0,
                     isUndroppable: false, // not used
                     proExperience: player.proExperience || null,
@@ -909,16 +885,8 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             const zDelta = theirTotalZ - myTotalZ;
 
             // FAIRNESS GATE: both sides must get roughly equal value
-            // Allow slight advantage to John (+0.8 max), but block lopsided gives
-            if (zDelta > 0.9) return null;   // John getting way more — other manager won't accept
-            if (zDelta < -1.5) return null;  // John giving way too much — not worth it
-
-            // Auction value fairness — use as secondary sanity check
-            // Only block if auction gap is egregious (>$35 against John)
-            const myAV = giving.reduce((sum, p) => sum + (p.auctionValue || 0), 0);
-            const theirAV = receiving.reduce((sum, p) => sum + (p.auctionValue || 0), 0);
-            const auctionDelta = theirAV - myAV;
-            if (auctionDelta < -35) return null;
+            if (zDelta > 0.8) return null;   // John getting way more — other manager won't accept
+            if (zDelta < -0.8) return null;  // John giving way too much — not worth it
 
             // Category sim
             const newMyPlayers = myRoster.players
@@ -949,15 +917,8 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             const otherCatDelta = newOtherCatWins - otherCurrentCatWins;
             if (otherCatDelta < -2.0) return null; // Other manager can't get crushed
 
-            // Keeper delta
-            const myKS = giving.reduce((sum, p) =>
-                sum + (p.keeperValue && p.auctionValue ? p.auctionValue - p.keeperValue : 0), 0);
-            const theirKS = receiving.reduce((sum, p) =>
-                sum + (p.keeperValue && p.auctionValue ? p.auctionValue - p.keeperValue : 0), 0);
-
             // Score: cat improvement is primary, value delta secondary
-            const totalScore = (catDelta * 0.55) + (zDelta * 0.30) +
-                (otherCatDelta * 0.10) + ((theirKS - myKS) * 0.005);
+            const totalScore = (catDelta * 0.60) + (zDelta * 0.30) + (otherCatDelta * 0.10);
 
             if (totalScore <= 0 && catDelta <= 0.2) return null;
 
@@ -974,9 +935,6 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                 fromTeam: otherTeam.teamName,
                 zDelta: Math.round(zDelta * 100) / 100,
                 catDelta: Math.round(catDelta * 100) / 100,
-                auctionDelta: Math.round(auctionDelta),
-                myKeeperSurplus: Math.round(myKS),
-                theirKeeperSurplus: Math.round(theirKS),
                 totalScore,
                 catImpact,
                 tradeSize: `${giving.length}for${receiving.length}`,

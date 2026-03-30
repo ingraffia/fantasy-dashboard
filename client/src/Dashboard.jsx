@@ -495,37 +495,18 @@ function CatImpactPill({ label, value }) {
     )
 }
 
-function KeeperTag({ value, auctionValue }) {
-    if (!value || !auctionValue) return null
-    const surplus = Math.round(auctionValue - value)
-    const color = surplus >= 20 ? C.green : surplus >= 5 ? C.amber : surplus < 0 ? C.red : C.gray400
-    const bg = surplus >= 20 ? C.greenLight : surplus >= 5 ? C.amberLight : surplus < 0 ? C.redLight : C.gray100
-    return (
-        <span style={{ fontSize: 10, fontWeight: 700, color, background: bg, padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
-            ${value} keep · ${Math.round(auctionValue)} mkt · {surplus >= 0 ? `+$${surplus}` : `-$${Math.abs(surplus)}`}
-        </span>
-    )
-}
-
 function PlayerPill({ player }) {
     return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <span style={{ fontWeight: 800, fontSize: 13, color: C.gray800 }}>{player.name}</span>
             <span style={{ fontSize: 11, color: C.gray400 }}>({player.position})</span>
-            {player.keeperValue && player.auctionValue && (() => {
-                const surplus = Math.round(player.auctionValue - player.keeperValue)
-                if (Math.abs(surplus) < 3) return null
-                const color = surplus >= 15 ? C.green : surplus >= 3 ? C.amber : C.red
-                const bg = surplus >= 15 ? C.greenLight : surplus >= 3 ? C.amberLight : C.redLight
-                return <span style={{ fontSize: 10, fontWeight: 700, color, background: bg, padding: '1px 5px', borderRadius: 3 }}>${player.keeperValue}k +${surplus}</span>
-            })()}
         </span>
     )
 }
 
 function SuggestionCard({ suggestion, expanded, onToggle }) {
     const { giving, receiving, fromTeam, catImpact, weaknessesFilled, strengthsHurt,
-        zDelta, catDelta, auctionDelta, totalScore, tradeSize } = suggestion
+        zDelta, catDelta, totalScore, tradeSize } = suggestion
 
     const borderColor = totalScore > 1 ? C.green : totalScore > 0 ? C.amber : C.gray200
 
@@ -572,11 +553,6 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
                         {strengthsHurt.length > 0 && (
                             <span style={{ fontSize: 10, fontWeight: 700, color: C.red, background: C.redLight, padding: '1px 6px', borderRadius: 4 }}>
                                 ↓ {strengthsHurt.join(', ')}
-                            </span>
-                        )}
-                        {auctionDelta !== undefined && Math.abs(auctionDelta) > 8 && (
-                            <span style={{ fontSize: 10, fontWeight: 700, color: auctionDelta > 0 ? C.green : C.red, background: auctionDelta > 0 ? C.greenLight : C.redLight, padding: '1px 6px', borderRadius: 4 }}>
-                                {auctionDelta > 0 ? `+$${auctionDelta}` : `-$${Math.abs(auctionDelta)}`} value
                             </span>
                         )}
                     </div>
@@ -638,12 +614,6 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
                                                 return <span key={id} style={{ fontSize: 10, background: C.accentLight, padding: '1px 4px', borderRadius: 3 }}><span style={{ color: C.gray400 }}>{l} </span><span style={{ fontWeight: 700 }}>{display}</span></span>
                                             })}
                                         </div>
-                                        {player.keeperValue && player.auctionValue && (() => {
-                                            const surplus = Math.round(player.auctionValue - player.keeperValue)
-                                            const c2 = surplus >= 10 ? C.green : surplus >= 0 ? C.amber : C.red
-                                            const b2 = surplus >= 10 ? C.greenLight : surplus >= 0 ? C.amberLight : C.redLight
-                                            return <div style={{ fontSize: 10 }}><span style={{ color: C.gray400 }}>Keeper: </span><span style={{ fontWeight: 700, color: c2, background: b2, padding: '1px 5px', borderRadius: 3 }}>${player.keeperValue}k · ${Math.round(player.auctionValue)}mkt · {surplus >= 0 ? '+' : ''}${surplus}</span></div>
-                                        })()}
                                     </div>
                                 ))}
                             </div>
@@ -799,18 +769,7 @@ const PITCHER_CAT = [
     { id: '28', label: 'IP', better: 'high' },
 ]
 
-function keeperTier(keeperValue, auctionValue) {
-    if (!keeperValue || !auctionValue) return null
-    const surplus = Math.round(auctionValue - keeperValue)
-    if (surplus >= 20) return { label: `+$${surplus} Surplus`, sublabel: `Keep $${keeperValue} / Mkt $${Math.round(auctionValue)}`, color: C.green, bg: C.greenLight }
-    if (surplus >= 10) return { label: `+$${surplus} Surplus`, sublabel: `Keep $${keeperValue} / Mkt $${Math.round(auctionValue)}`, color: C.accent, bg: C.accentLight }
-    if (surplus >= 1) return { label: `+$${surplus} Surplus`, sublabel: `Keep $${keeperValue} / Mkt $${Math.round(auctionValue)}`, color: C.amber, bg: C.amberLight }
-    if (surplus < 0) return { label: `$${Math.abs(surplus)} Overpaid`, sublabel: `Keep $${keeperValue} / Mkt $${Math.round(auctionValue)}`, color: C.red, bg: C.redLight }
-    return { label: 'Neutral', sublabel: `Keep $${keeperValue} / Mkt $${Math.round(auctionValue)}`, color: C.gray400, bg: C.gray100 }
-}
-
-function TradePlayerCard({ player, onRemove, isEspn }) {
-    const tier = isEspn ? keeperTier(player.keeperValue, player.auctionValue) : null
+function TradePlayerCard({ player, onRemove }) {
     return (
         <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
             <PlayerAvatar imageUrl={player.imageUrl} name={player.name} size={36} />
@@ -821,12 +780,6 @@ function TradePlayerCard({ player, onRemove, isEspn }) {
                     {player.injuryStatus && <Tag text={player.injuryStatus} bg={C.redLight} color={C.red} />}
                 </div>
                 <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>{player.proTeamAbbr || player.proTeam}</div>
-                {tier && (
-                    <div style={{ marginTop: 4 }}>
-                        <Tag text={tier.label} bg={tier.bg} color={tier.color} />
-                        <div style={{ fontSize: 10, color: C.gray400, marginTop: 2 }}>{tier.sublabel}</div>
-                    </div>
-                )}
                 {player.overallRank && (
                     <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>
                         Overall <RankBadge rank={player.overallRank} />
@@ -840,7 +793,6 @@ function TradePlayerCard({ player, onRemove, isEspn }) {
 
 function TradeLeagueVerdict({ leagueKey, leagueName, scoringType, givingPlayers, receivingPlayers }) {
     const isEspn = leagueKey.startsWith(ESPN_LEAGUE_KEY_PREFIX)
-    const isKeeper = isEspn
 
     // Calculate rank delta for this league
     const getRank = (p) => p.ranksByLeague?.[leagueKey]?.overallRank || p.overallRank || null
@@ -873,7 +825,6 @@ function TradeLeagueVerdict({ leagueKey, leagueName, scoringType, givingPlayers,
                         ? <img src="https://a.espncdn.com/favicon.ico" width={12} height={12} alt="ESPN" />
                         : <img src="https://s.yimg.com/cv/apiv2/default/icons/favicon_y19_32x32_custom.svg" width={12} height={12} alt="Yahoo" />}
                     <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{leagueName}</span>
-                    {isKeeper && <Tag text="Keeper" bg="#7c3aed20" color="#7c3aed" />}
                 </div>
                 {verdict && (
                     <span style={{ fontSize: 11, fontWeight: 700, color: verdictColor, background: verdictBg, padding: '2px 10px', borderRadius: 99 }}>
@@ -917,26 +868,6 @@ function TradeLeagueVerdict({ leagueKey, leagueName, scoringType, givingPlayers,
                 </div>
             </div>
 
-            {/* Keeper tier for ESPN */}
-            {isKeeper && (givingPlayers.some(p => keeperTier(p.keeperValue, p.auctionValue)) || receivingPlayers.some(p => keeperTier(p.keeperValue, p.auctionValue))) && (
-                <div style={{ padding: '8px 14px', borderTop: `1px solid ${C.gray200}`, background: '#faf5ff' }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Keeper Value</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        <div>
-                            {givingPlayers.map(p => {
-                                const tier = keeperTier(p.keeperValue, p.auctionValue)
-                                return tier ? <div key={p.playerKey} style={{ fontSize: 11, marginBottom: 2 }}><span style={{ color: C.gray600 }}>{p.name?.split(' ')[1] || p.name}:</span> <Tag text={tier.label} bg={tier.bg} color={tier.color} /></div> : null
-                            })}
-                        </div>
-                        <div>
-                            {receivingPlayers.map(p => {
-                                const tier = keeperTier(p.keeperValue, p.auctionValue)
-                                return tier ? <div key={p.playerKey} style={{ fontSize: 11, marginBottom: 2 }}><span style={{ color: C.gray600 }}>{p.name?.split(' ')[1] || p.name}:</span> <Tag text={tier.label} bg={tier.bg} color={tier.color} /></div> : null
-                            })}
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }
@@ -1029,7 +960,6 @@ function TradeAnalyzer({ api, data, allRosterPlayers, getResImg }) {
         setAnalysisResult(null)
     }
 
-    const espnLeague = data.find(l => l.leagueKey.startsWith('espn.l.'))
     const isEspnPlayer = (playerKey) => playerKey.startsWith('espn.')
 
     const SearchDropdown = ({ results, onSelect, loading }) => {
@@ -1157,50 +1087,6 @@ function TradeAnalyzer({ api, data, allRosterPlayers, getResImg }) {
                                 receivingPlayers={enrichedReceiving}
                             />
                         ))}
-                        {/* ESPN league — separate since it doesn't use Yahoo ranks */}
-                        {espnLeague && (
-                            <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 10, padding: '12px 14px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                                    <img src="https://a.espncdn.com/favicon.ico" width={12} height={12} alt="ESPN" />
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{espnLeague.leagueName}</span>
-                                    <Tag text="Keeper" bg="#7c3aed20" color="#7c3aed" />
-                                </div>
-                                <div style={{ fontSize: 12, color: C.gray600, marginBottom: 8 }}>
-                                    ESPN uses draft ranks (ADP) — keeper value is the primary consideration here.
-                                </div>
-                                {/* Show keeper tiers for all players */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                    <div>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: C.red, textTransform: 'uppercase', marginBottom: 6 }}>Giving</div>
-                                        {enrichedGiving.map(p => {
-                                            const tier = keeperTier(p.keeperValue, p.auctionValue)
-                                            return (
-                                                <div key={p.playerKey} style={{ fontSize: 12, marginBottom: 4 }}>
-                                                    <div style={{ fontWeight: 600 }}>{p.name}</div>
-                                                    {tier
-                                                        ? <Tag text={tier.label} bg={tier.bg} color={tier.color} />
-                                                        : <span style={{ fontSize: 11, color: C.gray400 }}>Veteran / no keeper value</span>}
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                    <div>
-                                        <div style={{ fontSize: 10, fontWeight: 700, color: C.green, textTransform: 'uppercase', marginBottom: 6 }}>Receiving</div>
-                                        {enrichedReceiving.map(p => {
-                                            const tier = keeperTier(p.keeperValue, p.auctionValue)
-                                            return (
-                                                <div key={p.playerKey} style={{ fontSize: 12, marginBottom: 4 }}>
-                                                    <div style={{ fontWeight: 600 }}>{p.name}</div>
-                                                    {tier
-                                                        ? <Tag text={tier.label} bg={tier.bg} color={tier.color} />
-                                                        : <span style={{ fontSize: 11, color: C.gray400 }}>Veteran / no keeper value</span>}
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             )}
