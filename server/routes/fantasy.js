@@ -909,4 +909,22 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
     }
 });
 
+router.get('/espn-trade-debug', requireAuth, async (req, res) => {
+    try {
+        const MY_TEAM_ID = 7;
+        const rosterData = await espnGet({ view: 'mRoster', forTeamId: MY_TEAM_ID });
+        const myTeam = rosterData.teams?.find(t => t.id === MY_TEAM_ID);
+        const entry = myTeam?.roster?.entries?.find(e => {
+            const pos = e.playerPoolEntry?.player?.defaultPositionId;
+            return pos === 1 || pos === 11;
+        });
+        const player = entry?.playerPoolEntry?.player;
+        const s2025 = player?.stats?.find(s => s.id === '002025' && s.statSourceId === 0)?.stats || {};
+        const s2026 = player?.stats?.find(s => s.id === '002026' && s.statSourceId === 0)?.stats || {};
+        res.json({ name: player?.fullName, s2025: s2025, s2026: s2026 });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
