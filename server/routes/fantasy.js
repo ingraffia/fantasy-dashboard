@@ -815,7 +815,6 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 
             otherTeam.players.forEach(theirPlayer => {
                 if (theirPlayer.percentOwned < 5) return; // skip true nobodies
-                if (theirPlayer.isUndroppable) return;
 
                 myActivePlayers.forEach(myPlayer => {
                     const myIsP = [1, 11].includes(myPlayer.defaultPositionId);
