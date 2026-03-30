@@ -1069,7 +1069,12 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             }
         });
 
-        suggestions.sort((a, b) => b.totalScore - a.totalScore);
+        // Sort by team helpfulness: cat wins gained first, then weaknesses filled, then value
+        suggestions.sort((a, b) => {
+            const aHelp = (a.catDelta * 2) + a.weaknessesFilled.length + (a.zDelta * 0.5);
+            const bHelp = (b.catDelta * 2) + b.weaknessesFilled.length + (b.zDelta * 0.5);
+            return bHelp - aHelp;
+        });
 
         // Dedupe — unique trade combinations, max 3 appearances per giving player set
         const seenTrades = new Set();
