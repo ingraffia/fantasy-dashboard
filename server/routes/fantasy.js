@@ -877,16 +877,18 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 
         // ── Helper: evaluate any N-for-M trade ─────────────────────────────────
         function evalTrade(giving, receiving, otherTeam) {
-            // giving/receiving are arrays of player objects
-
-            // Value delta — use zScore as primary (not auctionValue which can be stale/wrong)
             const myTotalZ = giving.reduce((sum, p) => sum + (p.zScore || 0), 0);
             const theirTotalZ = receiving.reduce((sum, p) => sum + (p.zScore || 0), 0);
             const zDelta = theirTotalZ - myTotalZ;
 
-            // FAIRNESS GATE: both sides must get roughly equal value
-            if (zDelta > 0.8) return null;   // John getting way more — other manager won't accept
-            if (zDelta < -0.8) return null;  // John giving way too much — not worth it
+            // FAIRNESS GATE: symmetric value check
+            if (zDelta > 0.8) return null;   // other manager won't accept
+            if (zDelta < -0.8) return null;  // John losing too much value
+
+            // Extra gate: when giving 1 player for multiple, don't give away elite talent for scraps
+            if (giving.length === 1 && receiving.length >= 2) {
+                if (zDelta < -0.3) return null; // can't lose more than 0.3 z when giving 1
+            }
 
             // Category sim
             const newMyPlayers = myRoster.players
@@ -907,7 +909,7 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 
             const newCatWins = simVsLeague(newMyTotals, modifiedTotals, MY_TEAM_ID);
             const catDelta = newCatWins - myCurrentCatWins;
-            if (catDelta < -0.3) return null; // John's cats must improve or be neutral
+            if (catDelta < -0.3) return null;
 
             // Other manager check
             const otherCurrentCatWins = simVsLeague(
@@ -915,12 +917,7 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
             );
             const newOtherCatWins = simVsLeague(newOtherTotals, modifiedTotals, otherTeam.teamId);
             const otherCatDelta = newOtherCatWins - otherCurrentCatWins;
-            if (otherCatDelta < -2.0) return null; // Other manager can't get crushed
-
-            // Score: cat improvement is primary, value delta secondary
-            const totalScore = (catDelta * 0.60) + (zDelta * 0.30) + (otherCatDelta * 0.10);
-
-            if (totalScore <= 0 && catDelta <= 0.2) return null;
+            if (otherCatDelta < -2.0) return null;
 
             const catImpact = {};
             ESPN_CATS.forEach(c => {
@@ -928,6 +925,15 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                 const after = newMyTotals[c.label] || 0;
                 catImpact[c.label] = c.better === 'high' ? after - before : before - after;
             });
+
+            const weaknessesFilled = weaknesses.filter(w => (catImpact[w] || 0) > 0.1);
+            const strengthsHurt = strengths.filter(s => (catImpact[s] || 0) < -0.1);
+
+            // Bonus for filling actual weaknesses — this is the primary goal
+            const weaknessFillBonus = weaknessesFilled.length * 0.2;
+            const totalScore = (catDelta * 0.55) + (zDelta * 0.25) + (otherCatDelta * 0.10) + weaknessFillBonus;
+
+            if (totalScore <= 0 && catDelta <= 0.2) return null;
 
             return {
                 giving,
@@ -938,8 +944,8 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                 totalScore,
                 catImpact,
                 tradeSize: `${giving.length}for${receiving.length}`,
-                weaknessesFilled: weaknesses.filter(w => (catImpact[w] || 0) > 0.1),
-                strengthsHurt: strengths.filter(s => (catImpact[s] || 0) < -0.1),
+                weaknessesFilled,
+                strengthsHurt,
             };
         }
 
@@ -962,7 +968,11 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 
             if (theirTradeable.length === 0) return;
 
-            // ── 1-for-1 ───────────────────────────────────────────────────────
+            const their10 = theirTradeable.slice(0, 10);
+            const their12 = theirTradeable.slice(0, 12);
+            const their8 = theirTradeable.slice(0, 8);
+
+            // ── 1-for-1: all of my players vs all of theirs ───────────────────
             myActive.forEach(myP => {
                 theirTradeable.forEach(theirP => {
                     const result = evalTrade([myP], [theirP], otherTeam);
@@ -970,24 +980,18 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                 });
             });
 
-            // ── 2-for-1 (I give 2, I get 1) ──────────────────────────────────
-            // I give 2 middling players, get 1 better player
-            // Limit to top 12 of mine vs top 8 of theirs for performance
-            const my12 = myActive.slice(0, 12);
-            const their8 = theirTradeable.slice(0, 8);
-            for (let i = 0; i < my12.length; i++) {
-                for (let j = i + 1; j < my12.length; j++) {
-                    their8.forEach(theirP => {
-                        const result = evalTrade([my12[i], my12[j]], [theirP], otherTeam);
+            // ── 2-for-1: full roster pairs — weaker players get packaged ─────
+            for (let i = 0; i < myActive.length; i++) {
+                for (let j = i + 1; j < myActive.length; j++) {
+                    their10.forEach(theirP => {
+                        const result = evalTrade([myActive[i], myActive[j]], [theirP], otherTeam);
                         if (result) suggestions.push(result);
                     });
                 }
             }
 
-            // ── 1-for-2 (I give 1, I get 2) ──────────────────────────────────
-            const my8 = myActive.slice(0, 8);
-            const their12 = theirTradeable.slice(0, 12);
-            my8.forEach(myP => {
+            // ── 1-for-2: ALL my players can be offered — not just the best ───
+            myActive.forEach(myP => {
                 for (let i = 0; i < their12.length; i++) {
                     for (let j = i + 1; j < their12.length; j++) {
                         const result = evalTrade([myP], [their12[i], their12[j]], otherTeam);
@@ -996,49 +1000,74 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                 }
             });
 
-            // ── 2-for-2 ────────────────────────────────────────────────────────
-            const my10 = myActive.slice(0, 10);
-            const their10 = theirTradeable.slice(0, 10);
-            for (let i = 0; i < my10.length; i++) {
-                for (let j = i + 1; j < my10.length; j++) {
-                    for (let k = 0; k < their10.length; k++) {
-                        for (let l = k + 1; l < their10.length; l++) {
-                            const result = evalTrade([my10[i], my10[j]], [their10[k], their10[l]], otherTeam);
+            // ── 2-for-2: broader pool so non-stars get considered ────────────
+            const my15 = myActive.slice(0, 15);
+            for (let i = 0; i < my15.length; i++) {
+                for (let j = i + 1; j < my15.length; j++) {
+                    for (let k = 0; k < their12.length; k++) {
+                        for (let l = k + 1; l < their12.length; l++) {
+                            const result = evalTrade([my15[i], my15[j]], [their12[k], their12[l]], otherTeam);
                             if (result) suggestions.push(result);
                         }
                     }
                 }
             }
 
-            // ── 3-for-1 ────────────────────────────────────────────────────────
-            const my8c = myActive.slice(0, 8);
-            const their6c = theirTradeable.slice(0, 6);
-            for (let i = 0; i < my8c.length; i++) {
-                for (let j = i + 1; j < my8c.length; j++) {
-                    for (let k = j + 1; k < my8c.length; k++) {
-                        their6c.forEach(theirP => {
-                            const result = evalTrade([my8c[i], my8c[j], my8c[k]], [theirP], otherTeam);
+            // ── 3-for-1: package 3 of mine for 1 of theirs ───────────────────
+            const my12 = myActive.slice(0, 12);
+            for (let i = 0; i < my12.length; i++) {
+                for (let j = i + 1; j < my12.length; j++) {
+                    for (let k = j + 1; k < my12.length; k++) {
+                        their8.forEach(theirP => {
+                            const result = evalTrade([my12[i], my12[j], my12[k]], [theirP], otherTeam);
                             if (result) suggestions.push(result);
                         });
                     }
                 }
             }
 
-            // ── 1-for-3 ────────────────────────────────────────────────────────
-            const my6d = myActive.slice(0, 6);
-            const their8d = theirTradeable.slice(0, 8);
-            my6d.forEach(myP => {
-                for (let i = 0; i < their8d.length; i++) {
-                    for (let j = i + 1; j < their8d.length; j++) {
-                        for (let k = j + 1; k < their8d.length; k++) {
-                            const result = evalTrade([myP], [their8d[i], their8d[j], their8d[k]], otherTeam);
+            // ── 1-for-3: ALL my players as the "1" offered ───────────────────
+            myActive.forEach(myP => {
+                for (let i = 0; i < their10.length; i++) {
+                    for (let j = i + 1; j < their10.length; j++) {
+                        for (let k = j + 1; k < their10.length; k++) {
+                            const result = evalTrade([myP], [their10[i], their10[j], their10[k]], otherTeam);
                             if (result) suggestions.push(result);
                         }
                     }
                 }
             });
 
-            // ── 3-for-2 ────────────────────────────────────────────────────────
+            // ── 3-for-2 ───────────────────────────────────────────────────────
+            const my10 = myActive.slice(0, 10);
+            for (let i = 0; i < my10.length; i++) {
+                for (let j = i + 1; j < my10.length; j++) {
+                    for (let k = j + 1; k < my10.length; k++) {
+                        for (let l = 0; l < their8.length; l++) {
+                            for (let m = l + 1; m < their8.length; m++) {
+                                const result = evalTrade([my10[i], my10[j], my10[k]], [their8[l], their8[m]], otherTeam);
+                                if (result) suggestions.push(result);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── 2-for-3 ───────────────────────────────────────────────────────
+            for (let i = 0; i < my10.length; i++) {
+                for (let j = i + 1; j < my10.length; j++) {
+                    for (let k = 0; k < their8.length; k++) {
+                        for (let l = k + 1; l < their8.length; l++) {
+                            for (let m = l + 1; m < their8.length; m++) {
+                                const result = evalTrade([my10[i], my10[j]], [their8[k], their8[l], their8[m]], otherTeam);
+                                if (result) suggestions.push(result);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── 3-for-3 ───────────────────────────────────────────────────────
             const my7 = myActive.slice(0, 7);
             const their7 = theirTradeable.slice(0, 7);
             for (let i = 0; i < my7.length; i++) {
@@ -1046,38 +1075,8 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                     for (let k = j + 1; k < my7.length; k++) {
                         for (let l = 0; l < their7.length; l++) {
                             for (let m = l + 1; m < their7.length; m++) {
-                                const result = evalTrade([my7[i], my7[j], my7[k]], [their7[l], their7[m]], otherTeam);
-                                if (result) suggestions.push(result);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── 2-for-3 ────────────────────────────────────────────────────────
-            for (let i = 0; i < my7.length; i++) {
-                for (let j = i + 1; j < my7.length; j++) {
-                    for (let k = 0; k < their7.length; k++) {
-                        for (let l = k + 1; l < their7.length; l++) {
-                            for (let m = l + 1; m < their7.length; m++) {
-                                const result = evalTrade([my7[i], my7[j]], [their7[k], their7[l], their7[m]], otherTeam);
-                                if (result) suggestions.push(result);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // ── 3-for-3 ────────────────────────────────────────────────────────
-            const my6b = myActive.slice(0, 6);
-            const their6b = theirTradeable.slice(0, 6);
-            for (let i = 0; i < my6b.length; i++) {
-                for (let j = i + 1; j < my6b.length; j++) {
-                    for (let k = j + 1; k < my6b.length; k++) {
-                        for (let l = 0; l < their6b.length; l++) {
-                            for (let m = l + 1; m < their6b.length; m++) {
-                                for (let n = m + 1; n < their6b.length; n++) {
-                                    const result = evalTrade([my6b[i], my6b[j], my6b[k]], [their6b[l], their6b[m], their6b[n]], otherTeam);
+                                for (let n = m + 1; n < their7.length; n++) {
+                                    const result = evalTrade([my7[i], my7[j], my7[k]], [their7[l], their7[m], their7[n]], otherTeam);
                                     if (result) suggestions.push(result);
                                 }
                             }
