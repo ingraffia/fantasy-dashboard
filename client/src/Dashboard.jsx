@@ -1182,7 +1182,7 @@ function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
 
 const sectionLabelRow = (text, color = C.gray600) => (
     <tr>
-        <td colSpan={7} style={{ padding: '5px 14px', fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
+        <td colSpan={isMobile ? 3 : 10} style={{ padding: '5px 14px', fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
             {text}
         </td>
     </tr>
@@ -1196,7 +1196,7 @@ export default function Dashboard({ api }) {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [lastUpdated, setLastUpdated] = useState(null)
-    const [activeTab, setActiveTab] = useState('feed')
+    const [activeTab, setActiveTab] = useState('lineup')
     const [activeLeague, setActiveLeague] = useState(null)
     const [search, setSearch] = useState('')
     const [posFilter, setPosFilter] = useState('All')
@@ -1398,6 +1398,28 @@ export default function Dashboard({ api }) {
     const allRosterPlayers = useMemo(() => data.flatMap(lg => lg.players), [data])
     const myPlayerNames = useMemo(() => new Set(allRosterPlayers.map(p => normName(p.name)).filter(Boolean)), [allRosterPlayers])
 
+    const todayStatsMap = useMemo(() => {
+        const map = {}
+        Object.values(boxscores).forEach(bs => {
+            ;[...(bs.away?.players || []), ...(bs.home?.players || [])].forEach(p => {
+                map[normName(p.name)] = { batting: p.batting, pitching: p.pitching }
+            })
+        })
+        return map
+    }, [boxscores])
+
+    const teamGameMap = useMemo(() => {
+        const map = {}
+        games.forEach(g => {
+            const aS = g.awayScore ?? 0, hS = g.homeScore ?? 0
+            map[g.awayTeam] = { opp: g.homeTeam, isHome: false, game: g, myScore: aS, oppScore: hS, won: g.isFinal && aS > hS }
+            map[g.homeTeam] = { opp: g.awayTeam, isHome: true, game: g, myScore: hS, oppScore: aS, won: g.isFinal && hS > aS }
+        })
+        return map
+    }, [games])
+
+    const hasGameActivity = games.some(g => g.isLive || g.isFinal)
+
     const allPlayers = (() => {
         const playerMap = {}
         data.forEach(lg => {
@@ -1443,54 +1465,119 @@ export default function Dashboard({ api }) {
     const openPlayer = (playerKey, name) => setSelectedPlayer({ playerKey, name })
     const yahooLeagues = data.filter(l => !l.leagueKey.startsWith('espn'))
 
-    const renderLineupRow = (p, source, leagueKey) => {
-        const ranks = getPlayerRanks(p.playerKey, leagueKey)
-        const yahooId = leagueKey.split('.l.')[1]
-        const isIL = IL_SLOTS.includes(p.selectedPosition)
+    const renderLineupRow = (player, source, leagueKey, forceHitter = false) => {
+        const isIL = IL_SLOTS.includes(player.selectedPosition)
+        const todayData = todayStatsMap[normName(player.name)]
+        const gameInfo = teamGameMap[player.proTeam]
+        const isP = !forceHitter && isPitcher(player.position)
+        const rowBg = isIL ? '#fffafa' : C.white
+
+        // OPP cell
+        const oppDisplay = gameInfo
+            ? (gameInfo.isHome ? gameInfo.opp : `@${gameInfo.opp}`)
+            : '—'
+
+        // STATUS cell: game result or time, injury takes priority
+        const gameCell = () => {
+            if (!gameInfo?.game) return <span style={{ color: C.gray400 }}>—</span>
+            const g = gameInfo.game
+            if (!g.isLive && !g.isFinal) {
+                const t = g.startTime ? new Date(g.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'
+                return <span style={{ fontSize: 11, color: C.gray400 }}>{t}</span>
+            }
+            const label = g.isFinal ? (gameInfo.won ? 'W' : 'L') : ''
+            const color = g.isFinal ? (gameInfo.won ? C.green : C.red) : C.gray800
+            return (
+                <span style={{ fontSize: 11, fontWeight: 700, color, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    {label && `${label} `}{gameInfo.myScore}–{gameInfo.oppScore}
+                    {g.isLive && <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />}
+                </span>
+            )
+        }
+        const statusCell = player.injuryStatus ? <StatusBadge status={player.injuryStatus} /> : gameCell()
+
+        // Stat values — today or season depending on game activity
+        const numTd = (v, bold = false) => (
+            <td style={{ ...tdStyle, fontSize: 12, textAlign: 'right', fontWeight: bold ? 700 : 400, color: C.gray800 }}>{v ?? '—'}</td>
+        )
+
+        let statCells = null
+        if (!isMobile) {
+            if (isP) {
+                if (hasGameActivity) {
+                    const sp = todayData?.pitching
+                    statCells = <>
+                        {numTd(sp?.ip ?? '—', true)} {numTd(sp?.k ?? '—', true)}
+                        {numTd(sp?.h ?? '—')} {numTd(sp?.bb ?? '—')}
+                        {numTd(sp?.er ?? '—')} {numTd(sp?.w != null ? (sp.w ? 'W' : '') : '—')}
+                    </>
+                } else {
+                    const s = player.stats || {}
+                    statCells = <>
+                        {numTd(s['32'] ?? '—', true)} {numTd(s['42'] ?? '—', true)}
+                        {numTd(s['26'] ?? '—', true)} {numTd(s['27'] ?? '—')}
+                        {numTd(s['29'] ?? '—')} {numTd(s['28'] ?? '—')}
+                    </>
+                }
+            } else {
+                if (hasGameActivity) {
+                    const b = todayData?.batting
+                    statCells = <>
+                        {numTd(b ? `${b.h ?? 0}/${b.ab ?? 0}` : '—', true)}
+                        {numTd(b?.r ?? '—', true)} {numTd(b?.hr ?? '—', true)}
+                        {numTd(b?.rbi ?? '—', true)} {numTd(b?.sb ?? '—')}
+                        {numTd(b?.bb ?? '—')}
+                    </>
+                } else {
+                    const s = player.stats || {}
+                    statCells = <>
+                        {numTd(s['3'] ?? '—', true)} {numTd(s['4'] ?? '—')}
+                        {numTd(s['7'] ?? '—', true)} {numTd(s['12'] ?? '—', true)}
+                        {numTd(s['13'] ?? '—', true)} {numTd(s['16'] ?? '—')}
+                    </>
+                }
+            }
+        }
+
         if (isMobile) {
             return (
-                <tr key={p.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer', background: isIL ? '#fffafa' : C.white }}
-                    onClick={() => openPlayer(p.playerKey, p.name)}
+                <tr key={player.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer', background: rowBg }}
+                    onClick={() => openPlayer(player.playerKey, player.name)}
                     onMouseEnter={e => e.currentTarget.style.background = isIL ? C.redLight : C.gray50}
-                    onMouseLeave={e => e.currentTarget.style.background = isIL ? '#fffafa' : C.white}>
-                    <td style={{ padding: '8px 10px', verticalAlign: 'middle', width: 44 }}><SlotPill slot={p.selectedPosition} /></td>
+                    onMouseLeave={e => e.currentTarget.style.background = rowBg}>
+                    <td style={{ padding: '8px 10px', verticalAlign: 'middle', width: 44 }}><SlotPill slot={player.selectedPosition} /></td>
                     <td style={{ padding: '8px 6px', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <PlayerAvatar imageUrl={getResImg(p)} name={p.name} size={34} />
+                            <PlayerAvatar imageUrl={getResImg(player)} name={player.name} size={34} />
                             <div>
-                                <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
-                                <div style={{ fontSize: 11, color: C.gray400 }}>{p.position}</div>
+                                <div style={{ fontWeight: 600, fontSize: 13 }}>{player.name}</div>
+                                <div style={{ fontSize: 11, color: C.gray400 }}>{player.proTeam} · {player.position}</div>
                             </div>
                         </div>
                     </td>
-                    <td style={{ padding: '8px 10px', verticalAlign: 'middle', textAlign: 'right' }}>
-                        <RankBadge rank={ranks.overallRank} />
-                        <StatusBadge status={p.injuryStatus} />
-                    </td>
+                    <td style={{ padding: '8px 10px', verticalAlign: 'middle', textAlign: 'right' }}>{statusCell}</td>
                 </tr>
             )
         }
+
         return (
-            <tr key={p.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer', background: isIL ? '#fffafa' : C.white }}
-                onClick={() => openPlayer(p.playerKey, p.name)}
+            <tr key={player.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer', background: rowBg }}
+                onClick={() => openPlayer(player.playerKey, player.name)}
                 onMouseEnter={e => e.currentTarget.style.background = isIL ? C.redLight : C.gray50}
-                onMouseLeave={e => e.currentTarget.style.background = isIL ? '#fffafa' : C.white}>
-                <td style={{ ...tdStyle, width: 55 }}><SlotPill slot={p.selectedPosition} /></td>
-                <td style={tdStyle}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <PlayerAvatar imageUrl={getResImg(p)} name={p.name} size={40} />
-                        <span style={{ fontWeight: 500 }}>{p.name}</span>
+                onMouseLeave={e => e.currentTarget.style.background = rowBg}>
+                <td style={{ ...tdStyle, width: 52 }}><SlotPill slot={player.selectedPosition} /></td>
+                <td style={{ ...tdStyle, minWidth: 200 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <PlayerAvatar imageUrl={getResImg(player)} name={player.name} size={38} />
+                        <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: C.gray800 }}>{player.name}</div>
+                            <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>{player.proTeam} · {player.position}</div>
+                        </div>
                     </div>
                 </td>
-                <td style={{ ...tdStyle, color: C.gray400, fontSize: 12 }}>{p.position}</td>
-                <td style={tdStyle}><RankBadge rank={ranks.overallRank} /></td>
-                <td style={tdStyle}><RankBadge rank={ranks.leagueRank} /></td>
-                <td style={tdStyle}><StatusBadge status={p.injuryStatus} /></td>
-                <td style={tdStyle}>
-                    {source === 'espn'
-                        ? <a href={`https://fantasy.espn.com/baseball/players/card?playerId=${p.playerKey.replace('espn.p.', '')}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 11, color: '#f0483e', textDecoration: 'none' }}>ESPN ↗</a>
-                        : <a href={`https://baseball.fantasysports.yahoo.com/b1/${yahooId}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>Yahoo ↗</a>}
-                </td>
+                <td style={{ ...tdStyle, fontSize: 12, fontWeight: 600, color: C.gray600 }}>{oppDisplay}</td>
+                <td style={{ ...tdStyle, fontSize: 12 }}>{statusCell}</td>
+                {statCells}
             </tr>
         )
     }
@@ -1738,49 +1825,93 @@ export default function Dashboard({ api }) {
                                 }}>{lg.leagueName}</button>
                             ))}
                         </div>
-                        {activeLeagueData && (
-                            <div style={tableCard}>
-                                <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.gray200}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div>
-                                        <div style={{ fontWeight: 800, fontSize: 15, color: C.navy }}>{activeLeagueData.teamName}</div>
-                                        <a href={activeLeagueData.leagueUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>
-                                            Open in {activeLeagueData.source === 'espn' ? 'ESPN' : 'Yahoo'} ↗
-                                        </a>
-                                    </div>
-                                    {activeLeagueData.matchup && (
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontSize: 20, fontWeight: 900, color: activeLeagueData.matchup.isWinning ? C.green : C.red, lineHeight: 1 }}>
-                                                {activeLeagueData.scoringType === 'head' ? Math.round(activeLeagueData.matchup.myScore) : activeLeagueData.matchup.myScore}
-                                                <span style={{ fontSize: 13, color: C.gray400, fontWeight: 500 }}> – {activeLeagueData.scoringType === 'head' ? Math.round(activeLeagueData.matchup.oppScore) : activeLeagueData.matchup.oppScore}</span>
+                        {activeLeagueData && (() => {
+                            const src = activeLeagueData.source
+                            const lk = activeLeagueData.leagueKey
+                            const activeBatters = [...activeLeagueData.players].filter(p => !['BN', 'P', 'SP', 'RP', ...IL_SLOTS].includes(p.selectedPosition)).sort((a, b) => slotOrder.indexOf(a.selectedPosition) - slotOrder.indexOf(b.selectedPosition))
+                            const benchBatters = [...activeLeagueData.players].filter(p => p.selectedPosition === 'BN' && !isPitcher(p.position))
+                            const activePitchers = [...activeLeagueData.players].filter(p => ['P', 'SP', 'RP'].includes(p.selectedPosition)).sort((a, b) => slotOrder.indexOf(a.selectedPosition) - slotOrder.indexOf(b.selectedPosition))
+                            const benchPitchers = [...activeLeagueData.players].filter(p => p.selectedPosition === 'BN' && isPitcher(p.position))
+                            const ilPlayers = [...activeLeagueData.players].filter(p => IL_SLOTS.includes(p.selectedPosition))
+                            const hitterCols = hasGameActivity ? ['H/AB', 'R', 'HR', 'RBI', 'SB', 'BB'] : ['AVG', 'OBP', 'R', 'HR', 'RBI', 'SB']
+                            const pitcherCols = hasGameActivity ? ['IP', 'K', 'H', 'BB', 'ER', 'W'] : ['W', 'SV', 'K', 'ERA', 'WHIP', 'IP']
+                            const tableHead = (cols) => (
+                                <thead>
+                                    <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
+                                        {isMobile
+                                            ? ['Slot', 'Player', 'Status'].map(h => <th key={h} style={thStyle}>{h}</th>)
+                                            : <>
+                                                <th style={thStyle}>Slot</th>
+                                                <th style={thStyle}>Player</th>
+                                                <th style={thStyle}>Opp</th>
+                                                <th style={thStyle}>Status</th>
+                                                {cols.map(h => <th key={h} style={{ ...thStyle, textAlign: 'right' }}>{h}</th>)}
+                                            </>}
+                                    </tr>
+                                </thead>
+                            )
+                            return (
+                                <>
+                                    {/* League / matchup header */}
+                                    <div style={{ ...tableCard, marginBottom: 10 }}>
+                                        <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 800, fontSize: 15, color: C.navy }}>{activeLeagueData.teamName}</div>
+                                                <a href={activeLeagueData.leagueUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>
+                                                    Open in {src === 'espn' ? 'ESPN' : 'Yahoo'} ↗
+                                                </a>
                                             </div>
-                                            <div style={{ fontSize: 10, color: C.gray400 }}>{activeLeagueData.matchup.oppName}</div>
+                                            {activeLeagueData.matchup && (
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <div style={{ fontSize: 20, fontWeight: 900, color: activeLeagueData.matchup.isWinning ? C.green : C.red, lineHeight: 1 }}>
+                                                        {activeLeagueData.scoringType === 'head' ? Math.round(activeLeagueData.matchup.myScore) : activeLeagueData.matchup.myScore}
+                                                        <span style={{ fontSize: 13, color: C.gray400, fontWeight: 500 }}> – {activeLeagueData.scoringType === 'head' ? Math.round(activeLeagueData.matchup.oppScore) : activeLeagueData.matchup.oppScore}</span>
+                                                    </div>
+                                                    <div style={{ fontSize: 10, color: C.gray400 }}>{activeLeagueData.matchup.oppName}</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Batters */}
+                                    <div style={{ ...tableCard, marginBottom: 10 }}>
+                                        <table style={tableStyle}>
+                                            {tableHead(hitterCols)}
+                                            <tbody>
+                                                {sectionLabelRow('Batters')}
+                                                {activeBatters.map(p => renderLineupRow(p, src, lk, true))}
+                                                {benchBatters.length > 0 && <>{sectionLabelRow('Bench', C.gray400)}{benchBatters.map(p => renderLineupRow(p, src, lk, true))}</>}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Pitchers */}
+                                    <div style={{ ...tableCard, marginBottom: ilPlayers.length > 0 ? 10 : 0 }}>
+                                        <table style={tableStyle}>
+                                            {tableHead(pitcherCols)}
+                                            <tbody>
+                                                {sectionLabelRow('Pitchers')}
+                                                {activePitchers.map(p => renderLineupRow(p, src, lk))}
+                                                {benchPitchers.length > 0 && <>{sectionLabelRow('Bench', C.gray400)}{benchPitchers.map(p => renderLineupRow(p, src, lk))}</>}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* IL */}
+                                    {ilPlayers.length > 0 && (
+                                        <div style={tableCard}>
+                                            <table style={tableStyle}>
+                                                {tableHead(hitterCols)}
+                                                <tbody>
+                                                    {sectionLabelRow('Injured List', C.red)}
+                                                    {ilPlayers.map(p => renderLineupRow(p, src, lk))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     )}
-                                </div>
-                                <table style={tableStyle}>
-                                    <thead>
-                                        <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
-                                            {isMobile
-                                                ? ['Slot', 'Player', 'Rank/Status'].map(h => <th key={h} style={thStyle}>{h}</th>)
-                                                : ['Slot', 'Player', 'Eligible', 'Overall', 'Lg Rank', 'Status', ''].map(h => <th key={h} style={thStyle}>{h}</th>)}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {sectionLabelRow('Active Hitters')}
-                                        {[...activeLeagueData.players].filter(p => !['BN', 'P', 'SP', 'RP', ...IL_SLOTS].includes(p.selectedPosition)).sort((a, b) => slotOrder.indexOf(a.selectedPosition) - slotOrder.indexOf(b.selectedPosition)).map(p => renderLineupRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
-                                        {sectionLabelRow('Bench Hitters', C.gray400)}
-                                        {[...activeLeagueData.players].filter(p => p.selectedPosition === 'BN' && !(p.position?.includes('SP') || p.position?.includes('RP') || p.position === 'P')).map(p => renderLineupRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
-                                        {sectionLabelRow('Active Pitchers')}
-                                        {[...activeLeagueData.players].filter(p => ['P', 'SP', 'RP'].includes(p.selectedPosition)).sort((a, b) => slotOrder.indexOf(a.selectedPosition) - slotOrder.indexOf(b.selectedPosition)).map(p => renderLineupRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
-                                        {sectionLabelRow('Bench Pitchers', C.gray400)}
-                                        {[...activeLeagueData.players].filter(p => p.selectedPosition === 'BN' && (p.position?.includes('SP') || p.position?.includes('RP') || p.position === 'P')).map(p => renderLineupRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}
-                                        {activeLeagueData.players.some(p => IL_SLOTS.includes(p.selectedPosition)) && (
-                                            <>{sectionLabelRow('Injured List', C.red)}{[...activeLeagueData.players].filter(p => IL_SLOTS.includes(p.selectedPosition)).map(p => renderLineupRow(p, activeLeagueData.source, activeLeagueData.leagueKey))}</>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
+                                </>
+                            )
+                        })()}
                     </>
                 )}
 
