@@ -231,11 +231,11 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
         <div style={{
             background: C.white,
             border: `1px solid ${game.isLive ? '#86efac' : C.gray200}`,
-            borderTop: `3px solid ${game.isLive ? C.green : game.isFinal ? C.gray200 : C.accent}`,
-            borderRadius: 10, overflow: 'hidden',
-            minWidth: 260, maxWidth: 320, flexShrink: 0,
+            borderTop: `2px solid ${game.isLive ? C.green : game.isFinal ? C.gray200 : C.accent}`,
+            borderRadius: 8, overflow: 'hidden',
+            minWidth: 220, maxWidth: 280, flexShrink: 0,
         }}>
-            <div style={{ padding: '8px 12px', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+            <div style={{ padding: '6px 10px', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                     <MlbLogo team={game.awayTeam} size={14} showText={false} />
                     <span style={{ fontSize: 12, fontWeight: 700 }}>{game.awayTeam}</span>
@@ -247,7 +247,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
                 </div>
                 <GameStatusBadge game={game} />
             </div>
-            <div style={{ padding: '4px 12px 8px' }}>
+            <div style={{ padding: '2px 10px 6px' }}>
                 {loading ? (
                     <div style={{ padding: '10px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading...</div>
                 ) : !started ? (
@@ -264,26 +264,27 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
     )
 }
 
-function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers, imageMap }) {
-    if (games.length === 0) return null
+function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers, imageMap, px }) {
+    const anyStarted = games.some(g => g.isLive || g.isFinal)
+    if (games.length === 0 || !anyStarted) return null
     const myGames = games.filter(g => myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam))
     const otherGames = games.filter(g => !myTeams.has(g.awayTeam) && !myTeams.has(g.homeTeam))
     const liveCount = games.filter(g => g.isLive).length
 
     return (
-        <div style={{ padding: '10px 16px', background: C.white, borderBottom: `1px solid ${C.gray100}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Today</span>
+        <div style={{ padding: `6px ${px} 10px`, background: C.white, borderBottom: `1px solid ${C.gray100}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <span style={{ fontSize: 10, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Today</span>
                 {liveCount > 0 && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '2px 7px', borderRadius: 99 }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '1px 6px', borderRadius: 99 }}>
+                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
                         {liveCount} Live
                     </span>
                 )}
-                <span style={{ fontSize: 10, color: C.gray400, marginLeft: 'auto' }}>{myGames.length} with your players</span>
+                {myGames.length > 0 && <span style={{ fontSize: 10, color: C.gray400, marginLeft: 'auto' }}>{myGames.length} with your players</span>}
             </div>
             {myGames.length > 0 && (
-                <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 6, WebkitOverflowScrolling: 'touch' }}>
+                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, WebkitOverflowScrolling: 'touch' }}>
                     {myGames.map(g => (
                         <BoxScoreCard key={g.gamePk} game={g} boxscore={boxscores[g.gamePk]}
                             myPlayerNames={myPlayerNames} rosterPlayers={rosterPlayers} imageMap={imageMap} />
@@ -291,8 +292,8 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                 </div>
             )}
             {otherGames.length > 0 && (
-                <div style={{ marginTop: myGames.length > 0 ? 8 : 0 }}>
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                <div style={{ marginTop: myGames.length > 0 ? 6 : 0 }}>
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         {otherGames.map(g => <CompactGamePill key={g.gamePk} game={g} />)}
                     </div>
                 </div>
@@ -1177,7 +1178,17 @@ export default function Dashboard({ api }) {
     const [selectedPlayer, setSelectedPlayer] = useState(null)
     const [rankMap, setRankMap] = useState({})
     const [ranksLoading, setRanksLoading] = useState(false)
-    const [games, setGames] = useState([])
+    const [games, setGames] = useState(() => {
+        try {
+            const stored = localStorage.getItem('games_cache')
+            if (stored) {
+                const { date, data } = JSON.parse(stored)
+                const today = new Date().toISOString().split('T')[0]
+                if (date === today) return data
+            }
+        } catch (e) { }
+        return []
+    })
     const [boxscores, setBoxscores] = useState(() => {
         // Restore today's boxscores from localStorage on mount
         try {
@@ -1234,7 +1245,15 @@ export default function Dashboard({ api }) {
 
     const loadScoreboard = useCallback(() => {
         axios.get(`${api}/api/scoreboard`)
-            .then(r => setGames(r.data))
+            .then(r => {
+                setGames(r.data)
+                if (r.data.some(g => g.isLive || g.isFinal)) {
+                    try {
+                        const today = new Date().toISOString().split('T')[0]
+                        localStorage.setItem('games_cache', JSON.stringify({ date: today, data: r.data }))
+                    } catch (e) { }
+                }
+            })
             .catch(e => console.warn('Scoreboard failed:', e.message))
     }, [api])
 
@@ -1491,7 +1510,7 @@ export default function Dashboard({ api }) {
 
             {/* Live Box Scores */}
             <LiveBoxScores games={games} boxscores={boxscores} myTeams={myTeams}
-                myPlayerNames={myPlayerNames} rosterPlayers={allRosterPlayers} imageMap={imageMap} />
+                myPlayerNames={myPlayerNames} rosterPlayers={allRosterPlayers} imageMap={imageMap} px={px} />
 
             {/* Matchup Cards */}
             <div style={{ padding: `12px ${px} 6px`, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
