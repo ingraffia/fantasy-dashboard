@@ -1180,7 +1180,7 @@ function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
 
 // ─── Lineup Row ──────────────────────────────────────────────────────────────
 
-const sectionLabelRow = (text, color = C.gray600) => (
+const sectionLabelRow = (text, isMobile, color = C.gray600) => (
     <tr>
         <td colSpan={isMobile ? 3 : 10} style={{ padding: '5px 14px', fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
             {text}
@@ -1878,9 +1878,9 @@ export default function Dashboard({ api }) {
                                         <table style={tableStyle}>
                                             {tableHead(hitterCols)}
                                             <tbody>
-                                                {sectionLabelRow('Batters')}
+                                                {sectionLabelRow('Batters', isMobile)}
                                                 {activeBatters.map(p => renderLineupRow(p, src, lk, true))}
-                                                {benchBatters.length > 0 && <>{sectionLabelRow('Bench', C.gray400)}{benchBatters.map(p => renderLineupRow(p, src, lk, true))}</>}
+                                                {benchBatters.length > 0 && <>{sectionLabelRow('Bench', isMobile, C.gray400)}{benchBatters.map(p => renderLineupRow(p, src, lk, true))}</>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1890,9 +1890,9 @@ export default function Dashboard({ api }) {
                                         <table style={tableStyle}>
                                             {tableHead(pitcherCols)}
                                             <tbody>
-                                                {sectionLabelRow('Pitchers')}
+                                                {sectionLabelRow('Pitchers', isMobile)}
                                                 {activePitchers.map(p => renderLineupRow(p, src, lk))}
-                                                {benchPitchers.length > 0 && <>{sectionLabelRow('Bench', C.gray400)}{benchPitchers.map(p => renderLineupRow(p, src, lk))}</>}
+                                                {benchPitchers.length > 0 && <>{sectionLabelRow('Bench', isMobile, C.gray400)}{benchPitchers.map(p => renderLineupRow(p, src, lk))}</>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1903,7 +1903,7 @@ export default function Dashboard({ api }) {
                                             <table style={tableStyle}>
                                                 {tableHead(hitterCols)}
                                                 <tbody>
-                                                    {sectionLabelRow('Injured List', C.red)}
+                                                    {sectionLabelRow('Injured List', isMobile, C.red)}
                                                     {ilPlayers.map(p => renderLineupRow(p, src, lk))}
                                                 </tbody>
                                             </table>
