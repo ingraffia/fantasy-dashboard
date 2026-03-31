@@ -138,32 +138,41 @@ function AvailabilityBadges({ playerKey, ownership, leagues }) {
 
 function GameStatusBadge({ game }) {
     if (game.isLive) {
-        const inningStr = game.inning ? `${game.inningHalf === 'Top' ? '▲' : '▼'}${game.inning}` : 'Live'
+        const half = game.inningHalf === 'Top' ? '▲' : '▼'
+        const inningStr = game.inning ? `${half}${game.inning}` : 'LIVE'
         return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '2px 7px', borderRadius: 99 }}>
-                <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-                {inningStr} · {game.outs ?? 0}out
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, flexShrink: 0, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                {inningStr} · {game.outs ?? 0} out
             </span>
         )
     }
-    if (game.isFinal) return <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, background: C.gray100, padding: '2px 7px', borderRadius: 99 }}>Final</span>
-    const timeStr = game.startTime ? new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'
-    return <span style={{ fontSize: 10, color: C.gray400, fontWeight: 600 }}>{timeStr}</span>
+    if (game.isFinal) return (
+        <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, background: C.gray100, padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>Final</span>
+    )
+    const timeStr = game.startTime
+        ? new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+        : '—'
+    return <span style={{ fontSize: 11, color: C.gray400, fontWeight: 500, whiteSpace: 'nowrap' }}>{timeStr}</span>
 }
 
 function CompactGamePill({ game }) {
     const started = game.isLive || game.isFinal
     return (
         <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px',
-            background: C.gray50, border: `1px solid ${C.gray200}`, borderRadius: 20,
-            fontSize: 11, fontWeight: 500, color: C.gray600, flexShrink: 0, whiteSpace: 'nowrap',
+            display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px',
+            background: game.isLive ? C.greenLight : C.gray50,
+            border: `1px solid ${game.isLive ? '#86efac' : C.gray200}`,
+            borderRadius: 20, fontSize: 11, fontWeight: 500,
+            color: game.isLive ? C.green : C.gray600, flexShrink: 0, whiteSpace: 'nowrap',
         }}>
-            <span>{game.awayTeam}</span>
-            {started ? <span style={{ fontWeight: 700, color: C.gray800 }}>{game.awayScore}-{game.homeScore}</span> : <span style={{ color: C.gray400 }}>vs</span>}
-            <span>{game.homeTeam}</span>
-            {game.isLive && <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />}
-            {game.isFinal && <span style={{ fontSize: 9, color: C.gray400 }}>F</span>}
+            {game.isLive && <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, flexShrink: 0, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />}
+            <span style={{ fontWeight: 600 }}>{game.awayTeam}</span>
+            {started
+                ? <span style={{ fontWeight: 800, color: game.isLive ? C.green : C.gray800 }}>{game.awayScore}–{game.homeScore}</span>
+                : <span style={{ color: C.gray400, fontSize: 10 }}>vs</span>}
+            <span style={{ fontWeight: 600 }}>{game.homeTeam}</span>
+            {game.isFinal && <span style={{ fontSize: 9, color: C.gray400, fontWeight: 700 }}>F</span>}
         </div>
     )
 }
@@ -184,27 +193,30 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap }) {
         else if (ab >= 3 && h === 0) perfColor = C.red
     }
 
-    const normN = normName(bsPlayer.name)
-    const imgUrl = imageMap[normN] || null
+    const imgUrl = imageMap[normName(bsPlayer.name)] || null
 
     return (
         <div style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
+            display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0',
             borderBottom: `1px solid ${C.gray100}`,
             background: isActive ? `${C.green}08` : 'transparent',
         }}>
-            <PlayerAvatar imageUrl={imgUrl} name={bsPlayer.name} size={26} />
+            <PlayerAvatar imageUrl={imgUrl} name={bsPlayer.name} size={32} />
             <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 600, fontSize: 12, color: C.gray800 }}>{bsPlayer.name}</span>
-                    <span style={{ fontSize: 10, color: C.gray400 }}>{bsPlayer.position}</span>
-                    {isActive && <span style={{ fontSize: 9, fontWeight: 800, color: C.green, background: C.greenLight, padding: '1px 4px', borderRadius: 3 }}>
-                        {bsPlayer.status === 'batting' ? 'AB' : 'P'}
-                    </span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ fontWeight: 600, fontSize: 13, color: C.gray800 }}>{bsPlayer.name}</span>
+                    {isActive && (
+                        <span style={{ fontSize: 9, fontWeight: 800, color: C.green, background: C.greenLight, padding: '1px 5px', borderRadius: 3 }}>
+                            {bsPlayer.status === 'batting' ? 'AB' : 'P'}
+                        </span>
+                    )}
+                </div>
+                <div style={{ fontSize: 11, color: C.gray400, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span>{bsPlayer.position}</span>
                     {rosterPlayer && <SlotPill slot={rosterPlayer.selectedPosition} />}
                 </div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: perfColor, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: perfColor, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>
                 {statLine || '—'}
             </div>
         </div>
@@ -227,35 +239,43 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
         return (a.bsPlayer.battingOrder ?? 999) - (b.bsPlayer.battingOrder ?? 999)
     })
 
+    const awayAhead = started && (game.awayScore ?? 0) > (game.homeScore ?? 0)
+    const homeAhead = started && (game.homeScore ?? 0) > (game.awayScore ?? 0)
+
     return (
         <div style={{
             background: C.white,
             border: `1px solid ${game.isLive ? '#86efac' : C.gray200}`,
-            borderTop: `2px solid ${game.isLive ? C.green : game.isFinal ? C.gray200 : C.accent}`,
-            borderRadius: 8, overflow: 'hidden',
-            minWidth: 220, maxWidth: 280, flexShrink: 0,
+            borderLeft: `3px solid ${game.isLive ? C.green : game.isFinal ? C.gray200 : C.accent}`,
+            borderRadius: 10, overflow: 'hidden',
+            minWidth: 280, flexShrink: 0,
         }}>
-            <div style={{ padding: '6px 10px', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                    <MlbLogo team={game.awayTeam} size={14} showText={false} />
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>{game.awayTeam}</span>
-                    {started && <span style={{ fontSize: 14, fontWeight: 900 }}>{game.awayScore ?? 0}</span>}
-                    <span style={{ fontSize: 11, color: C.gray400 }}>@</span>
-                    {started && <span style={{ fontSize: 14, fontWeight: 900 }}>{game.homeScore ?? 0}</span>}
-                    <span style={{ fontSize: 12, fontWeight: 700 }}>{game.homeTeam}</span>
-                    <MlbLogo team={game.homeTeam} size={14} showText={false} />
+            {/* Stacked score header */}
+            <div style={{ padding: '10px 14px', borderBottom: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <MlbLogo team={game.awayTeam} size={16} showText={false} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, minWidth: 32 }}>{game.awayTeam}</span>
+                        {started && <span style={{ fontSize: 20, fontWeight: 900, color: awayAhead ? C.gray800 : C.gray400, minWidth: 22, lineHeight: 1 }}>{game.awayScore ?? 0}</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <MlbLogo team={game.homeTeam} size={16} showText={false} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, minWidth: 32 }}>{game.homeTeam}</span>
+                        {started && <span style={{ fontSize: 20, fontWeight: 900, color: homeAhead ? C.gray800 : C.gray400, minWidth: 22, lineHeight: 1 }}>{game.homeScore ?? 0}</span>}
+                    </div>
                 </div>
                 <GameStatusBadge game={game} />
             </div>
-            <div style={{ padding: '2px 10px 6px' }}>
+            {/* Player rows */}
+            <div style={{ padding: '0 14px 4px' }}>
                 {loading ? (
-                    <div style={{ padding: '10px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading...</div>
+                    <div style={{ padding: '14px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading...</div>
                 ) : !started ? (
-                    <div style={{ padding: '10px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>
-                        {new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    <div style={{ padding: '16px 0', fontSize: 12, color: C.gray400, textAlign: 'center' }}>
+                        Starts {new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </div>
                 ) : withRoster.length === 0 ? (
-                    <div style={{ padding: '10px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>No stats yet</div>
+                    <div style={{ padding: '14px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>No roster players in this game</div>
                 ) : withRoster.map(({ bsPlayer, rosterPlayer }) => (
                     <MyPlayerStatRow key={bsPlayer.name} bsPlayer={bsPlayer} rosterPlayer={rosterPlayer} imageMap={imageMap} />
                 ))}
@@ -271,32 +291,49 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     const liveCount = games.filter(g => g.isLive).length
 
     return (
-        <div style={{ padding: `6px ${px} 10px`, background: C.white, borderBottom: `1px solid ${C.gray100}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                <span style={{ fontSize: 10, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Today</span>
+        <div style={{ background: C.white, borderBottom: `1px solid ${C.gray100}`, paddingTop: 10, paddingBottom: 12 }}>
+            {/* Header row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 10 }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                </span>
                 {liveCount > 0 && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '1px 6px', borderRadius: 99 }}>
-                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '2px 8px', borderRadius: 99 }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, flexShrink: 0, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
                         {liveCount} Live
                     </span>
                 )}
-                {myGames.length > 0 && <span style={{ fontSize: 10, color: C.gray400, marginLeft: 'auto' }}>{myGames.length} with your players</span>}
+                <span style={{ fontSize: 10, color: C.gray400, marginLeft: 'auto' }}>
+                    {games.length} games · {myGames.length} with your players
+                </span>
             </div>
+
+            {/* My-player games — full-bleed scroll, hidden scrollbar */}
             {myGames.length > 0 && (
-                <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, WebkitOverflowScrolling: 'touch' }}>
+                <div style={{
+                    display: 'flex', gap: 10,
+                    overflowX: 'auto', overflowY: 'visible',
+                    paddingLeft: px, paddingRight: px, paddingBottom: 2,
+                    scrollbarWidth: 'none', msOverflowStyle: 'none',
+                    WebkitOverflowScrolling: 'touch',
+                }}>
                     {myGames.map(g => (
                         <BoxScoreCard key={g.gamePk} game={g} boxscore={boxscores[g.gamePk]}
                             myPlayerNames={myPlayerNames} rosterPlayers={rosterPlayers} imageMap={imageMap} />
                     ))}
                 </div>
             )}
+
+            {/* Other games — compact pills */}
             {otherGames.length > 0 && (
-                <div style={{ marginTop: myGames.length > 0 ? 6 : 0 }}>
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                <div style={{ paddingLeft: px, paddingRight: px, marginTop: myGames.length > 0 ? 10 : 0 }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Other Games</div>
+                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                         {otherGames.map(g => <CompactGamePill key={g.gamePk} game={g} />)}
                     </div>
                 </div>
             )}
+
             <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
         </div>
     )
@@ -522,7 +559,7 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
                         <span style={{ fontSize: 11, color: C.red, fontWeight: 700, flexShrink: 0 }}>Give</span>
                         {giving.map((p, i) => (
                             <span key={p.playerKey} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                {i > 0 && <span style={{ fontSize: 11, color: C.gray300 }}>+</span>}
+                                {i > 0 && <span style={{ fontSize: 11, color: C.gray200 }}>+</span>}
                                 <PlayerPill player={p} />
                             </span>
                         ))}
@@ -532,7 +569,7 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
                         <span style={{ fontSize: 11, color: C.green, fontWeight: 700, flexShrink: 0 }}>Get</span>
                         {receiving.map((p, i) => (
                             <span key={p.playerKey} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                {i > 0 && <span style={{ fontSize: 11, color: C.gray300 }}>+</span>}
+                                {i > 0 && <span style={{ fontSize: 11, color: C.gray200 }}>+</span>}
                                 <PlayerPill player={p} />
                             </span>
                         ))}
@@ -849,7 +886,7 @@ function TradeLeagueVerdict({ leagueKey, leagueName, scoringType, givingPlayers,
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 20 }}>
-                    <span style={{ fontSize: 16, color: C.gray300, fontWeight: 700 }}>⇄</span>
+                    <span style={{ fontSize: 16, color: C.gray200, fontWeight: 700 }}>⇄</span>
                 </div>
 
                 {/* Receiving */}
@@ -1548,7 +1585,7 @@ export default function Dashboard({ api }) {
                                             {lg.scoringType === 'head' ? Math.round(lg.matchup.myScore) : lg.matchup.myScore}
                                         </div>
                                     </div>
-                                    <div style={{ fontSize: 11, color: C.gray300, fontWeight: 700 }}>VS</div>
+                                    <div style={{ fontSize: 11, color: C.gray200, fontWeight: 700 }}>VS</div>
                                     <div style={{ textAlign: 'right' }}>
                                         <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lg.matchup.oppName || 'Opp'}</div>
                                         <div style={{ fontWeight: 900, fontSize: 28, color: oppColor, lineHeight: 1 }}>
