@@ -265,8 +265,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
 }
 
 function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers, imageMap, px }) {
-    const anyStarted = games.some(g => g.isLive || g.isFinal)
-    if (games.length === 0 || !anyStarted) return null
+    if (games.length === 0) return null
     const myGames = games.filter(g => myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam))
     const otherGames = games.filter(g => !myTeams.has(g.awayTeam) && !myTeams.has(g.homeTeam))
     const liveCount = games.filter(g => g.isLive).length
