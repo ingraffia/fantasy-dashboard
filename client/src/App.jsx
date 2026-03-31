@@ -25,6 +25,23 @@ function setupAxiosAuth(token) {
 export default function App() {
   const [authed, setAuthed] = useState(null)
 
+  // Auto-redirect to login on any 401 (expired Yahoo token)
+  useEffect(() => {
+    if (!authed) return
+    const id = axios.interceptors.response.use(
+      r => r,
+      err => {
+        if (err.response?.status === 401) {
+          clearStoredToken()
+          delete axios.defaults.headers.common['Authorization']
+          setAuthed(false)
+        }
+        return Promise.reject(err)
+      }
+    )
+    return () => axios.interceptors.response.eject(id)
+  }, [authed])
+
   useEffect(() => {
     // Check if Yahoo OAuth just redirected back with ?auth=TOKEN in the URL
     const params = new URLSearchParams(window.location.search)
