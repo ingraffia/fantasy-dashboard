@@ -208,14 +208,47 @@ function RankBadge({ rank }) {
 }
 
 function PlayerAvatar({ imageUrl, name, size = 36 }) {
-    return imageUrl ? (
-        <img src={imageUrl} alt={name}
-            style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', background: C.gray100, flexShrink: 0, boxShadow: '0 6px 16px rgba(15,23,42,0.08)', border: '1px solid rgba(255,255,255,0.8)' }}
-            onError={e => e.target.style.display = 'none'}
-        />
-    ) : (
-        <div style={{ width: size, height: size, borderRadius: '50%', background: C.gray200, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, color: C.gray400, fontWeight: 600 }}>
-            {name?.charAt(0) || '?'}
+    const [loaded, setLoaded] = useState(false)
+    const [failed, setFailed] = useState(false)
+
+    useEffect(() => {
+        setLoaded(false)
+        setFailed(false)
+    }, [imageUrl])
+
+    const initials = name?.trim()?.charAt(0)?.toUpperCase() || '?'
+    const fallback = (
+        <div style={{
+            width: size,
+            height: size,
+            borderRadius: '50%',
+            background: 'linear-gradient(145deg, rgba(226,232,240,0.95), rgba(203,213,225,0.82))',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: Math.max(12, Math.round(size * 0.34)),
+            color: C.gray600,
+            fontWeight: 700,
+            boxShadow: '0 6px 16px rgba(15,23,42,0.08)',
+            border: '1px solid rgba(255,255,255,0.85)',
+        }}>
+            {initials}
+        </div>
+    )
+
+    if (!imageUrl || failed) return fallback
+
+    return (
+        <div style={{ width: size, height: size, borderRadius: '50%', position: 'relative', overflow: 'hidden', flexShrink: 0, boxShadow: '0 6px 16px rgba(15,23,42,0.08)', border: '1px solid rgba(255,255,255,0.8)', background: C.gray100 }}>
+            {!loaded && fallback}
+            <img
+                src={imageUrl}
+                alt={name}
+                style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', display: loaded ? 'block' : 'none' }}
+                onLoad={() => setLoaded(true)}
+                onError={() => setFailed(true)}
+            />
         </div>
     )
 }
@@ -351,6 +384,7 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
 function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, onOpenPlayer }) {
     const started = game.isLive || game.isFinal
     const loading = !boxscore && started
+    const [expanded, setExpanded] = useState(false)
 
     const allBsPlayers = [...(boxscore?.away?.players || []), ...(boxscore?.home?.players || [])]
     const myBsPlayers = allBsPlayers.filter(p => myPlayerNames.has(playerIdentityKey(p)) || myPlayerNames.has(normName(p.name)))
@@ -368,6 +402,8 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
 
     const awayAhead = started && (game.awayScore ?? 0) > (game.homeScore ?? 0)
     const homeAhead = started && (game.homeScore ?? 0) > (game.awayScore ?? 0)
+    const hasOverflow = withRoster.length > 4
+    const visibleRoster = expanded ? withRoster : withRoster.slice(0, 4)
 
     return (
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
@@ -375,26 +411,26 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
             border: `1px solid ${game.isLive ? '#86efac' : C.gray200}`,
             borderLeft: `3px solid ${game.isLive ? C.green : game.isFinal ? C.gray200 : C.accent}`,
             borderRadius: 10, overflow: 'hidden',
-            minWidth: 280, flexShrink: 0,
+            minWidth: 280, flexShrink: 0, minHeight: 286,
         }}>
             {/* Stacked score header */}
-            <div style={{ padding: '10px 14px', borderBottom: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <MlbLogo team={game.awayTeam} size={16} showText={false} />
                         <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, minWidth: 32 }}>{game.awayTeam}</span>
-                        {started && <span style={{ fontSize: 20, fontWeight: 900, color: awayAhead ? C.gray800 : C.gray400, minWidth: 22, lineHeight: 1 }}>{game.awayScore ?? 0}</span>}
+                        {started && <span style={{ fontSize: 24, fontWeight: 900, color: awayAhead ? C.gray800 : C.gray400, minWidth: 26, lineHeight: 1 }}>{game.awayScore ?? 0}</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <MlbLogo team={game.homeTeam} size={16} showText={false} />
                         <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, minWidth: 32 }}>{game.homeTeam}</span>
-                        {started && <span style={{ fontSize: 20, fontWeight: 900, color: homeAhead ? C.gray800 : C.gray400, minWidth: 22, lineHeight: 1 }}>{game.homeScore ?? 0}</span>}
+                        {started && <span style={{ fontSize: 24, fontWeight: 900, color: homeAhead ? C.gray800 : C.gray400, minWidth: 26, lineHeight: 1 }}>{game.homeScore ?? 0}</span>}
                     </div>
                 </div>
                 <GameStatusBadge game={game} />
             </div>
             {/* Player rows */}
-            <div style={{ padding: '0 14px 4px' }}>
+            <div style={{ padding: '0 14px 4px', minHeight: 172, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
                 {loading ? (
                     <div style={{ padding: '14px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading...</div>
                 ) : !started ? (
@@ -403,7 +439,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                     </div>
                 ) : withRoster.length === 0 ? (
                     <div style={{ padding: '14px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>No roster players in this game</div>
-                ) : withRoster.map(({ bsPlayer, rosterPlayer }) => (
+                ) : visibleRoster.map(({ bsPlayer, rosterPlayer }) => (
                     <MyPlayerStatRow
                         key={`${bsPlayer.name}-${bsPlayer.proTeam || bsPlayer.position || ''}`}
                         bsPlayer={bsPlayer}
@@ -412,6 +448,29 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                         onOpenPlayer={onOpenPlayer}
                     />
                 ))}
+                {!loading && started && hasOverflow && (
+                    <button
+                        type="button"
+                        onClick={() => setExpanded(prev => !prev)}
+                        style={{
+                            marginTop: 6,
+                            padding: '8px 0 4px',
+                            border: 'none',
+                            background: 'transparent',
+                            color: C.gray400,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                        }}
+                    >
+                        <span style={{ fontSize: 14, lineHeight: 1 }}>{expanded ? '↑' : '↓'}</span>
+                        <span>{expanded ? 'Show less' : `${withRoster.length - visibleRoster.length} more players`}</span>
+                    </button>
+                )}
             </div>
         </div>
     )
