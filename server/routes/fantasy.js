@@ -155,8 +155,13 @@ function pickEspnSeasonStats(player, seasonId = '002026') {
 }
 
 function extractEspnLineupCategories(settingsData) {
-    const scoringItems = settingsData?.settings?.scoringSettings?.scoringItems || [];
-    const activeItems = scoringItems.filter(item => item && item.isActive !== false);
+    const rawScoringItems = settingsData?.settings?.scoringSettings?.scoringItems;
+    const scoringItems = Array.isArray(rawScoringItems)
+        ? rawScoringItems
+        : rawScoringItems && typeof rawScoringItems === 'object'
+            ? Object.values(rawScoringItems)
+            : [];
+    const activeItems = scoringItems.filter(item => item && typeof item === 'object' && item.isActive !== false);
     const seen = new Set();
     const hitters = [];
     const pitchers = [];
