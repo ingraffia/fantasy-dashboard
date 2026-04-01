@@ -1622,7 +1622,7 @@ export default function Dashboard({ api }) {
     const px = isMobile ? '12px' : '1.5rem'
 
     return (
-        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Avenir Next", "SF Pro Display", "Segoe UI Variable", sans-serif', fontSize: 13, color: C.gray800 }}>
+        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Inter", "Inter var", "Segoe UI Variable", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 13, color: C.gray800 }}>
 
             {selectedPlayer && (
                 <PlayerPanel playerKey={selectedPlayer.playerKey} playerName={selectedPlayer.name}
