@@ -120,6 +120,35 @@ function PlatformLogo({ source, size = 16 }) {
     )
 }
 
+function SortableWaiverHeader({ label, sortKey, activeSort, onSort }) {
+    const isActive = activeSort === sortKey
+    return (
+        <button
+            onClick={() => onSort(sortKey)}
+            style={{
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+                margin: 0,
+                font: 'inherit',
+                color: isActive ? C.navy : C.gray400,
+                fontWeight: 800,
+                letterSpacing: '0.09em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+            }}
+        >
+            <span>{label}</span>
+            <span style={{ fontSize: 11, color: isActive ? C.accent : C.gray400 }}>
+                {isActive ? '↓' : '↕'}
+            </span>
+        </button>
+    )
+}
+
 function LeagueSlotRow({ slot, leagueName }) {
     return (
         <div style={{
@@ -1559,7 +1588,11 @@ export default function Dashboard({ api }) {
 
     const visibleFreeAgents = freeAgents
         .filter(p => { if (!faAllLeagues) return true; const po = ownership[p.playerKey]; if (!po) return true; return Object.values(po).every(o => o.available) })
-        .sort((a, b) => faSortBy === 'overall' ? (a.overallRank ?? 9999) - (b.overallRank ?? 9999) : (a.leagueRank ?? 9999) - (b.leagueRank ?? 9999))
+        .sort((a, b) => {
+            if (faSortBy === 'league') return (a.leagueRank ?? 9999) - (b.leagueRank ?? 9999)
+            if (faSortBy === 'preseason') return (a.preseasonRank ?? 9999) - (b.preseasonRank ?? 9999)
+            return (a.overallRank ?? 9999) - (b.overallRank ?? 9999)
+        })
 
     const leagueSummary = data.map(l => ({ leagueKey: l.leagueKey, leagueName: l.leagueName, players: l.players }))
     const activeLeagueData = data.find(l => l.leagueKey === activeLeague)
@@ -2113,7 +2146,11 @@ export default function Dashboard({ api }) {
                                                     <div style={{ display: 'flex', gap: 4, marginTop: 3, alignItems: 'center' }}>
                                                         <Tag text={p.position || '—'} />
                                                         <span style={{ fontSize: 11, color: C.gray400 }}>{p.proTeam}</span>
-                                                        <StatusBadge status={p.injuryStatus} />
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 10, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                                                        <span style={{ fontSize: 11, color: C.gray400 }}>Overall <RankBadge rank={p.overallRank} /></span>
+                                                        <span style={{ fontSize: 11, color: C.gray400 }}>Lg <RankBadge rank={p.leagueRank} /></span>
+                                                        <span style={{ fontSize: 11, color: C.gray400 }}>Pre <RankBadge rank={p.preseasonRank} /></span>
                                                     </div>
                                                     <div style={{ marginTop: 4 }}>
                                                         <AvailabilityBadges playerKey={p.playerKey} ownership={ownership} leagues={leagueSummary.filter(l => !l.leagueKey.startsWith('espn'))} />
@@ -2130,7 +2167,13 @@ export default function Dashboard({ api }) {
                                 <table style={tableStyle}>
                                     <thead>
                                         <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
-                                            {['Player', 'Position', 'Overall', 'Lg Rank', 'Status', 'Availability', 'Action'].map(h => <th key={h} style={thStyle}>{h}</th>)}
+                                            <th style={thStyle}>Player</th>
+                                            <th style={thStyle}>Position</th>
+                                            <th style={thStyle}><SortableWaiverHeader label="Overall" sortKey="overall" activeSort={faSortBy} onSort={setFaSortBy} /></th>
+                                            <th style={thStyle}><SortableWaiverHeader label="Lg Rank" sortKey="league" activeSort={faSortBy} onSort={setFaSortBy} /></th>
+                                            <th style={thStyle}><SortableWaiverHeader label="Pre-Season" sortKey="preseason" activeSort={faSortBy} onSort={setFaSortBy} /></th>
+                                            <th style={thStyle}>Availability</th>
+                                            <th style={thStyle}>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2152,7 +2195,7 @@ export default function Dashboard({ api }) {
                                                         <td style={tdStyle}><Tag text={p.position || '—'} /></td>
                                                         <td style={tdStyle}><RankBadge rank={p.overallRank} /></td>
                                                         <td style={tdStyle}><RankBadge rank={p.leagueRank} /></td>
-                                                        <td style={tdStyle}><StatusBadge status={p.injuryStatus} /></td>
+                                                        <td style={tdStyle}><RankBadge rank={p.preseasonRank} /></td>
                                                         <td style={tdStyle}><AvailabilityBadges playerKey={p.playerKey} ownership={ownership} leagues={leagueSummary.filter(l => !l.leagueKey.startsWith('espn'))} /></td>
                                                         <td style={tdStyle} onClick={e => e.stopPropagation()}>
                                                             <button disabled style={{ padding: '3px 10px', fontSize: 11, borderRadius: 3, background: C.gray100, color: C.gray400, border: `1px solid ${C.gray200}`, cursor: 'not-allowed' }}>Add</button>

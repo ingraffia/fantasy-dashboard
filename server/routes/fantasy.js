@@ -47,6 +47,9 @@ function parseRanks(playerRanksArray) {
         if (!rank) return;
         if (rank.rank_type === 'OR') result.leagueRank = parseInt(rank.rank_value);
         if (rank.rank_type === 'S' && rank.rank_season === '2026') result.overallRank = parseInt(rank.rank_value);
+        if ((rank.rank_type === 'P' || rank.rank_type === 'PR' || rank.rank_type === 'D') && result.preseasonRank == null) {
+            result.preseasonRank = parseInt(rank.rank_value);
+        }
     });
     return result;
 }
@@ -489,6 +492,7 @@ router.get('/free-agents/:leagueKey', requireAuth, async (req, res) => {
                 position: meta.display_position, proTeam: meta.editorial_team_abbr,
                 injuryStatus: meta.status || null, isUndroppable: meta.is_undroppable == 1,
                 overallRank: ranks.overallRank || null, leagueRank: ranks.leagueRank || null,
+                preseasonRank: ranks.preseasonRank || null,
                 imageUrl: meta.headshot?.url || null,
             });
         });
