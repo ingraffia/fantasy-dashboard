@@ -454,8 +454,10 @@ router.get('/dashboard', requireAuth, async (req, res) => {
         }
         res.json(dashboardData);
     } catch (err) {
-        console.error(err.response?.data || err.message);
-        res.status(500).json({ error: err.message });
+        const detail = err.response?.data || err.message;
+        console.error('Yahoo dashboard fatal error:', detail);
+        res.setHeader('x-dashboard-warning', `Yahoo dashboard unavailable: ${err.message}`);
+        res.json([]);
     }
 });
 

@@ -13,10 +13,12 @@ async function yahooGet(session, path) {
 
 async function getUserLeagues(session) {
     const data = await yahooGet(session, `/users;use_login=1/games;game_keys=${MLB_GAME_KEY}/leagues`);
-    const user = data.fantasy_content.users['0'].user;
-    const games = user[1].games;
-    const game = games['0'].game;
-    const leagues = game[1].leagues;
+    const users = data?.fantasy_content?.users;
+    const user = users?.['0']?.user;
+    const games = user?.[1]?.games;
+    const game = games?.['0']?.game;
+    const leagues = game?.[1]?.leagues;
+    if (!leagues || typeof leagues !== 'object') return [];
     return Object.values(leagues).filter(l => typeof l === 'object' && l.league);
 }
 

@@ -1379,6 +1379,8 @@ export default function Dashboard({ api }) {
         results.forEach((result, idx) => {
             const req = requests[idx]
             if (result.status === 'fulfilled') {
+                const warningHeader = result.value?.headers?.['x-dashboard-warning']
+                if (warningHeader) warnings.push(warningHeader)
                 if (req.key === 'yahoo') combined.push(...(result.value.data || []))
                 if (req.key === 'espn' && result.value?.data) combined.push(result.value.data)
                 return
