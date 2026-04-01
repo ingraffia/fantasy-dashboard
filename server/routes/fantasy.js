@@ -358,11 +358,14 @@ router.get('/dashboard', requireAuth, async (req, res) => {
         for (const leagueObj of leagues) {
             const leagueData = leagueObj.league?.[0];
             if (!leagueData) continue;
-            const [teamsData, settingsData] = await Promise.all([
-                yahooGet(req.session, `/league/${leagueData.league_key}/teams`),
-                yahooGet(req.session, `/league/${leagueData.league_key}/settings`),
-            ]);
-            const lineupCategories = extractYahooLineupCategories(settingsData);
+            const teamsData = await yahooGet(req.session, `/league/${leagueData.league_key}/teams`);
+            let lineupCategories = extractYahooLineupCategories(null);
+            try {
+                const settingsData = await yahooGet(req.session, `/league/${leagueData.league_key}/settings`);
+                lineupCategories = extractYahooLineupCategories(settingsData);
+            } catch (settingsErr) {
+                console.warn('Yahoo settings fetch failed for', leagueData.name, settingsErr.response?.data || settingsErr.message);
+            }
             const teamsRaw = teamsData.fantasy_content.league[1].teams;
             let myTeamKey = null, myTeamName = null;
             Object.values(teamsRaw).forEach(t => {
