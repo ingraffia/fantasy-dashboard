@@ -95,6 +95,32 @@ function SlotPill({ slot }) {
     return <Tag text={slot} bg={isIL ? C.redLight : isBN ? C.gray100 : C.accentLight} color={isIL ? C.red : isBN ? C.gray600 : C.accent} />
 }
 
+function LeagueSlotRow({ slot, leagueName }) {
+    return (
+        <div style={{
+            display: 'grid',
+            gridTemplateColumns: '54px minmax(0, 1fr)',
+            alignItems: 'center',
+            gap: 10,
+            padding: '6px 0',
+        }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <SlotPill slot={slot} />
+            </div>
+            <span style={{
+                fontSize: 12,
+                color: C.gray600,
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+            }}>
+                {leagueName}
+            </span>
+        </div>
+    )
+}
+
 function MlbLogo({ team, size = 20, showText = true, whiteText = false }) {
     if (!team || team === '—') return <span style={{ color: whiteText ? 'rgba(255,255,255,0.6)' : C.gray400 }}>—</span>
     const normalized = team.toUpperCase()
@@ -1200,9 +1226,9 @@ function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
 
 // ─── Lineup Row ──────────────────────────────────────────────────────────────
 
-const sectionLabelRow = (text, isMobile, color = C.gray600) => (
+const sectionLabelRow = (text, isMobile, colSpan, color = C.gray600) => (
     <tr>
-        <td colSpan={isMobile ? 3 : 10} style={{ padding: '5px 14px', fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.08em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
+        <td colSpan={isMobile ? 3 : colSpan} style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.08em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
             {text}
         </td>
     </tr>
@@ -1854,12 +1880,9 @@ export default function Dashboard({ api }) {
                                                             {(!p.bestOverallRank && !p.bestLeagueRank) && <span style={{ color: C.gray400 }}>—</span>}
                                                         </td>
                                                         <td style={tdStyle}>
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                                                                 {p.leagueSlots.map(ls => (
-                                                                    <div key={ls.leagueKey} style={{ display: 'flex', gap: 5 }}>
-                                                                        <SlotPill slot={ls.selectedPosition} />
-                                                                        <span style={{ fontSize: 11, color: C.gray400 }}>{ls.leagueName}</span>
-                                                                    </div>
+                                                                    <LeagueSlotRow key={ls.leagueKey} slot={ls.selectedPosition} leagueName={ls.leagueName} />
                                                                 ))}
                                                             </div>
                                                         </td>
@@ -1902,6 +1925,9 @@ export default function Dashboard({ api }) {
                             const pitcherCols = hasGameActivity
                                 ? ['IP', 'K', 'H', 'BB', 'ER', 'W']
                                 : leagueLineupCategories.pitcherSeason
+                            const hitterColSpan = isMobile ? 3 : 4 + hitterCols.length
+                            const pitcherColSpan = isMobile ? 3 : 4 + pitcherCols.length
+                            const ilColSpan = Math.max(hitterColSpan, pitcherColSpan)
                             const tableHead = (cols) => (
                                 <thead>
                                     <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
@@ -1948,9 +1974,9 @@ export default function Dashboard({ api }) {
                                         <table style={tableStyle}>
                                             {tableHead(hitterCols)}
                                                 <tbody>
-                                                    {sectionLabelRow('Batters', isMobile)}
+                                                    {sectionLabelRow('Batters', isMobile, hitterColSpan)}
                                                 {activeBatters.map(p => renderLineupRow(p, src, lk, hitterCols, true))}
-                                                {benchBatters.length > 0 && <>{sectionLabelRow('Bench', isMobile, C.gray400)}{benchBatters.map(p => renderLineupRow(p, src, lk, hitterCols, true))}</>}
+                                                {benchBatters.length > 0 && <>{sectionLabelRow('Bench', isMobile, hitterColSpan, C.gray400)}{benchBatters.map(p => renderLineupRow(p, src, lk, hitterCols, true))}</>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1960,9 +1986,9 @@ export default function Dashboard({ api }) {
                                         <table style={tableStyle}>
                                             {tableHead(pitcherCols)}
                                             <tbody>
-                                                {sectionLabelRow('Pitchers', isMobile)}
+                                                {sectionLabelRow('Pitchers', isMobile, pitcherColSpan)}
                                                 {activePitchers.map(p => renderLineupRow(p, src, lk, pitcherCols))}
-                                                {benchPitchers.length > 0 && <>{sectionLabelRow('Bench', isMobile, C.gray400)}{benchPitchers.map(p => renderLineupRow(p, src, lk, pitcherCols))}</>}
+                                                {benchPitchers.length > 0 && <>{sectionLabelRow('Bench', isMobile, pitcherColSpan, C.gray400)}{benchPitchers.map(p => renderLineupRow(p, src, lk, pitcherCols))}</>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1973,7 +1999,7 @@ export default function Dashboard({ api }) {
                                             <table style={tableStyle}>
                                                 {tableHead(hitterCols)}
                                                 <tbody>
-                                                    {sectionLabelRow('Injured List', isMobile, C.red)}
+                                                    {sectionLabelRow('Injured List', isMobile, ilColSpan, C.red)}
                                                     {ilPlayers.map(p => renderLineupRow(p, src, lk, isPitcher(p.position) ? pitcherCols : hitterCols))}
                                                 </tbody>
                                             </table>
