@@ -1650,7 +1650,6 @@ export default function Dashboard({ api }) {
         .filter(p => { if (!faAllLeagues) return true; const po = ownership[p.playerKey]; if (!po) return true; return Object.values(po).every(o => o.available) })
         .sort((a, b) => {
             if (faSortBy === 'league') return (a.leagueRank ?? 9999) - (b.leagueRank ?? 9999)
-            if (faSortBy === 'preseason') return (a.preseasonRank ?? 9999) - (b.preseasonRank ?? 9999)
             return (a.overallRank ?? 9999) - (b.overallRank ?? 9999)
         })
 
@@ -2247,7 +2246,6 @@ export default function Dashboard({ api }) {
                                                     <div style={{ display: 'flex', gap: 10, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                                                         <span style={{ fontSize: 11, color: C.gray400 }}>Overall <RankBadge rank={p.overallRank} /></span>
                                                         <span style={{ fontSize: 11, color: C.gray400 }}>Lg <RankBadge rank={p.leagueRank} /></span>
-                                                        <span style={{ fontSize: 11, color: C.gray400 }}>Pre <RankBadge rank={p.preseasonRank} /></span>
                                                     </div>
                                                     <div style={{ marginTop: 4 }}>
                                                         <AvailabilityBadges playerKey={p.playerKey} ownership={ownership} leagues={leagueSummary.filter(l => !l.leagueKey.startsWith('espn'))} />
@@ -2268,16 +2266,15 @@ export default function Dashboard({ api }) {
                                             <th style={thStyle}>Position</th>
                                             <th style={thStyle}><SortableWaiverHeader label="Overall" sortKey="overall" activeSort={faSortBy} onSort={setFaSortBy} /></th>
                                             <th style={thStyle}><SortableWaiverHeader label="Lg Rank" sortKey="league" activeSort={faSortBy} onSort={setFaSortBy} /></th>
-                                            <th style={thStyle}><SortableWaiverHeader label="Pre-Season" sortKey="preseason" activeSort={faSortBy} onSort={setFaSortBy} /></th>
                                             <th style={thStyle}>Availability</th>
                                             <th style={thStyle}>Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {faLoading
-                                            ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: C.gray400 }}>Loading...</td></tr>
+                                            ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: C.gray400 }}>Loading...</td></tr>
                                             : visibleFreeAgents.length === 0
-                                                ? <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: C.gray400 }}>No players found</td></tr>
+                                                ? <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: C.gray400 }}>No players found</td></tr>
                                                 : visibleFreeAgents.map(p => (
                                                     <tr key={p.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer' }}
                                                         onClick={() => openPlayer(p.playerKey, p.name)}
@@ -2292,7 +2289,6 @@ export default function Dashboard({ api }) {
                                                         <td style={tdStyle}><Tag text={p.position || '—'} /></td>
                                                         <td style={tdStyle}><RankBadge rank={p.overallRank} /></td>
                                                         <td style={tdStyle}><RankBadge rank={p.leagueRank} /></td>
-                                                        <td style={tdStyle}><RankBadge rank={p.preseasonRank} /></td>
                                                         <td style={tdStyle}><AvailabilityBadges playerKey={p.playerKey} ownership={ownership} leagues={leagueSummary.filter(l => !l.leagueKey.startsWith('espn'))} /></td>
                                                         <td style={tdStyle} onClick={e => e.stopPropagation()}>
                                                             <button disabled style={{ padding: '3px 10px', fontSize: 11, borderRadius: 3, background: C.gray100, color: C.gray400, border: `1px solid ${C.gray200}`, cursor: 'not-allowed' }}>Add</button>

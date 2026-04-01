@@ -45,51 +45,10 @@ function parseRanks(playerRanksArray) {
     playerRanksArray.forEach(item => {
         const rank = item?.player_rank;
         if (!rank) return;
-        const rankType = String(rank.rank_type || '').toUpperCase();
-        const rankValue = parseInt(rank.rank_value);
-        if (!Number.isFinite(rankValue)) return;
-        if (rankType === 'OR') result.leagueRank = rankValue;
-        if (rankType === 'S' && rank.rank_season === '2026') result.overallRank = rankValue;
-        if (
-            result.preseasonRank == null &&
-            (
-                rankType === 'P' ||
-                rankType === 'PR' ||
-                rankType === 'D' ||
-                rankType === 'PRE' ||
-                rankType === 'ADP' ||
-                String(rank.rank_name || '').toLowerCase().includes('pre') ||
-                String(rank.rank_name || '').toLowerCase().includes('draft')
-            )
-        ) {
-            result.preseasonRank = rankValue;
-        }
+        if (rank.rank_type === 'OR') result.leagueRank = parseInt(rank.rank_value);
+        if (rank.rank_type === 'S' && rank.rank_season === '2026') result.overallRank = parseInt(rank.rank_value);
     });
     return result;
-}
-
-function parseDraftAnalysis(playerArray) {
-    const fallback = {};
-    if (!Array.isArray(playerArray)) return fallback;
-
-    playerArray.forEach((section) => {
-        if (!section || typeof section !== 'object') return;
-        const draftAnalysis = section.draft_analysis || section.draftAnalysis;
-        if (!draftAnalysis || typeof draftAnalysis !== 'object') return;
-
-        const averagePick = parseFloat(
-            draftAnalysis.average_pick
-            || draftAnalysis.averagePick
-            || draftAnalysis.average_round_pick
-            || draftAnalysis.averageRoundPick
-        );
-
-        if (Number.isFinite(averagePick)) {
-            fallback.preseasonRank = Math.round(averagePick);
-        }
-    });
-
-    return fallback;
 }
 
 function parsePlayers(playersRaw) {
@@ -527,13 +486,11 @@ router.get('/free-agents/:leagueKey', requireAuth, async (req, res) => {
             if (typeof p !== 'object' || !p.player) return;
             const meta = flattenMeta(p.player[0]);
             const ranks = parseRanks(p.player[1]?.player_ranks);
-            const draftAnalysis = parseDraftAnalysis(p.player);
             players.push({
                 playerKey: meta.player_key, name: meta.name?.full,
                 position: meta.display_position, proTeam: meta.editorial_team_abbr,
                 injuryStatus: meta.status || null, isUndroppable: meta.is_undroppable == 1,
                 overallRank: ranks.overallRank || null, leagueRank: ranks.leagueRank || null,
-                preseasonRank: ranks.preseasonRank || draftAnalysis.preseasonRank || null,
                 imageUrl: meta.headshot?.url || null,
             });
         });
