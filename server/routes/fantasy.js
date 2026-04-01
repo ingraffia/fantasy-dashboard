@@ -346,6 +346,33 @@ function parseEspnSeasonStatsByLabel(player) {
     return stats;
 }
 
+function deriveEspnCategoryRecord(side) {
+    const fallback = {
+        wins: side?.cumulativeScore?.wins ?? 0,
+        losses: side?.cumulativeScore?.losses ?? 0,
+        ties: side?.cumulativeScore?.ties ?? 0,
+    };
+
+    const scoreByStat = side?.cumulativeScore?.scoreByStat;
+    if (!scoreByStat || typeof scoreByStat !== 'object') return fallback;
+
+    let wins = 0;
+    let losses = 0;
+    let ties = 0;
+    let resolvedCategories = 0;
+
+    Object.values(scoreByStat).forEach((statResult) => {
+        const result = String(statResult?.result || '').toUpperCase();
+        if (!result) return;
+        resolvedCategories += 1;
+        if (result === 'WIN') wins += 1;
+        else if (result === 'LOSS') losses += 1;
+        else if (result === 'TIE') ties += 1;
+    });
+
+    return resolvedCategories > 0 ? { wins, losses, ties } : fallback;
+}
+
 router.get('/leagues', requireAuth, async (req, res) => {
     try { res.json(await getUserLeagues(req.session)); }
     catch (err) { res.status(500).json({ error: err.message }); }
@@ -565,7 +592,7 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
         const MY_TEAM_ID = 7;
         const [rosterData, matchupData, teamData, settingsData] = await Promise.all([
             espnGet({ view: 'mRoster', forTeamId: MY_TEAM_ID }),
-            espnGet({ view: 'mMatchup' }),
+            espnGet({ view: 'mMatchupScore' }),
             espnGet({ view: 'mTeam' }),
             espnGet({ view: 'mSettings' }),
         ]);
@@ -609,12 +636,15 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
                 const mySide = isHome ? currentMatchup.home : currentMatchup.away;
                 const oppSide = isHome ? currentMatchup.away : currentMatchup.home;
                 const oppTeamInfo = teamData.teams.find(t => t.id === oppSide?.teamId);
+                const myRecord = deriveEspnCategoryRecord(mySide);
+                const oppRecord = deriveEspnCategoryRecord(oppSide);
                 matchup = {
                     week: currentPeriod,
-                    myScore: `${mySide?.cumulativeScore?.wins ?? 0}-${mySide?.cumulativeScore?.losses ?? 0}-${mySide?.cumulativeScore?.ties ?? 0}`,
+                    myScore: `${myRecord.wins}-${myRecord.losses}-${myRecord.ties}`,
                     myProjected: '', oppName: oppTeamInfo?.name || 'Opponent',
-                    oppScore: `${oppSide?.cumulativeScore?.wins ?? 0}-${oppSide?.cumulativeScore?.losses ?? 0}-${oppSide?.cumulativeScore?.ties ?? 0}`,
-                    oppProjected: '', isWinning: (mySide?.cumulativeScore?.wins ?? 0) > (oppSide?.cumulativeScore?.wins ?? 0),
+                    oppScore: `${oppRecord.wins}-${oppRecord.losses}-${oppRecord.ties}`,
+                    oppProjected: '',
+                    isWinning: myRecord.wins > oppRecord.wins || (myRecord.wins === oppRecord.wins && myRecord.ties > oppRecord.ties),
                 };
             }
         } catch (e) { console.warn('ESPN matchup parse failed:', e.message); }
