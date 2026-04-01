@@ -95,6 +95,31 @@ function SlotPill({ slot }) {
     return <Tag text={slot} bg={isIL ? C.redLight : isBN ? C.gray100 : C.accentLight} color={isIL ? C.red : isBN ? C.gray600 : C.accent} />
 }
 
+function PlatformLogo({ source, size = 16 }) {
+    const isEspn = source === 'espn'
+    const src = isEspn
+        ? 'https://a.espncdn.com/favicon.ico'
+        : 'https://s.yimg.com/cv/apiv2/default/icons/favicon_y19_32x32_custom.svg'
+    const alt = isEspn ? 'ESPN' : 'Yahoo'
+    const bg = isEspn ? '#fff1ef' : '#edf4ff'
+
+    return (
+        <span style={{
+            width: size + 14,
+            height: size + 14,
+            borderRadius: 999,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: bg,
+            border: `1px solid ${isEspn ? '#ffd8d2' : '#dbe7ff'}`,
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)',
+        }}>
+            <img src={src} width={size} height={size} alt={alt} style={{ display: 'block' }} />
+        </span>
+    )
+}
+
 function LeagueSlotRow({ slot, leagueName }) {
     return (
         <div style={{
@@ -1206,8 +1231,8 @@ function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'wrap' }}>
                     <Tag text={p.position || '—'} />
                     <MlbLogo team={p.proTeam} size={13} showText={true} />
-                    {hasYahoo && <Tag text="Y" bg="#00529b20" color="#00529b" />}
-                    {hasEspn && <Tag text="E" bg="#f0483e20" color="#f0483e" />}
+                    {hasYahoo && <PlatformLogo source="yahoo" size={13} />}
+                    {hasEspn && <PlatformLogo source="espn" size={13} />}
                 </div>
                 <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
                     {p.leagueSlots.map(ls => (
@@ -1866,8 +1891,8 @@ export default function Dashboard({ api }) {
                                                                     </div>
                                                                     <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
                                                                         <MlbLogo team={p.proTeam} size={13} />
-                                                                        {hasYahoo && <Tag text="Yahoo" bg="#00529b20" color="#00529b" />}
-                                                                        {hasEspn && <Tag text="ESPN" bg="#f0483e20" color="#f0483e" />}
+                                                                        {hasYahoo && <PlatformLogo source="yahoo" size={13} />}
+                                                                        {hasEspn && <PlatformLogo source="espn" size={13} />}
                                                                     </div>
                                                                 </div>
                                                             </div>
