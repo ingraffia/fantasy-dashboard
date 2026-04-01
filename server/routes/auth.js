@@ -14,6 +14,21 @@ const {
 const AUTH_HEADER_NAME = 'x-auth-token';
 const AUTH_TOKEN_TTL = '30d';
 
+function parseOAuthResponseData(responseData) {
+    if (!responseData) return {};
+    if (typeof responseData === 'object') return responseData;
+    if (typeof responseData !== 'string') return {};
+    try {
+        return JSON.parse(responseData);
+    } catch (_) {
+        const params = new URLSearchParams(responseData);
+        return {
+            error: params.get('error') || '',
+            error_description: params.get('error_description') || params.get('errorDescription') || responseData,
+        };
+    }
+}
+
 function getJwtSecret() {
     if (!SESSION_SECRET) {
         throw new Error('SESSION_SECRET is required for auth token signing');
@@ -51,7 +66,7 @@ function attachAuthToken(res, authToken) {
 }
 
 function classifyOAuthError(err) {
-    const responseData = err?.response?.data;
+    const responseData = parseOAuthResponseData(err?.response?.data);
     const errorCode = responseData?.error || err?.code || '';
     const description = responseData?.error_description || responseData?.errorDescription || err?.message || '';
     const combined = `${errorCode} ${description}`.toLowerCase();
@@ -86,7 +101,9 @@ function classifyOAuthError(err) {
 
     return {
         title: 'Yahoo token exchange failed',
-        message: 'The server reached Yahoo but the OAuth token exchange did not complete successfully. Check the Railway logs for the OAuth error details.',
+        message: description
+            ? `Yahoo returned an OAuth error during token exchange: ${description}`
+            : 'The server reached Yahoo but the OAuth token exchange did not complete successfully. Check the Railway logs for the OAuth error details.',
     };
 }
 
@@ -188,6 +205,12 @@ function renderAuthErrorPage(details) {
 }
 
 router.get('/login', (req, res) => {
+    if (!YAHOO_CLIENT_ID || !YAHOO_REDIRECT_URI) {
+        return res.status(500).send(renderAuthErrorPage({
+            title: 'Yahoo auth config is incomplete',
+            message: 'The server is missing YAHOO_CLIENT_ID or YAHOO_REDIRECT_URI, so Yahoo login cannot start.',
+        }));
+    }
     const params = new URLSearchParams({
         client_id: YAHOO_CLIENT_ID,
         redirect_uri: YAHOO_REDIRECT_URI,
@@ -200,6 +223,12 @@ router.get('/login', (req, res) => {
 router.get('/callback', async (req, res) => {
     const { code } = req.query;
     if (!code) return res.status(400).send('No auth code received');
+    if (!YAHOO_CLIENT_ID || !YAHOO_CLIENT_SECRET || !YAHOO_REDIRECT_URI) {
+        return res.status(500).send(renderAuthErrorPage({
+            title: 'Yahoo auth config is incomplete',
+            message: 'The server is missing Yahoo OAuth environment variables required for the token exchange.',
+        }));
+    }
 
     try {
         const credentials = Buffer.from(`${YAHOO_CLIENT_ID}:${YAHOO_CLIENT_SECRET}`).toString('base64');
@@ -227,8 +256,11 @@ router.get('/callback', async (req, res) => {
                 break;
             } catch (e) {
                 lastErr = e;
-                console.error(`OAuth attempt ${attempt} failed:`, e.message || e.code);
-                if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+                const status = e?.response?.status;
+                const isRetryable = !status || status >= 500 || status === 429 || e.code === 'ECONNABORTED' || e.code === 'ECONNRESET';
+                console.error(`OAuth attempt ${attempt} failed:`, status || e.code || e.message, JSON.stringify(parseOAuthResponseData(e?.response?.data)));
+                if (!isRetryable || attempt === 3) break;
+                await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
             }
         }
         if (!data) throw lastErr;
@@ -245,7 +277,7 @@ router.get('/callback', async (req, res) => {
         const base = isProd ? '' : 'https://localhost:5173';
         res.redirect(`${base}/?auth=${encodeURIComponent(authToken)}`);
     } catch (err) {
-        console.error('OAuth error:', JSON.stringify(err.response?.data) || err.message);
+        console.error('OAuth error:', JSON.stringify(parseOAuthResponseData(err.response?.data)) || err.message);
         console.error('OAuth status:', err.response?.status);
         console.error('OAuth message:', err.message);
         console.error('OAuth code:', err.code);
