@@ -1,45 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
   <defs>
-    <linearGradient id="bg" x1="118" y1="90" x2="886" y2="938" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#24456E"/>
-      <stop offset="0.58" stop-color="#16314D"/>
-      <stop offset="1" stop-color="#0D2236"/>
+    <linearGradient id="bg" x1="74" y1="73" x2="432" y2="437" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#16324F"/>
+      <stop offset="1" stop-color="#2D7FF9"/>
     </linearGradient>
-    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(350 236) rotate(45.7) scale(632 612)">
-      <stop stop-color="#8CC2FF" stop-opacity="0.32"/>
-      <stop offset="1" stop-color="#8CC2FF" stop-opacity="0"/>
-    </radialGradient>
-    <radialGradient id="ball" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(430 346) rotate(51.7) scale(520 520)">
-      <stop stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#F2EFE8"/>
-    </radialGradient>
-    <filter id="shadow" x="176" y="190" width="672" height="672" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
-      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
-      <feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-      <feOffset dy="20"/>
-      <feGaussianBlur stdDeviation="22"/>
-      <feColorMatrix values="0 0 0 0 0.027451 0 0 0 0 0.0901961 0 0 0 0 0.160784 0 0 0 0.24 0"/>
-      <feBlend in2="BackgroundImageFix" result="effect1_dropShadow_0_1"/>
-      <feBlend in="SourceGraphic" in2="effect1_dropShadow_0_1" result="shape"/>
-    </filter>
   </defs>
-  <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
-  <rect width="1024" height="1024" rx="228" fill="url(#glow)"/>
-  <g filter="url(#shadow)">
-    <circle cx="512" cy="500" r="256" fill="url(#ball)"/>
-    <circle cx="512" cy="500" r="256" stroke="#FFFFFF" stroke-opacity="0.52" stroke-width="8"/>
-    <path d="M363 320C320 364 292 428 290 500C288 573 314 637 356 680" stroke="#D32020" stroke-width="22" stroke-linecap="round"/>
-    <path d="M661 320C704 364 732 428 734 500C736 573 710 637 668 680" stroke="#D32020" stroke-width="22" stroke-linecap="round"/>
-    <path d="M388 360L352 392" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
-    <path d="M403 422L357 462" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
-    <path d="M408 500L360 500" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
-    <path d="M402 578L356 618" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
-    <path d="M387 640L351 672" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
-    <path d="M636 360L672 392" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
-    <path d="M621 422L667 462" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
-    <path d="M616 500L664 500" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
-    <path d="M622 578L668 618" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
-    <path d="M637 640L673 672" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
-    <ellipse cx="430" cy="372" rx="76" ry="42" fill="#FFFFFF" fill-opacity="0.3" transform="rotate(-29 430 372)"/>
-  </g>
+  <rect width="512" height="512" rx="120" fill="url(#bg)"/>
+  <text x="256" y="326" text-anchor="middle" font-size="228">⚾</text>
 </svg>
