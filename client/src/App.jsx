@@ -100,19 +100,28 @@ export default function App() {
   }
 
   if (authed === null) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', fontFamily: '-apple-system, sans-serif' }}>
-      <div style={{ fontSize: 14, color: '#9ca3af' }}>Loading...</div>
+    <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px' }}>
+      <div className="surface-card surface-card--strong animate-fade-up" style={{ minWidth: 260, padding: '28px 32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ fontSize: 14, color: '#8a98aa', fontWeight: 700, letterSpacing: '0.02em' }}>Loading dashboard...</div>
+      </div>
     </div>
   )
 
   if (!authed) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: '1rem', fontFamily: '-apple-system, sans-serif', background: '#f9fafb' }}>
-      <div style={{ fontSize: 36, marginBottom: 8 }}>⚾</div>
-      <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#1e3a5f', margin: 0 }}>Fantasy Dashboard</h1>
-      <p style={{ color: '#9ca3af', margin: 0, fontSize: 14 }}>Sign in with Yahoo to continue</p>
-      <a href={`${API}/auth/login`} style={{ background: '#6001D2', color: '#fff', padding: '0.7rem 2rem', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: 15, marginTop: 8 }}>
+    <div className="app-shell" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px' }}>
+      <div className="surface-card surface-card--strong animate-fade-up" style={{ width: 'min(520px, 100%)', padding: '42px 36px', textAlign: 'center' }}>
+        <div style={{ width: 72, height: 72, borderRadius: 24, margin: '0 auto 18px', background: 'linear-gradient(135deg, #16324f 0%, #2d7ff9 100%)', display: 'grid', placeItems: 'center', boxShadow: '0 24px 44px rgba(45,127,249,0.22)' }}>
+          <span style={{ fontSize: 32 }}>⚾</span>
+        </div>
+        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#16324f', margin: 0, letterSpacing: '-0.03em' }}>Fantasy Dashboard</h1>
+        <p style={{ color: '#7d8da1', margin: '10px 0 0', fontSize: 15, lineHeight: 1.6 }}>
+          Clean lineup views, live game context, and league-aware stats across Yahoo and ESPN.
+        </p>
+        <a className="control-button control-button--primary" href={`${API}/auth/login`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: '#fff', padding: '0.95rem 1.75rem', borderRadius: '14px', textDecoration: 'none', fontWeight: 700, fontSize: 15, marginTop: 24, minWidth: 220 }}>
+        <span style={{ fontSize: 16 }}>↗</span>
         Sign in with Yahoo
       </a>
+      </div>
     </div>
   )
 

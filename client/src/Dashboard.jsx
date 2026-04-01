@@ -80,7 +80,7 @@ function useIsMobile() {
 }
 
 function Tag({ text, bg = C.gray100, color = C.gray600 }) {
-    return <span style={{ display: 'inline-block', padding: '1px 7px', borderRadius: 3, fontSize: 11, fontWeight: 500, background: bg, color, lineHeight: '18px' }}>{text}</span>
+    return <span className="premium-badge" style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: bg, color, lineHeight: '18px', letterSpacing: '-0.01em' }}>{text}</span>
 }
 
 function StatusBadge({ status }) {
@@ -119,7 +119,7 @@ function RankBadge({ rank }) {
 function PlayerAvatar({ imageUrl, name, size = 36 }) {
     return imageUrl ? (
         <img src={imageUrl} alt={name}
-            style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', background: C.gray100, flexShrink: 0 }}
+            style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', background: C.gray100, flexShrink: 0, boxShadow: '0 6px 16px rgba(15,23,42,0.08)', border: '1px solid rgba(255,255,255,0.8)' }}
             onError={e => e.target.style.display = 'none'}
         />
     ) : (
@@ -261,7 +261,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
     const homeAhead = started && (game.homeScore ?? 0) > (game.awayScore ?? 0)
 
     return (
-        <div style={{
+        <div className="surface-card surface-card--interactive animate-fade-up" style={{
             background: C.white,
             border: `1px solid ${game.isLive ? '#86efac' : C.gray200}`,
             borderLeft: `3px solid ${game.isLive ? C.green : game.isFinal ? C.gray200 : C.accent}`,
@@ -309,7 +309,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     const liveCount = games.filter(g => g.isLive).length
 
     return (
-        <div style={{ background: C.white, borderBottom: `1px solid ${C.gray100}`, paddingTop: 10, paddingBottom: 12 }}>
+        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: C.white, borderBottom: `1px solid ${C.gray100}`, paddingTop: 10, paddingBottom: 12 }}>
             {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 10 }}>
                 <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -329,12 +329,12 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
             {/* My-player games — full-bleed scroll, hidden scrollbar */}
             {myGames.length > 0 && (
                 <div style={{
-                    display: 'flex', gap: 10,
-                    overflowX: 'auto', overflowY: 'visible',
-                    paddingLeft: px, paddingRight: px, paddingBottom: 2,
-                    scrollbarWidth: 'none', msOverflowStyle: 'none',
-                    WebkitOverflowScrolling: 'touch',
-                }}>
+                display: 'flex', gap: 10,
+                overflowX: 'auto', overflowY: 'visible',
+                paddingLeft: px, paddingRight: px, paddingBottom: 2,
+                scrollbarWidth: 'none', msOverflowStyle: 'none',
+                WebkitOverflowScrolling: 'touch',
+                }} className="scrollbar-hidden">
                     {myGames.map(g => (
                         <BoxScoreCard key={g.gamePk} game={g} boxscore={boxscores[g.gamePk]}
                             myPlayerNames={myPlayerNames} rosterPlayers={rosterPlayers} imageMap={imageMap} />
@@ -394,15 +394,16 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
 
     return (
         <>
-            <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 40 }} />
-            <div style={{
+            <div className="player-panel-backdrop" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(8,15,27,0.36)', zIndex: 40, backdropFilter: 'blur(6px)' }} />
+            <div className="player-panel surface-card surface-card--strong" style={{
                 position: 'fixed', right: 0, top: 0, bottom: 0,
                 width: 'min(400px, 100vw)',
                 background: C.white, zIndex: 50,
                 boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
-                display: 'flex', flexDirection: 'column', overflow: 'hidden'
+                display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                borderRadius: '24px 0 0 24px',
             }}>
-                <div style={{ background: isEspn ? '#1a1a2e' : C.navy, padding: '0.85rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ background: isEspn ? '#1a1a2e' : C.navy, padding: '1rem 1.1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <img src={detail?.imageUrl || (isEspn ? `https://a.espncdn.com/i/headshots/mlb/players/full/${playerKey.replace('espn.p.', '')}.png` : '')} alt={playerName}
                             style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.2)', background: C.navyLight, flexShrink: 0 }}
@@ -417,7 +418,7 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
                             {overallRank && <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>Rank #{overallRank}</div>}
                         </div>
                     </div>
-                    <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: C.white, cursor: 'pointer', borderRadius: 4, padding: '4px 8px', fontSize: 16, lineHeight: 1, flexShrink: 0 }}>✕</button>
+                    <button onClick={onClose} className="control-button" style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.14)', color: C.white, cursor: 'pointer', borderRadius: 10, padding: '6px 10px', fontSize: 16, lineHeight: 1, flexShrink: 0 }}>✕</button>
                 </div>
 
                 {loading ? (
@@ -1165,7 +1166,8 @@ function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
     const hasEspn = p.leagueSlots.some(ls => ls.leagueKey.startsWith('espn'))
 
     return (
-        <div onClick={() => openPlayer(p.primaryPlayerKey, p.primaryName)}
+        <div className="row-premium"
+            onClick={() => openPlayer(p.primaryPlayerKey, p.primaryName)}
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: `1px solid ${C.gray100}`, background: C.white, cursor: 'pointer', active: { background: C.gray50 } }}
             onMouseEnter={e => e.currentTarget.style.background = C.gray50}
             onMouseLeave={e => e.currentTarget.style.background = C.white}>
@@ -1568,7 +1570,7 @@ export default function Dashboard({ api }) {
 
         if (isMobile) {
             return (
-                <tr key={player.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer', background: rowBg }}
+                <tr className="row-premium" key={player.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer', background: rowBg }}
                     onClick={() => openPlayer(player.playerKey, player.name)}
                     onMouseEnter={e => e.currentTarget.style.background = isIL ? C.redLight : C.gray50}
                     onMouseLeave={e => e.currentTarget.style.background = rowBg}>
@@ -1588,7 +1590,7 @@ export default function Dashboard({ api }) {
         }
 
         return (
-            <tr key={player.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer', background: rowBg }}
+            <tr className="row-premium" key={player.playerKey} style={{ borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer', background: rowBg }}
                 onClick={() => openPlayer(player.playerKey, player.name)}
                 onMouseEnter={e => e.currentTarget.style.background = isIL ? C.redLight : C.gray50}
                 onMouseLeave={e => e.currentTarget.style.background = rowBg}>
@@ -1620,7 +1622,7 @@ export default function Dashboard({ api }) {
     const px = isMobile ? '12px' : '1.5rem'
 
     return (
-        <div style={{ minHeight: '100vh', background: C.gray50, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 13, color: C.gray800 }}>
+        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Avenir Next", "SF Pro Display", "Segoe UI Variable", sans-serif', fontSize: 13, color: C.gray800 }}>
 
             {selectedPlayer && (
                 <PlayerPanel playerKey={selectedPlayer.playerKey} playerName={selectedPlayer.name}
@@ -1628,19 +1630,18 @@ export default function Dashboard({ api }) {
             )}
 
             {/* Header */}
-            <div style={{
-                background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
-                borderBottom: `1px solid ${C.gray200}`, padding: `0 ${px}`,
+            <div className="dashboard-topbar animate-slide-down" style={{
+                padding: `0 ${px}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                height: isMobile ? 52 : 60, position: 'sticky', top: 0, zIndex: 40
+                height: isMobile ? 60 : 72,
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', width: 30, height: 30, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div className="dashboard-brand">
+                    <div className="dashboard-brand-mark">
                         <span style={{ fontSize: 14 }}>⚾</span>
                     </div>
                     <div>
-                        <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 800, color: C.navy, lineHeight: 1.1 }}>Fantasy Dashboard</div>
-                        <div style={{ fontSize: 10, color: C.gray400 }}>
+                        <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 800, color: C.navy, lineHeight: 1.05, letterSpacing: '-0.03em' }}>Fantasy Dashboard</div>
+                        <div style={{ fontSize: 10, color: C.gray400, marginTop: 3 }}>
                             {data.length} leagues · 2026
                             {ranksLoading && ' · Loading ranks...'}
                         </div>
@@ -1648,11 +1649,11 @@ export default function Dashboard({ api }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14 }}>
                     {!isMobile && lastUpdated && <span style={{ fontSize: 11, color: C.gray400 }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
-                    <button onClick={() => { loadDashboard(); loadScoreboard() }} style={{
+                    <button className="control-button control-button--primary" onClick={() => { loadDashboard(); loadScoreboard() }} style={{
                         fontSize: isMobile ? 11 : 12, fontWeight: 700, padding: isMobile ? '6px 12px' : '7px 16px',
-                        borderRadius: 20, border: 'none', background: C.navy, color: C.white, cursor: 'pointer',
+                        borderRadius: 999, border: 'none', color: C.white, cursor: 'pointer',
                     }}>↻ {isMobile ? '' : 'Refresh'}</button>
-                    <a href={`${api}/auth/logout`} style={{ fontSize: isMobile ? 11 : 12, fontWeight: 600, color: C.gray600, textDecoration: 'none', padding: '6px 10px', background: C.gray100, borderRadius: 12 }}>
+                    <a className="control-button control-button--ghost" href={`${api}/auth/logout`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: C.gray600, textDecoration: 'none', padding: '7px 12px', borderRadius: 999 }}>
                         {isMobile ? '↪' : 'Sign Out'}
                     </a>
                 </div>
@@ -1663,7 +1664,7 @@ export default function Dashboard({ api }) {
                 myPlayerNames={myPlayerNames} rosterPlayers={allRosterPlayers} imageMap={imageMap} px={px} />
 
             {/* Matchup Cards */}
-            <div style={{ padding: `12px ${px} 6px`, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10 }}>
+            <div className="stagger-container" style={{ padding: `18px ${px} 8px`, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
                 {data.map(lg => {
                     const isWinning = lg.matchup?.isWinning
                     const isLosing = lg.matchup && !isWinning && parseFloat(lg.matchup.oppScore || 0) > parseFloat(lg.matchup.myScore || 0)
@@ -1677,7 +1678,7 @@ export default function Dashboard({ api }) {
                         ? `https://fantasy.espn.com/baseball/league?leagueId=${lg.leagueKey.split('.l.')[1]}`
                         : `https://baseball.fantasysports.yahoo.com/b1/${lg.leagueKey.split('.l.')[1]}`
                     return (
-                        <a href={href} target="_blank" rel="noopener noreferrer" key={lg.leagueKey} style={{
+                        <a className="surface-card surface-card--interactive matchup-card animate-fade-up" href={href} target="_blank" rel="noopener noreferrer" key={lg.leagueKey} style={{
                             textDecoration: 'none', color: 'inherit', display: 'block',
                             background: bgGrad, borderRadius: 10, padding: '12px 14px',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: `1px solid ${borderColor}`,
@@ -1726,18 +1727,18 @@ export default function Dashboard({ api }) {
             </div>
 
             {/* Tabs */}
-            <div style={{ padding: `16px ${px} 12px`, display: 'flex', justifyContent: 'center', background: C.white, borderBottom: `1px solid ${C.gray100}`, position: 'sticky', top: isMobile ? 52 : 60, zIndex: 30 }}>
-                <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: 5, borderRadius: 14, width: isMobile ? '100%' : 'auto' }}>
+            <div className="dashboard-topbar" style={{ padding: `14px ${px} 14px`, display: 'flex', justifyContent: 'center', position: 'sticky', top: isMobile ? 60 : 72, zIndex: 30 }}>
+                <div className="surface-card" style={{ display: 'inline-flex', padding: 6, borderRadius: 18, width: isMobile ? '100%' : 'auto', background: 'rgba(255,255,255,0.66)' }}>
                     {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }, { id: 'trade', label: 'Trade' }].map(tab => {
                         const isActive = activeTab === tab.id
                         return (
-                            <button key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
+                            <button className={`tab-pill${isActive ? ' is-active' : ''}`} key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
                                 flex: isMobile ? 1 : 'none',
                                 padding: isMobile ? '10px 8px' : '10px 28px',
                                 fontSize: isMobile ? 13 : 14, fontWeight: isActive ? 800 : 600,
-                                color: isActive ? C.navy : C.gray400,
-                                background: isActive ? C.white : 'transparent', border: 'none', borderRadius: 10,
-                                boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.06)' : 'none',
+                                color: isActive ? C.white : C.gray400,
+                                background: isActive ? C.navy : 'transparent', border: 'none', borderRadius: 12,
+                                boxShadow: isActive ? '0 14px 28px rgba(22,50,79,0.18)' : 'none',
                                 cursor: 'pointer', transition: 'all 0.15s',
                             }}>{tab.label}</button>
                         )
@@ -1745,12 +1746,12 @@ export default function Dashboard({ api }) {
                 </div>
             </div>
 
-            <div style={{ padding: `12px ${px}` }}>
+            <div className="section-stack animate-tab-content" style={{ padding: `16px ${px} 24px` }}>
 
                 {/* ALL PLAYERS */}
                 {activeTab === 'feed' && (
                     <>
-                        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center', padding: 12 }}>
                             <input placeholder="Search players..." value={search} onChange={e => setSearch(e.target.value)}
                                 style={{ ...inputStyle, flex: isMobile ? 1 : 'none', width: isMobile ? 'auto' : 200 }} />
                             <select value={posFilter} onChange={e => setPosFilter(e.target.value)} style={selStyle}>
@@ -1842,10 +1843,10 @@ export default function Dashboard({ api }) {
                 {/* LINEUPS */}
                 {activeTab === 'lineup' && (
                     <>
-                        <div style={{ display: 'flex', gap: 6, marginBottom: 10, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }}>
+                        <div className="scrollbar-hidden" style={{ display: 'flex', gap: 8, marginBottom: 12, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }}>
                             {data.map(lg => (
-                                <button key={lg.leagueKey} onClick={() => setActiveLeague(lg.leagueKey)} style={{
-                                    padding: '5px 12px', fontSize: 11, borderRadius: 6, cursor: 'pointer', fontWeight: 500, flexShrink: 0,
+                                <button className={`league-pill${activeLeague === lg.leagueKey ? ' is-active' : ''}`} key={lg.leagueKey} onClick={() => setActiveLeague(lg.leagueKey)} style={{
+                                    padding: '8px 14px', fontSize: 11, borderRadius: 999, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
                                     background: activeLeague === lg.leagueKey ? C.navy : C.white,
                                     color: activeLeague === lg.leagueKey ? C.white : C.gray600,
                                     border: `1px solid ${activeLeague === lg.leagueKey ? C.navy : C.gray200}`,
@@ -2049,10 +2050,10 @@ export default function Dashboard({ api }) {
     )
 }
 
-const tableCard = { background: C.white, borderRadius: 8, border: `1px solid ${C.gray200}`, overflow: 'hidden' }
+const tableCard = { background: 'rgba(255,255,255,0.88)', borderRadius: 18, border: `1px solid rgba(148,163,184,0.18)`, overflow: 'hidden', boxShadow: '0 16px 40px rgba(15,23,42,0.05)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
-const thStyle = { padding: '6px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em' }
-const tdStyle = { padding: '8px 12px', fontSize: 13, verticalAlign: 'middle', background: 'inherit' }
-const inputStyle = { padding: '8px 10px', border: `1px solid ${C.gray200}`, borderRadius: 8, fontSize: 13, outline: 'none', color: C.gray800, background: C.white }
-const selStyle = { padding: '7px 8px', border: `1px solid ${C.gray200}`, borderRadius: 8, fontSize: 12, background: C.white, outline: 'none', cursor: 'pointer', color: C.gray800 }
-const btnStyle = { padding: '7px 14px', borderRadius: 8, border: `1px solid ${C.gray200}`, background: C.white, cursor: 'pointer', fontSize: 13, color: C.gray600, fontWeight: 500 }
+const thStyle = { padding: '11px 14px', textAlign: 'left', fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em' }
+const tdStyle = { padding: '11px 14px', fontSize: 13, verticalAlign: 'middle', background: 'inherit' }
+const inputStyle = { padding: '10px 12px', border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 13, outline: 'none', color: C.gray800, background: 'rgba(255,255,255,0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
+const selStyle = { padding: '10px 12px', border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 12, background: 'rgba(255,255,255,0.84)', outline: 'none', cursor: 'pointer', color: C.gray800, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
+const btnStyle = { padding: '9px 16px', borderRadius: 12, border: `1px solid rgba(148,163,184,0.24)`, background: 'rgba(255,255,255,0.84)', cursor: 'pointer', fontSize: 13, color: C.gray600, fontWeight: 700, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
