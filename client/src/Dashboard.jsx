@@ -1999,6 +1999,11 @@ export default function Dashboard({ api }) {
                                     <span style={{ fontSize: 10, color: C.navy, fontWeight: 700 }}>{lg.standing.wins}W – {lg.standing.losses}L</span>
                                 </div>
                             )}
+                            {lg.source === 'espn' && lg.matchup?.debugSource && (
+                                <div style={{ marginTop: 8, fontSize: 10, color: C.gray400 }}>
+                                    ESPN source: {lg.matchup.debugSource}
+                                </div>
+                            )}
                         </a>
                     )
                 })}

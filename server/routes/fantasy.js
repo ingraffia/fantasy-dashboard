@@ -473,6 +473,12 @@ function deriveEspnCategoryRecordFromScores(mySide, oppSide, settingsData) {
     return resolvedCategories > 0 ? { wins, losses, ties } : null;
 }
 
+function getEspnScoreSourceName(side) {
+    if (side?.cumulativeScoreLive?.scoreByStat) return 'live';
+    if (side?.cumulativeScore?.scoreByStat) return 'final';
+    return 'unknown';
+}
+
 router.get('/leagues', requireAuth, async (req, res) => {
     try { res.json(await getUserLeagues(req.session)); }
     catch (err) { res.status(500).json({ error: err.message }); }
@@ -741,6 +747,7 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
                 const oppRecord = derivedRecord
                     ? { wins: derivedRecord.losses, losses: derivedRecord.wins, ties: derivedRecord.ties }
                     : deriveEspnCategoryRecord(oppSide);
+                const scoreSource = getEspnScoreSourceName(mySide);
                 matchup = {
                     week: currentPeriod,
                     myScore: `${myRecord.wins}-${myRecord.losses}-${myRecord.ties}`,
@@ -748,6 +755,7 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
                     oppScore: `${oppRecord.wins}-${oppRecord.losses}-${oppRecord.ties}`,
                     oppProjected: '',
                     isWinning: myRecord.wins > oppRecord.wins || (myRecord.wins === oppRecord.wins && myRecord.ties > oppRecord.ties),
+                    debugSource: scoreSource,
                 };
             }
         } catch (e) { console.warn('ESPN matchup parse failed:', e.message); }
