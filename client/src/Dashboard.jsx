@@ -1234,6 +1234,7 @@ export default function Dashboard({ api }) {
     const [selectedPlayer, setSelectedPlayer] = useState(null)
     const [rankMap, setRankMap] = useState({})
     const [ranksLoading, setRanksLoading] = useState(false)
+    const [playerSort, setPlayerSort] = useState('rank')
     const [games, setGames] = useState(() => {
         try {
             const stored = localStorage.getItem('games_cache')
@@ -1470,6 +1471,10 @@ export default function Dashboard({ api }) {
         const mst = statusFilter === 'All' || (statusFilter === 'Healthy' ? !p.injuryStatus : !!p.injuryStatus)
         return ms && mp && ml && mst
     }).sort((a, b) => {
+        if (playerSort === 'rosterShare') {
+            const shareDelta = b.leagueSlots.length - a.leagueSlots.length
+            if (shareDelta !== 0) return shareDelta
+        }
         const aR = a.bestOverallRank ?? a.bestLeagueRank ?? Infinity
         const bR = b.bestOverallRank ?? b.bestLeagueRank ?? Infinity
         return aR - bR || (a.primaryName || '').localeCompare(b.primaryName || '')
@@ -1783,7 +1788,35 @@ export default function Dashboard({ api }) {
                                 <table style={tableStyle}>
                                     <thead>
                                         <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
-                                            {['Player', 'Pos', 'Roster Share', 'Best Rank', 'Leagues & Slots'].map(h => <th key={h} style={thStyle}>{h}</th>)}
+                                            <th style={thStyle}>Player</th>
+                                            <th style={thStyle}>Pos</th>
+                                            <th style={thStyle}>
+                                                <button
+                                                    onClick={() => setPlayerSort(prev => prev === 'rosterShare' ? 'rank' : 'rosterShare')}
+                                                    style={{
+                                                        border: 'none',
+                                                        background: 'transparent',
+                                                        padding: 0,
+                                                        margin: 0,
+                                                        font: 'inherit',
+                                                        color: playerSort === 'rosterShare' ? C.navy : C.gray400,
+                                                        fontWeight: 800,
+                                                        letterSpacing: '0.09em',
+                                                        textTransform: 'uppercase',
+                                                        cursor: 'pointer',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                    }}
+                                                >
+                                                    <span>Roster Share</span>
+                                                    <span style={{ fontSize: 11, color: playerSort === 'rosterShare' ? C.accent : C.gray400 }}>
+                                                        {playerSort === 'rosterShare' ? '↓' : '↕'}
+                                                    </span>
+                                                </button>
+                                            </th>
+                                            <th style={thStyle}>Best Rank</th>
+                                            <th style={thStyle}>Leagues & Slots</th>
                                         </tr>
                                     </thead>
                                     <tbody>
