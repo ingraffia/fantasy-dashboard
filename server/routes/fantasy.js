@@ -349,13 +349,14 @@ function parseEspnSeasonStatsByLabel(player) {
 }
 
 function deriveEspnCategoryRecord(side) {
+    const scoreSource = side?.cumulativeScoreLive || side?.cumulativeScore;
     const fallback = {
-        wins: side?.cumulativeScore?.wins ?? 0,
-        losses: side?.cumulativeScore?.losses ?? 0,
-        ties: side?.cumulativeScore?.ties ?? 0,
+        wins: scoreSource?.wins ?? 0,
+        losses: scoreSource?.losses ?? 0,
+        ties: scoreSource?.ties ?? 0,
     };
 
-    const scoreByStat = side?.cumulativeScore?.scoreByStat;
+    const scoreByStat = scoreSource?.scoreByStat;
     if (!scoreByStat || typeof scoreByStat !== 'object') return fallback;
 
     let wins = 0;
@@ -427,8 +428,10 @@ function extractFirstNumericValue(value) {
 }
 
 function deriveEspnCategoryRecordFromScores(mySide, oppSide, settingsData) {
-    const myStats = mySide?.cumulativeScore?.scoreByStat;
-    const oppStats = oppSide?.cumulativeScore?.scoreByStat;
+    const myScoreSource = mySide?.cumulativeScoreLive || mySide?.cumulativeScore;
+    const oppScoreSource = oppSide?.cumulativeScoreLive || oppSide?.cumulativeScore;
+    const myStats = myScoreSource?.scoreByStat;
+    const oppStats = oppScoreSource?.scoreByStat;
     if (!myStats || !oppStats || typeof myStats !== 'object' || typeof oppStats !== 'object') return null;
 
     const scoringMeta = extractEspnScoringItemMeta(settingsData);
