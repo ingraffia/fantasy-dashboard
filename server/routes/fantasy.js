@@ -373,6 +373,92 @@ function deriveEspnCategoryRecord(side) {
     return resolvedCategories > 0 ? { wins, losses, ties } : fallback;
 }
 
+function extractEspnScoringItemMeta(settingsData) {
+    const rawScoringItems = settingsData?.settings?.scoringSettings?.scoringItems;
+    const scoringItems = Array.isArray(rawScoringItems)
+        ? rawScoringItems
+        : rawScoringItems && typeof rawScoringItems === 'object'
+            ? Object.values(rawScoringItems)
+            : [];
+    const map = {};
+    scoringItems.forEach((item) => {
+        if (!item || typeof item !== 'object' || item.statId == null) return;
+        map[String(item.statId)] = {
+            isReverse: item.isReverseItem === true || item.isReverseItem === 1,
+        };
+    });
+    return map;
+}
+
+function extractFirstNumericValue(value) {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+        const parsed = parseFloat(value);
+        if (Number.isFinite(parsed)) return parsed;
+    }
+    if (Array.isArray(value)) {
+        for (const entry of value) {
+            const found = extractFirstNumericValue(entry);
+            if (found != null) return found;
+        }
+        return null;
+    }
+    if (value && typeof value === 'object') {
+        const preferredKeys = ['score', 'value', 'total', 'appliedTotal', 'appliedStatTotal', 'statValue'];
+        for (const key of preferredKeys) {
+            if (value[key] != null) {
+                const found = extractFirstNumericValue(value[key]);
+                if (found != null) return found;
+            }
+        }
+        for (const nested of Object.values(value)) {
+            const found = extractFirstNumericValue(nested);
+            if (found != null) return found;
+        }
+    }
+    return null;
+}
+
+function deriveEspnCategoryRecordFromScores(mySide, oppSide, settingsData) {
+    const myStats = mySide?.cumulativeScore?.scoreByStat;
+    const oppStats = oppSide?.cumulativeScore?.scoreByStat;
+    if (!myStats || !oppStats || typeof myStats !== 'object' || typeof oppStats !== 'object') return null;
+
+    const scoringMeta = extractEspnScoringItemMeta(settingsData);
+    let wins = 0;
+    let losses = 0;
+    let ties = 0;
+    let resolvedCategories = 0;
+
+    Object.keys(myStats).forEach((statId) => {
+        const myEntry = myStats[statId];
+        const oppEntry = oppStats[statId];
+        if (!oppEntry) return;
+
+        const myResult = String(myEntry?.result || '').toUpperCase();
+        const oppResult = String(oppEntry?.result || '').toUpperCase();
+        if (myResult && oppResult) {
+            resolvedCategories += 1;
+            if (myResult === 'WIN') wins += 1;
+            else if (myResult === 'LOSS') losses += 1;
+            else ties += 1;
+            return;
+        }
+
+        const myValue = extractFirstNumericValue(myEntry);
+        const oppValue = extractFirstNumericValue(oppEntry);
+        if (myValue == null || oppValue == null) return;
+
+        resolvedCategories += 1;
+        const isReverse = scoringMeta[statId]?.isReverse === true;
+        if (myValue === oppValue) ties += 1;
+        else if (isReverse ? myValue < oppValue : myValue > oppValue) wins += 1;
+        else losses += 1;
+    });
+
+    return resolvedCategories > 0 ? { wins, losses, ties } : null;
+}
+
 router.get('/leagues', requireAuth, async (req, res) => {
     try { res.json(await getUserLeagues(req.session)); }
     catch (err) { res.status(500).json({ error: err.message }); }
@@ -636,8 +722,11 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
                 const mySide = isHome ? currentMatchup.home : currentMatchup.away;
                 const oppSide = isHome ? currentMatchup.away : currentMatchup.home;
                 const oppTeamInfo = teamData.teams.find(t => t.id === oppSide?.teamId);
-                const myRecord = deriveEspnCategoryRecord(mySide);
-                const oppRecord = deriveEspnCategoryRecord(oppSide);
+                const derivedRecord = deriveEspnCategoryRecordFromScores(mySide, oppSide, settingsData);
+                const myRecord = derivedRecord || deriveEspnCategoryRecord(mySide);
+                const oppRecord = derivedRecord
+                    ? { wins: derivedRecord.losses, losses: derivedRecord.wins, ties: derivedRecord.ties }
+                    : deriveEspnCategoryRecord(oppSide);
                 matchup = {
                     week: currentPeriod,
                     myScore: `${myRecord.wins}-${myRecord.losses}-${myRecord.ties}`,
