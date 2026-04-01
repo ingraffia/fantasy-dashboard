@@ -1,7 +1,6 @@
 const axios = require('axios');
 
 const BASE_URL = 'https://fantasysports.yahooapis.com/fantasy/v2';
-const MLB_GAME_KEY = '469';
 
 async function yahooGet(session, path) {
     const url = `${BASE_URL}${path}?format=json`;
@@ -12,14 +11,36 @@ async function yahooGet(session, path) {
 }
 
 async function getUserLeagues(session) {
-    const data = await yahooGet(session, `/users;use_login=1/games;game_keys=${MLB_GAME_KEY}/leagues`);
+    const data = await yahooGet(session, `/users;use_login=1/games`);
     const users = data?.fantasy_content?.users;
     const user = users?.['0']?.user;
     const games = user?.[1]?.games;
-    const game = games?.['0']?.game;
-    const leagues = game?.[1]?.leagues;
-    if (!leagues || typeof leagues !== 'object') return [];
-    return Object.values(leagues).filter(l => typeof l === 'object' && l.league);
+    if (!games || typeof games !== 'object') return [];
+
+    const allLeagues = [];
+    Object.values(games).forEach((gameEntry) => {
+        const game = gameEntry?.game;
+        if (!game) return;
+
+        const meta = game[0] || [];
+        const flatMeta = {};
+        meta.forEach((item) => {
+            if (typeof item === 'object') Object.assign(flatMeta, item);
+        });
+
+        const gameCode = String(flatMeta.code || flatMeta.game_code || flatMeta.gameCode || '').toLowerCase();
+        const gameName = String(flatMeta.name || '').toLowerCase();
+        const isBaseball = gameCode === 'mlb' || gameCode === 'baseball' || gameName.includes('baseball');
+        if (!isBaseball) return;
+
+        const leagues = game?.[1]?.leagues;
+        if (!leagues || typeof leagues !== 'object') return;
+        Object.values(leagues).forEach((league) => {
+            if (typeof league === 'object' && league.league) allLeagues.push(league);
+        });
+    });
+
+    return allLeagues;
 }
 
 async function getTeamRoster(session, teamKey) {
@@ -32,4 +53,4 @@ async function getLeagueScoreboard(session, leagueKey) {
     return data.fantasy_content.league[1].scoreboard;
 }
 
-module.exports = { yahooGet, getUserLeagues, getTeamRoster, getLeagueScoreboard, MLB_GAME_KEY };
+module.exports = { yahooGet, getUserLeagues, getTeamRoster, getLeagueScoreboard };
