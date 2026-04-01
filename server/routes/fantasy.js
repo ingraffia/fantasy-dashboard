@@ -685,7 +685,7 @@ router.get('/boxscore/:gamePk', async (req, res) => {
     try {
         const { gamePk } = req.params;
         const { data } = await axios.get(`https://statsapi.mlb.com/api/v1/game/${gamePk}/boxscore`);
-        const parseTeamPlayers = (teamData) => {
+        const parseTeamPlayers = (teamData, teamAbbr) => {
             const players = [];
             Object.values(teamData?.players || {}).forEach(p => {
                 const batting = p.stats?.batting; const pitching = p.stats?.pitching;
@@ -697,6 +697,7 @@ router.get('/boxscore/:gamePk', async (req, res) => {
                 if (!hasBatted && !hasPitched && !isCurrent && (!hasLineupRole || isBenchOnly)) return;
                 players.push({
                     id: p.person?.id, name: p.person?.fullName, position: p.position?.abbreviation,
+                    proTeam: teamAbbr || null,
                     battingOrder: p.battingOrder ? parseInt(p.battingOrder) : null,
                     status: p.gameStatus?.isCurrentBatter ? 'batting' : p.gameStatus?.isCurrentPitcher ? 'pitching' : null,
                     batting: hasBatted ? { ab: batting.atBats ?? 0, h: batting.hits ?? 0, r: batting.runs ?? 0, hr: batting.homeRuns ?? 0, rbi: batting.rbi ?? 0, bb: batting.baseOnBalls ?? 0, k: batting.strikeOuts ?? 0, sb: batting.stolenBases ?? 0 } : null,
@@ -711,8 +712,8 @@ router.get('/boxscore/:gamePk', async (req, res) => {
         };
         res.json({
             gamePk: parseInt(gamePk),
-            away: { team: data.teams?.away?.team?.abbreviation, players: parseTeamPlayers(data.teams?.away) },
-            home: { team: data.teams?.home?.team?.abbreviation, players: parseTeamPlayers(data.teams?.home) },
+            away: { team: data.teams?.away?.team?.abbreviation, players: parseTeamPlayers(data.teams?.away, data.teams?.away?.team?.abbreviation) },
+            home: { team: data.teams?.home?.team?.abbreviation, players: parseTeamPlayers(data.teams?.home, data.teams?.home?.team?.abbreviation) },
         });
     } catch (err) { res.status(500).json({ error: err.message }); }
 });

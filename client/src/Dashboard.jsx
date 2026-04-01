@@ -52,6 +52,12 @@ function normName(name) {
         .replace(/[^a-z]/g, '')
 }
 
+function playerIdentityKey(playerLike) {
+    const baseName = normName(playerLike?.name)
+    const team = String(playerLike?.proTeam || playerLike?.team || '').trim().toUpperCase()
+    return `${baseName}::${team}`
+}
+
 function formatHitterLine(b) {
     if (!b) return null
     const parts = [`${b.h}-${b.ab}`]
@@ -296,7 +302,7 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap }) {
         else if (ab >= 3 && h === 0) perfColor = C.red
     }
 
-    const imgUrl = imageMap[normName(bsPlayer.name)] || null
+    const imgUrl = imageMap[playerIdentityKey(bsPlayer)] || imageMap[normName(bsPlayer.name)] || null
 
     return (
         <div style={{
@@ -331,11 +337,13 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
     const loading = !boxscore && started
 
     const allBsPlayers = [...(boxscore?.away?.players || []), ...(boxscore?.home?.players || [])]
-    const myBsPlayers = allBsPlayers.filter(p => myPlayerNames.has(normName(p.name)))
+    const myBsPlayers = allBsPlayers.filter(p => myPlayerNames.has(playerIdentityKey(p)) || myPlayerNames.has(normName(p.name)))
 
     const withRoster = myBsPlayers.map(bp => ({
         bsPlayer: bp,
-        rosterPlayer: rosterPlayers.find(rp => normName(rp.name) === normName(bp.name)),
+        rosterPlayer: rosterPlayers.find(rp => playerIdentityKey(rp) === playerIdentityKey(bp))
+            || rosterPlayers.find(rp => normName(rp.name) === normName(bp.name) && rp.proTeam === bp.proTeam)
+            || rosterPlayers.find(rp => normName(rp.name) === normName(bp.name)),
     })).sort((a, b) => {
         const aP = !!a.bsPlayer.pitching; const bP = !!b.bsPlayer.pitching
         if (aP && !bP) return -1; if (!aP && bP) return 1
@@ -1568,7 +1576,7 @@ export default function Dashboard({ api }) {
         const map = {}
         data.forEach(lg => {
             lg.players.forEach(p => {
-                const n = normName(p.name) || p.playerKey
+                const n = playerIdentityKey(p) || p.playerKey
                 const isEspnImg = p.imageUrl?.includes('espncdn')
                 if (isEspnImg) map[n] = p.imageUrl
                 else if (!map[n] && p.imageUrl) map[n] = p.imageUrl
@@ -1578,8 +1586,8 @@ export default function Dashboard({ api }) {
     }, [data])
 
     const getResImg = useCallback((p) => {
-        const n = normName(p.name) || p.playerKey
-        const img = imageMap[n] || p.imageUrl
+        const n = playerIdentityKey(p) || p.playerKey
+        const img = imageMap[n] || imageMap[normName(p.name)] || p.imageUrl
         if (img?.includes('yimg.com')) {
             const parts = img.split('https://s.yimg.com/')
             if (parts.length > 2) return 'https://s.yimg.com/' + parts[parts.length - 1]
@@ -1588,13 +1596,14 @@ export default function Dashboard({ api }) {
     }, [imageMap])
 
     const allRosterPlayers = useMemo(() => data.flatMap(lg => lg.players), [data])
-    const myPlayerNames = useMemo(() => new Set(allRosterPlayers.map(p => normName(p.name)).filter(Boolean)), [allRosterPlayers])
+    const myPlayerNames = useMemo(() => new Set(allRosterPlayers.flatMap(p => [playerIdentityKey(p), normName(p.name)]).filter(Boolean)), [allRosterPlayers])
 
     const todayStatsMap = useMemo(() => {
         const map = {}
         Object.values(boxscores).forEach(bs => {
             ;[...(bs.away?.players || []), ...(bs.home?.players || [])].forEach(p => {
-                map[normName(p.name)] = { batting: p.batting, pitching: p.pitching }
+                map[playerIdentityKey(p)] = { batting: p.batting, pitching: p.pitching }
+                map[normName(p.name)] = map[playerIdentityKey(p)]
             })
         })
         return map
@@ -1616,7 +1625,7 @@ export default function Dashboard({ api }) {
         const playerMap = {}
         data.forEach(lg => {
             lg.players.forEach(p => {
-                const n = normName(p.name) || p.playerKey
+                const n = playerIdentityKey(p) || p.playerKey
                 if (!playerMap[n]) playerMap[n] = { ...p, primaryPlayerKey: p.playerKey, primaryName: p.name, leagueSlots: [], allRanks: [] }
                 playerMap[n].leagueSlots.push({ leagueName: lg.leagueName, leagueKey: lg.leagueKey, leagueUrl: lg.leagueUrl, selectedPosition: p.selectedPosition })
                 playerMap[n].allRanks.push(getPlayerRanks(p.playerKey, lg.leagueKey))
@@ -1666,7 +1675,7 @@ export default function Dashboard({ api }) {
 
     const renderLineupRow = (player, source, leagueKey, seasonCols = [], forceHitter = false) => {
         const isIL = IL_SLOTS.includes(player.selectedPosition)
-        const todayData = todayStatsMap[normName(player.name)]
+        const todayData = todayStatsMap[playerIdentityKey(player)] || todayStatsMap[normName(player.name)]
         const gameInfo = teamGameMap[player.proTeam]
         const isP = !forceHitter && isPitcher(player.position)
         const rowBg = isIL ? '#fffafa' : C.white
