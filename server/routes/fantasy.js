@@ -217,7 +217,12 @@ function extractYahooSettingStats(statsNode) {
 }
 
 function extractYahooLineupCategories(settingsData) {
-    const rawStats = settingsData?.fantasy_content?.league?.[1]?.settings?.[0]?.stat_categories?.stats;
+    const leagueContent = settingsData?.fantasy_content?.league;
+    const settingsNode = Array.isArray(leagueContent)
+        ? leagueContent.find(item => item?.settings)?.settings
+        : null;
+    const rawStats = settingsNode?.[0]?.stat_categories?.stats
+        || settingsData?.fantasy_content?.league?.[1]?.settings?.[0]?.stat_categories?.stats;
     const stats = extractYahooSettingStats(rawStats);
     const seen = new Set();
     const hitters = [];
@@ -247,6 +252,16 @@ function mapYahooSeasonStatsByLabel(stats = {}) {
         if (stats[statId] !== undefined) byLabel[def.label] = stats[statId];
     });
     return byLabel;
+}
+
+async function fetchYahooPlayerSeasonStats(session, playerKey) {
+    const data = await yahooGet(session, `/player/${playerKey}/stats;type=season`);
+    const stats = data?.fantasy_content?.player?.[1]?.player_stats?.stats || {};
+    const statsMap = {};
+    Object.values(stats).forEach(statEntry => {
+        if (statEntry?.stat) statsMap[statEntry.stat.stat_id] = statEntry.stat.value;
+    });
+    return statsMap;
 }
 
 function parseEspnRanks(player) {
@@ -337,22 +352,15 @@ router.get('/dashboard', requireAuth, async (req, res) => {
             const playersRaw = rosterData.fantasy_content.team[1].roster[0].players;
             const players = parsePlayers(playersRaw);
             try {
-                const statsData = await yahooGet(req.session, `/team/${myTeamKey}/stats`);
-                const statsPlayers = statsData.fantasy_content?.team?.[1]?.team_stats?.players;
-                if (statsPlayers) {
-                    Object.values(statsPlayers).forEach(sp => {
-                        if (typeof sp !== 'object' || !sp.player) return;
-                        const spMeta = flattenMeta(sp.player[0]);
-                        const spStats = sp.player[1]?.player_stats?.stats;
-                        const player = players.find(p => p.playerKey === spMeta.player_key);
-                        if (player && spStats) {
-                            const statsMap = {};
-                            Object.values(spStats).forEach(s => { if (s?.stat) statsMap[s.stat.stat_id] = s.stat.value; });
-                            player.stats = statsMap;
-                            player.yahooSeasonStats = mapYahooSeasonStatsByLabel(statsMap);
-                        }
-                    });
-                }
+                await Promise.all(players.map(async (player) => {
+                    try {
+                        const statsMap = await fetchYahooPlayerSeasonStats(req.session, player.playerKey);
+                        player.stats = statsMap;
+                        player.yahooSeasonStats = mapYahooSeasonStatsByLabel(statsMap);
+                    } catch (playerErr) {
+                        console.warn('Player season stats fetch failed for', player.playerKey, playerErr.message);
+                    }
+                }));
             } catch (e) { console.warn('Stats fetch failed:', e.message); }
             let matchup = null;
             try {
