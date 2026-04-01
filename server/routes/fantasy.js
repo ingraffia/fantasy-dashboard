@@ -137,6 +137,7 @@ const ESPN_LINEUP_STAT_DEFS = {
     '51': { label: 'SV', side: 'pitcher' },
     '53': { label: 'W', side: 'pitcher' },
 };
+const ESPN_REVERSE_CATEGORY_IDS = new Set(['41', '47']);
 const YAHOO_LINEUP_STAT_SIDE_HINTS = {
     '3': 'hitter', '4': 'hitter', '7': 'hitter', '8': 'hitter', '12': 'hitter', '13': 'hitter', '16': 'hitter', '18': 'hitter',
     '26': 'pitcher', '27': 'pitcher', '28': 'pitcher', '29': 'pitcher', '32': 'pitcher', '33': 'pitcher', '42': 'pitcher',
@@ -384,7 +385,12 @@ function extractEspnScoringItemMeta(settingsData) {
     scoringItems.forEach((item) => {
         if (!item || typeof item !== 'object' || item.statId == null) return;
         map[String(item.statId)] = {
-            isReverse: item.isReverseItem === true || item.isReverseItem === 1,
+            isReverse:
+                item.isReverseItem === true
+                || item.isReverseItem === 1
+                || item.isInverted === true
+                || item.isInverted === 1
+                || ESPN_REVERSE_CATEGORY_IDS.has(String(item.statId)),
         };
     });
     return map;
@@ -450,7 +456,7 @@ function deriveEspnCategoryRecordFromScores(mySide, oppSide, settingsData) {
         if (myValue == null || oppValue == null) return;
 
         resolvedCategories += 1;
-        const isReverse = scoringMeta[statId]?.isReverse === true;
+        const isReverse = scoringMeta[statId]?.isReverse === true || ESPN_REVERSE_CATEGORY_IDS.has(String(statId));
         if (myValue === oppValue) ties += 1;
         else if (isReverse ? myValue < oppValue : myValue > oppValue) wins += 1;
         else losses += 1;
