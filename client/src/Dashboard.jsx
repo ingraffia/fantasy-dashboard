@@ -1316,6 +1316,7 @@ export default function Dashboard({ api }) {
     const [ranksLoading, setRanksLoading] = useState(false)
     const [playerSort, setPlayerSort] = useState('rank')
     const [loadWarnings, setLoadWarnings] = useState([])
+    const [pullState, setPullState] = useState({ active: false, distance: 0, ready: false, refreshing: false })
     const [games, setGames] = useState(() => {
         try {
             const stored = localStorage.getItem('games_cache')
@@ -1422,6 +1423,15 @@ export default function Dashboard({ api }) {
             .catch(e => console.warn('Scoreboard failed:', e.message))
     }, [api])
 
+    const refreshAll = useCallback(() => {
+        setPullState(prev => ({ ...prev, refreshing: true, active: false, ready: false }))
+        loadDashboard()
+        loadScoreboard()
+        window.setTimeout(() => {
+            setPullState(prev => ({ ...prev, refreshing: false, distance: 0, active: false, ready: false }))
+        }, 700)
+    }, [loadDashboard, loadScoreboard])
+
     const myTeams = useMemo(() => new Set(data.flatMap(lg => lg.players.map(p => p.proTeam)).filter(Boolean)), [data])
 
     const loadBoxscores = useCallback((currentGames, currentMyTeams) => {
@@ -1469,6 +1479,54 @@ export default function Dashboard({ api }) {
             return () => clearInterval(interval)
         }
     }, [games, myTeams])
+
+    useEffect(() => {
+        if (!isMobile) return
+
+        let startY = 0
+        let pulling = false
+        const threshold = 84
+
+        const onTouchStart = (event) => {
+            if (window.scrollY > 0 || pullState.refreshing) return
+            startY = event.touches[0]?.clientY || 0
+            pulling = true
+        }
+
+        const onTouchMove = (event) => {
+            if (!pulling) return
+            const currentY = event.touches[0]?.clientY || 0
+            const delta = currentY - startY
+            if (delta <= 0 || window.scrollY > 0) {
+                setPullState(prev => prev.active ? { ...prev, active: false, distance: 0, ready: false } : prev)
+                return
+            }
+            const distance = Math.min(delta * 0.55, 120)
+            setPullState({ active: true, distance, ready: distance >= threshold, refreshing: false })
+        }
+
+        const onTouchEnd = () => {
+            if (!pulling) return
+            pulling = false
+            setPullState(prev => {
+                if (prev.ready) {
+                    window.setTimeout(() => refreshAll(), 0)
+                    return { ...prev, active: false, distance: 0 }
+                }
+                return prev.refreshing ? prev : { active: false, distance: 0, ready: false, refreshing: false }
+            })
+        }
+
+        window.addEventListener('touchstart', onTouchStart, { passive: true })
+        window.addEventListener('touchmove', onTouchMove, { passive: true })
+        window.addEventListener('touchend', onTouchEnd)
+
+        return () => {
+            window.removeEventListener('touchstart', onTouchStart)
+            window.removeEventListener('touchmove', onTouchMove)
+            window.removeEventListener('touchend', onTouchEnd)
+        }
+    }, [isMobile, refreshAll, pullState.refreshing])
 
     const fetchFreeAgents = (leagueKey, pos, srch) => {
         if (leagueKey?.startsWith('espn')) return
@@ -1738,8 +1796,39 @@ export default function Dashboard({ api }) {
 
     const px = isMobile ? '12px' : '1.5rem'
 
+    const pullOffset = isMobile ? (pullState.refreshing ? 56 : pullState.distance) : 0
+
     return (
         <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Inter", "Inter var", "Segoe UI Variable", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 13, color: C.gray800 }}>
+
+            {isMobile && (
+                <div style={{
+                    position: 'fixed',
+                    top: 10,
+                    left: '50%',
+                    transform: `translateX(-50%) translateY(${pullState.active || pullState.refreshing ? 0 : -18}px)`,
+                    opacity: pullState.active || pullState.refreshing ? 1 : 0,
+                    zIndex: 60,
+                    pointerEvents: 'none',
+                    transition: 'transform 180ms ease, opacity 180ms ease',
+                }}>
+                    <div className="surface-card premium-badge" style={{
+                        padding: '8px 12px',
+                        borderRadius: 999,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        background: 'rgba(255,255,255,0.92)',
+                    }}>
+                        <span className={pullState.refreshing ? 'animate-pulse' : ''} style={{ fontSize: 13, color: pullState.ready || pullState.refreshing ? C.accent : C.gray400 }}>
+                            ↓
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: C.gray600 }}>
+                            {pullState.refreshing ? 'Refreshing...' : pullState.ready ? 'Release to refresh' : 'Pull to refresh'}
+                        </span>
+                    </div>
+                </div>
+            )}
 
             {selectedPlayer && (
                 <PlayerPanel playerKey={selectedPlayer.playerKey} playerName={selectedPlayer.name}
@@ -1751,6 +1840,8 @@ export default function Dashboard({ api }) {
                 padding: `0 ${px}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 height: isMobile ? 60 : 72,
+                transform: pullOffset ? `translateY(${Math.min(pullOffset, 56)}px)` : 'translateY(0)',
+                transition: pullState.active ? 'none' : 'transform 180ms ease',
             }}>
                 <div className="dashboard-brand">
                     <div className="dashboard-brand-mark">
@@ -1766,7 +1857,7 @@ export default function Dashboard({ api }) {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14 }}>
                     {!isMobile && lastUpdated && <span style={{ fontSize: 11, color: C.gray400 }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
-                    <button className="control-button control-button--primary" onClick={() => { loadDashboard(); loadScoreboard() }} style={{
+                    <button className="control-button control-button--primary" onClick={refreshAll} style={{
                         fontSize: isMobile ? 11 : 12, fontWeight: 700, padding: isMobile ? '6px 12px' : '7px 16px',
                         borderRadius: 999, border: 'none', color: C.white, cursor: 'pointer',
                     }}>↻ {isMobile ? '' : 'Refresh'}</button>
@@ -1777,6 +1868,10 @@ export default function Dashboard({ api }) {
             </div>
 
             {/* Live Box Scores */}
+            <div style={{
+                transform: pullOffset ? `translateY(${Math.min(pullOffset, 56)}px)` : 'translateY(0)',
+                transition: pullState.active ? 'none' : 'transform 180ms ease',
+            }}>
             <LiveBoxScores games={games} boxscores={boxscores} myTeams={myTeams}
                 myPlayerNames={myPlayerNames} rosterPlayers={allRosterPlayers} imageMap={imageMap} px={px} />
 
@@ -2215,6 +2310,7 @@ export default function Dashboard({ api }) {
                 {activeTab === 'trade' && (
                     <ESPNTradeAnalyzer api={api} />
                 )}
+            </div>
             </div>
         </div>
     )
