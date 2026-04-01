@@ -50,6 +50,143 @@ function attachAuthToken(res, authToken) {
     res.setHeader(AUTH_HEADER_NAME, authToken);
 }
 
+function classifyOAuthError(err) {
+    const responseData = err?.response?.data;
+    const errorCode = responseData?.error || err?.code || '';
+    const description = responseData?.error_description || responseData?.errorDescription || err?.message || '';
+    const combined = `${errorCode} ${description}`.toLowerCase();
+
+    if (combined.includes('redirect')) {
+        return {
+            title: 'Redirect URI mismatch',
+            message: 'Yahoo rejected the callback URL. Check that the Yahoo app callback URL exactly matches YAHOO_REDIRECT_URI in Railway.',
+        };
+    }
+
+    if (combined.includes('invalid_client') || combined.includes('client authentication')) {
+        return {
+            title: 'Yahoo client credentials rejected',
+            message: 'Yahoo did not accept the client ID or client secret. Verify YAHOO_CLIENT_ID and YAHOO_CLIENT_SECRET in Railway and in the Yahoo app settings.',
+        };
+    }
+
+    if (combined.includes('invalid_grant') || combined.includes('authorization code')) {
+        return {
+            title: 'Yahoo authorization code rejected',
+            message: 'Yahoo rejected the authorization code. This usually means the callback was reused, expired, or the redirect/app config does not match.',
+        };
+    }
+
+    if (combined.includes('timeout') || combined.includes('econn') || combined.includes('network')) {
+        return {
+            title: 'Yahoo network request failed',
+            message: 'The server could not complete the Yahoo token exchange. This points to a timeout or network/runtime issue rather than a browser problem.',
+        };
+    }
+
+    return {
+        title: 'Yahoo token exchange failed',
+        message: 'The server reached Yahoo but the OAuth token exchange did not complete successfully. Check the Railway logs for the OAuth error details.',
+    };
+}
+
+function renderAuthErrorPage(details) {
+    const title = details?.title || 'Authentication failed';
+    const message = details?.message || 'The Yahoo login flow failed.';
+    return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${title}</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #eef3f8 0%, #e4ebf3 100%);
+        color: #102033;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 24px;
+      }
+      .card {
+        width: min(620px, 100%);
+        background: rgba(255,255,255,0.94);
+        border: 1px solid rgba(148,163,184,0.18);
+        border-radius: 24px;
+        box-shadow: 0 24px 70px rgba(15,23,42,0.12);
+        padding: 32px 30px;
+      }
+      .eyebrow {
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #d14b5d;
+        margin-bottom: 10px;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 28px;
+        line-height: 1.1;
+      }
+      p {
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.65;
+        color: #5f7389;
+      }
+      .hint {
+        margin-top: 18px;
+        padding: 14px 16px;
+        background: #f8fafc;
+        border-radius: 16px;
+        color: #445468;
+        font-size: 14px;
+      }
+      .actions {
+        margin-top: 22px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      a {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 11px 16px;
+        border-radius: 999px;
+        text-decoration: none;
+        font-weight: 700;
+      }
+      .primary {
+        background: linear-gradient(135deg, #16324f 0%, #2d7ff9 100%);
+        color: white;
+      }
+      .secondary {
+        background: #f8fafc;
+        color: #445468;
+        border: 1px solid rgba(148,163,184,0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="eyebrow">Yahoo Authentication Error</div>
+      <h1>${title}</h1>
+      <p>${message}</p>
+      <div class="hint">This is a server-side issue, not a browser setting problem. The next place to check is the Railway logs for the OAuth callback request.</div>
+      <div class="actions">
+        <a class="primary" href="/auth/login">Try Yahoo Login Again</a>
+        <a class="secondary" href="/">Back to App</a>
+      </div>
+    </div>
+  </body>
+</html>`;
+}
+
 router.get('/login', (req, res) => {
     const params = new URLSearchParams({
         client_id: YAHOO_CLIENT_ID,
@@ -112,7 +249,8 @@ router.get('/callback', async (req, res) => {
         console.error('OAuth status:', err.response?.status);
         console.error('OAuth message:', err.message);
         console.error('OAuth code:', err.code);
-        res.status(500).send('Authentication failed');
+        const details = classifyOAuthError(err);
+        res.status(500).send(renderAuthErrorPage(details));
     }
 });
 
