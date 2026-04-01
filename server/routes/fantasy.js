@@ -105,6 +105,13 @@ async function espnGet(params) {
     return data;
 }
 
+async function espnGetMulti(views = []) {
+    const params = new URLSearchParams();
+    views.forEach((view) => params.append('view', view));
+    const { data } = await axios.get(ESPN_BASE, { params, headers: ESPN_HEADERS });
+    return data;
+}
+
 const ESPN_SLOT_MAP = {
     0: 'C', 1: '1B', 2: '2B', 3: '3B', 4: 'SS', 5: 'OF',
     6: '2B', 7: '1B', 8: 'OF', 9: 'OF', 10: 'OF',
@@ -698,7 +705,7 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
         const MY_TEAM_ID = 7;
         const [rosterData, matchupData, teamData, settingsData] = await Promise.all([
             espnGet({ view: 'mRoster', forTeamId: MY_TEAM_ID }),
-            espnGet({ view: 'mMatchupScore' }),
+            espnGetMulti(['mMatchup', 'mLiveScoring']),
             espnGet({ view: 'mTeam' }),
             espnGet({ view: 'mSettings' }),
         ]);
