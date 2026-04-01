@@ -691,7 +691,10 @@ router.get('/boxscore/:gamePk', async (req, res) => {
                 const batting = p.stats?.batting; const pitching = p.stats?.pitching;
                 const hasBatted = batting && (batting.atBats > 0 || batting.baseOnBalls > 0 || batting.hitByPitch > 0);
                 const hasPitched = pitching && parseFloat(pitching.inningsPitched || 0) > 0;
-                if (!hasBatted && !hasPitched) return;
+                const isCurrent = p.gameStatus?.isCurrentBatter || p.gameStatus?.isCurrentPitcher;
+                const hasLineupRole = Boolean(p.battingOrder) || p.position?.abbreviation === 'P';
+                const isBenchOnly = p.gameStatus?.isOnBench === true;
+                if (!hasBatted && !hasPitched && !isCurrent && (!hasLineupRole || isBenchOnly)) return;
                 players.push({
                     id: p.person?.id, name: p.person?.fullName, position: p.position?.abbreviation,
                     battingOrder: p.battingOrder ? parseInt(p.battingOrder) : null,

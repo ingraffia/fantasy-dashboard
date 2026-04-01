@@ -44,7 +44,12 @@ function getSeasonColLabel(col) {
 }
 
 function normName(name) {
-    return (name || '').toLowerCase().replace(/[^a-z]/g, '')
+    return (name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '')
+        .replace(/[^a-z]/g, '')
 }
 
 function formatHitterLine(b) {
