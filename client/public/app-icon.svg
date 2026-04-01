@@ -1,45 +1,45 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
   <defs>
-    <linearGradient id="bg" x1="160" y1="120" x2="860" y2="900" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="118" y1="90" x2="886" y2="938" gradientUnits="userSpaceOnUse">
       <stop stop-color="#24456E"/>
-      <stop offset="0.58" stop-color="#17324F"/>
-      <stop offset="1" stop-color="#0E2136"/>
+      <stop offset="0.58" stop-color="#16314D"/>
+      <stop offset="1" stop-color="#0D2236"/>
     </linearGradient>
-    <radialGradient id="halo" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(370 250) rotate(49.5) scale(600 610)">
-      <stop stop-color="#93C5FD" stop-opacity="0.35"/>
-      <stop offset="1" stop-color="#93C5FD" stop-opacity="0"/>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(350 236) rotate(45.7) scale(632 612)">
+      <stop stop-color="#8CC2FF" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#8CC2FF" stop-opacity="0"/>
     </radialGradient>
-    <radialGradient id="ball" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(420 350) rotate(52.4) scale(470 470)">
+    <radialGradient id="ball" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(430 346) rotate(51.7) scale(520 520)">
       <stop stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#F3F1EC"/>
+      <stop offset="1" stop-color="#F2EFE8"/>
     </radialGradient>
-    <filter id="shadow" x="184" y="192" width="656" height="656" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+    <filter id="shadow" x="176" y="190" width="672" height="672" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
       <feFlood flood-opacity="0" result="BackgroundImageFix"/>
       <feColorMatrix in="SourceAlpha" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
-      <feOffset dy="18"/>
+      <feOffset dy="20"/>
       <feGaussianBlur stdDeviation="22"/>
-      <feColorMatrix values="0 0 0 0 0.0352941 0 0 0 0 0.0941176 0 0 0 0 0.164706 0 0 0 0.24 0"/>
+      <feColorMatrix values="0 0 0 0 0.027451 0 0 0 0 0.0901961 0 0 0 0 0.160784 0 0 0 0.24 0"/>
       <feBlend in2="BackgroundImageFix" result="effect1_dropShadow_0_1"/>
       <feBlend in="SourceGraphic" in2="effect1_dropShadow_0_1" result="shape"/>
     </filter>
   </defs>
   <rect width="1024" height="1024" rx="228" fill="url(#bg)"/>
-  <rect width="1024" height="1024" rx="228" fill="url(#halo)"/>
+  <rect width="1024" height="1024" rx="228" fill="url(#glow)"/>
   <g filter="url(#shadow)">
-    <circle cx="512" cy="500" r="252" fill="url(#ball)"/>
-    <circle cx="512" cy="500" r="252" stroke="rgba(255,255,255,0.55)" stroke-width="8"/>
-    <path d="M366 316C324 362 299 425 297 492C295 559 318 622 360 676" stroke="#C92020" stroke-width="20" stroke-linecap="round"/>
-    <path d="M658 316C700 362 725 425 727 492C729 559 706 622 664 676" stroke="#C92020" stroke-width="20" stroke-linecap="round"/>
-    <path d="M388 360L351 392" stroke="#C92020" stroke-width="10" stroke-linecap="round"/>
-    <path d="M403 414L358 452" stroke="#C92020" stroke-width="10" stroke-linecap="round"/>
-    <path d="M409 478L362 518" stroke="#C92020" stroke-width="10" stroke-linecap="round"/>
-    <path d="M404 543L357 583" stroke="#C92020" stroke-width="10" stroke-linecap="round"/>
-    <path d="M390 600L352 633" stroke="#C92020" stroke-width="10" stroke-linecap="round"/>
-    <path d="M636 360L673 392" stroke="#C92020" stroke-width="10" stroke-linecap="round"/>
-    <path d="M621 414L666 452" stroke="#C92020" stroke-width="10" stroke-linecap="round"/>
-    <path d="M615 478L662 518" stroke="#C92020" stroke-width="10" stroke-linecap="round"/>
-    <path d="M620 543L667 583" stroke="#C92020" stroke-width="10" stroke-linecap="round"/>
-    <path d="M634 600L672 633" stroke="#C92020" stroke-width="10" stroke-linecap="round"/>
-    <ellipse cx="438" cy="392" rx="74" ry="44" fill="#FFFFFF" fill-opacity="0.34" transform="rotate(-28 438 392)"/>
+    <circle cx="512" cy="500" r="256" fill="url(#ball)"/>
+    <circle cx="512" cy="500" r="256" stroke="#FFFFFF" stroke-opacity="0.52" stroke-width="8"/>
+    <path d="M363 320C320 364 292 428 290 500C288 573 314 637 356 680" stroke="#D32020" stroke-width="22" stroke-linecap="round"/>
+    <path d="M661 320C704 364 732 428 734 500C736 573 710 637 668 680" stroke="#D32020" stroke-width="22" stroke-linecap="round"/>
+    <path d="M388 360L352 392" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
+    <path d="M403 422L357 462" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
+    <path d="M408 500L360 500" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
+    <path d="M402 578L356 618" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
+    <path d="M387 640L351 672" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
+    <path d="M636 360L672 392" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
+    <path d="M621 422L667 462" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
+    <path d="M616 500L664 500" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
+    <path d="M622 578L668 618" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
+    <path d="M637 640L673 672" stroke="#D32020" stroke-width="11" stroke-linecap="round"/>
+    <ellipse cx="430" cy="372" rx="76" ry="42" fill="#FFFFFF" fill-opacity="0.3" transform="rotate(-29 430 372)"/>
   </g>
 </svg>
