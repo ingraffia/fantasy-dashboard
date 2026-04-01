@@ -122,6 +122,59 @@ const ESPN_INJURY_MAP = {
     ACTIVE: null, NORMAL: null, FIFTEEN_DAY_DL: 'IL15', SIXTY_DAY_DL: 'IL60',
     TEN_DAY_DL: 'IL10', DAY_TO_DAY: 'DTD', SUSPENSION: 'SUSP', SEVEN_DAY_DL: 'IL', OUT: 'O',
 };
+const ESPN_LINEUP_STAT_DEFS = {
+    '3': { label: 'AVG', side: 'hitter' },
+    '5': { label: 'HR', side: 'hitter' },
+    '8': { label: 'TB', side: 'hitter' },
+    '17': { label: 'OBP', side: 'hitter' },
+    '18': { label: 'OPS', side: 'hitter' },
+    '20': { label: 'R', side: 'hitter' },
+    '21': { label: 'RBI', side: 'hitter' },
+    '23': { label: 'SB', side: 'hitter' },
+    '41': { label: 'WHIP', side: 'pitcher' },
+    '47': { label: 'ERA', side: 'pitcher' },
+    '48': { label: 'K', side: 'pitcher' },
+    '51': { label: 'SV', side: 'pitcher' },
+    '53': { label: 'W', side: 'pitcher' },
+};
+
+function formatBaseballIpFromOuts(outs) {
+    const parsedOuts = Number(outs);
+    if (!Number.isFinite(parsedOuts) || parsedOuts <= 0) return '0.0';
+    const wholeInnings = Math.floor(parsedOuts / 3);
+    const remainder = parsedOuts % 3;
+    return `${wholeInnings}.${remainder}`;
+}
+
+function pickEspnSeasonStats(player, seasonId = '002026') {
+    if (!player?.stats) return null;
+    return player.stats.find(s => s.id === seasonId && s.statSourceId === 0)
+        || player.stats.find(s => s.id === seasonId)
+        || player.stats.find(s => String(s.id || '').startsWith('002026'))
+        || null;
+}
+
+function extractEspnLineupCategories(settingsData) {
+    const scoringItems = settingsData?.settings?.scoringSettings?.scoringItems || [];
+    const activeItems = scoringItems.filter(item => item && item.isActive !== false);
+    const seen = new Set();
+    const hitters = [];
+    const pitchers = [];
+
+    activeItems.forEach(item => {
+        const statId = String(item.statId);
+        const def = ESPN_LINEUP_STAT_DEFS[statId];
+        if (!def || seen.has(def.label)) return;
+        seen.add(def.label);
+        if (def.side === 'hitter') hitters.push(def.label);
+        if (def.side === 'pitcher') pitchers.push(def.label);
+    });
+
+    return {
+        hitterSeason: hitters.length > 0 ? hitters : ['R', 'HR', 'RBI', 'SB', 'OBP', 'TB'],
+        pitcherSeason: pitchers.length > 0 ? pitchers : ['W', 'SV', 'K', 'ERA', 'WHIP'],
+    };
+}
 
 function parseEspnRanks(player) {
     const ranks = {};
@@ -136,8 +189,7 @@ function parseEspnRanks(player) {
 
 function parseEspnStats(player) {
     const stats = {};
-    if (!player?.stats) return stats;
-    const seasonStats = player.stats.find(s => s.id === '002026' || s.statSplitTypeId === 0);
+    const seasonStats = pickEspnSeasonStats(player);
     if (!seasonStats?.stats) return stats;
     const s = seasonStats.stats;
     if (s['0'] !== undefined) stats['60'] = Math.round(s['0']);
@@ -149,13 +201,37 @@ function parseEspnStats(player) {
     if (s['2'] !== undefined && s['0'] && s['0'] > 0) stats['3'] = (s['2'] / s['0']).toFixed(3);
     if (s['17'] !== undefined) stats['4'] = parseFloat(s['17']).toFixed(3);
     if (s['18'] !== undefined) stats['18'] = parseFloat(s['18']).toFixed(3);
-    if (s['34'] !== undefined) stats['28'] = parseFloat(s['34']).toFixed(1);
-    if (s['19'] !== undefined) stats['32'] = Math.round(s['19']);
-    if (s['20'] !== undefined && s['34'] !== undefined) stats['33'] = Math.round(s['20']);
+    if (s['34'] !== undefined) stats['28'] = formatBaseballIpFromOuts(s['34']);
+    if (s['53'] !== undefined) stats['32'] = Math.round(s['53']);
     if (s['35'] !== undefined) stats['42'] = Math.round(s['35']);
     if (s['27'] !== undefined) stats['26'] = Math.round(s['27']);
     if (s['47'] !== undefined) stats['27'] = parseFloat(s['47']).toFixed(2);
     if (s['41'] !== undefined) stats['29'] = parseFloat(s['41']).toFixed(2);
+    return stats;
+}
+
+function parseEspnSeasonStatsByLabel(player) {
+    const stats = {};
+    const seasonStats = pickEspnSeasonStats(player);
+    if (!seasonStats?.stats) return stats;
+    const s = seasonStats.stats;
+
+    if (s['20'] !== undefined) stats.R = Math.round(s['20']);
+    if (s['5'] !== undefined) stats.HR = Math.round(s['5']);
+    if (s['21'] !== undefined) stats.RBI = Math.round(s['21']);
+    if (s['23'] !== undefined) stats.SB = Math.round(s['23']);
+    if (s['8'] !== undefined) stats.TB = Math.round(s['8']);
+    if (s['17'] !== undefined) stats.OBP = parseFloat(s['17']).toFixed(3);
+    if (s['18'] !== undefined) stats.OPS = parseFloat(s['18']).toFixed(3);
+    if (s['2'] !== undefined && s['0'] && s['0'] > 0) stats.AVG = (s['2'] / s['0']).toFixed(3);
+
+    if (s['53'] !== undefined) stats.W = Math.round(s['53']);
+    if (s['51'] !== undefined) stats.SV = Math.round(s['51']);
+    if (s['48'] !== undefined) stats.K = Math.round(s['48']);
+    if (s['47'] !== undefined) stats.ERA = parseFloat(s['47']).toFixed(2);
+    if (s['41'] !== undefined) stats.WHIP = parseFloat(s['41']).toFixed(2);
+    if (s['34'] !== undefined) stats.IP = formatBaseballIpFromOuts(s['34']);
+
     return stats;
 }
 
@@ -368,12 +444,14 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
 router.get('/espn-dashboard', requireAuth, async (req, res) => {
     try {
         const MY_TEAM_ID = 7;
-        const [rosterData, matchupData, teamData] = await Promise.all([
+        const [rosterData, matchupData, teamData, settingsData] = await Promise.all([
             espnGet({ view: 'mRoster', forTeamId: MY_TEAM_ID }),
             espnGet({ view: 'mMatchup' }),
             espnGet({ view: 'mTeam' }),
+            espnGet({ view: 'mSettings' }),
         ]);
         const myTeamInfo = teamData.teams.find(t => t.id === MY_TEAM_ID);
+        const lineupCategories = extractEspnLineupCategories(settingsData);
         const standing = myTeamInfo ? {
             rank: myTeamInfo.playoffSeed || '—', wins: myTeamInfo.record?.overall?.wins || 0,
             losses: myTeamInfo.record?.overall?.losses || 0, ties: myTeamInfo.record?.overall?.ties || 0,
@@ -395,6 +473,7 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
                 imageUrl: `https://a.espncdn.com/i/headshots/mlb/players/full/${entry.playerId}.png`,
                 ownership: player?.ownership?.percentOwned ?? null,
                 stats: parseEspnStats(player),
+                espnSeasonStats: parseEspnSeasonStatsByLabel(player),
                 overallRank: espnRanks.overallRank || null, leagueRank: espnRanks.leagueRank || null,
                 keeperValue: entry.playerPoolEntry?.keeperValue || null,
             };
@@ -426,7 +505,7 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
             leagueUrl: `https://fantasy.espn.com/baseball/team?leagueId=${process.env.ESPN_LEAGUE_ID}&teamId=${MY_TEAM_ID}`,
             scoringType: 'espn', currentWeek: matchupData.status?.currentMatchupPeriod || 1,
             teamKey: `espn.t.${MY_TEAM_ID}`, teamName: myTeamInfo?.name || 'Long Ball Larry',
-            players, matchup, standing, source: 'espn',
+            players, matchup, standing, source: 'espn', lineupCategories,
         });
     } catch (err) {
         console.error('ESPN dashboard error:', err.response?.data || err.message);

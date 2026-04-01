@@ -23,6 +23,10 @@ const PITCHER_STATS = [
     { id: '42', label: 'SV' }, { id: '26', label: 'K' }, { id: '27', label: 'ERA' },
     { id: '29', label: 'WHIP' },
 ]
+const ESPN_DEFAULT_LINEUP_CATEGORIES = {
+    hitterSeason: ['R', 'HR', 'RBI', 'SB', 'OBP', 'TB'],
+    pitcherSeason: ['W', 'SV', 'K', 'ERA', 'WHIP'],
+}
 const isPitcher = pos => pos && (pos.includes('SP') || pos.includes('RP') || pos === 'P')
 
 function normName(name) {
@@ -1465,12 +1469,13 @@ export default function Dashboard({ api }) {
     const openPlayer = (playerKey, name) => setSelectedPlayer({ playerKey, name })
     const yahooLeagues = data.filter(l => !l.leagueKey.startsWith('espn'))
 
-    const renderLineupRow = (player, source, leagueKey, forceHitter = false) => {
+    const renderLineupRow = (player, source, leagueKey, seasonCols = [], forceHitter = false) => {
         const isIL = IL_SLOTS.includes(player.selectedPosition)
         const todayData = todayStatsMap[normName(player.name)]
         const gameInfo = teamGameMap[player.proTeam]
         const isP = !forceHitter && isPitcher(player.position)
         const rowBg = isIL ? '#fffafa' : C.white
+        const showEspnSeasonStats = source === 'espn'
 
         // OPP cell
         const oppDisplay = gameInfo
@@ -1503,7 +1508,12 @@ export default function Dashboard({ api }) {
 
         let statCells = null
         if (!isMobile) {
-            if (isP) {
+            if (showEspnSeasonStats) {
+                const seasonStats = player.espnSeasonStats || {}
+                statCells = <>
+                    {seasonCols.map((label, idx) => numTd(seasonStats[label] ?? '—', idx < 3))}
+                </>
+            } else if (isP) {
                 if (hasGameActivity) {
                     const sp = todayData?.pitching
                     statCells = <>
@@ -1833,8 +1843,13 @@ export default function Dashboard({ api }) {
                             const activePitchers = [...activeLeagueData.players].filter(p => ['P', 'SP', 'RP'].includes(p.selectedPosition)).sort((a, b) => slotOrder.indexOf(a.selectedPosition) - slotOrder.indexOf(b.selectedPosition))
                             const benchPitchers = [...activeLeagueData.players].filter(p => p.selectedPosition === 'BN' && isPitcher(p.position))
                             const ilPlayers = [...activeLeagueData.players].filter(p => IL_SLOTS.includes(p.selectedPosition))
-                            const hitterCols = hasGameActivity ? ['H/AB', 'R', 'HR', 'RBI', 'SB', 'BB'] : ['AVG', 'OBP', 'R', 'HR', 'RBI', 'SB']
-                            const pitcherCols = hasGameActivity ? ['IP', 'K', 'H', 'BB', 'ER', 'W'] : ['W', 'SV', 'K', 'ERA', 'WHIP', 'IP']
+                            const espnLineupCategories = activeLeagueData.lineupCategories || ESPN_DEFAULT_LINEUP_CATEGORIES
+                            const hitterCols = src === 'espn'
+                                ? espnLineupCategories.hitterSeason
+                                : hasGameActivity ? ['H/AB', 'R', 'HR', 'RBI', 'SB', 'BB'] : ['AVG', 'OBP', 'R', 'HR', 'RBI', 'SB']
+                            const pitcherCols = src === 'espn'
+                                ? espnLineupCategories.pitcherSeason
+                                : hasGameActivity ? ['IP', 'K', 'H', 'BB', 'ER', 'W'] : ['W', 'SV', 'K', 'ERA', 'WHIP', 'IP']
                             const tableHead = (cols) => (
                                 <thead>
                                     <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
@@ -1877,10 +1892,10 @@ export default function Dashboard({ api }) {
                                     <div style={{ ...tableCard, marginBottom: 10 }}>
                                         <table style={tableStyle}>
                                             {tableHead(hitterCols)}
-                                            <tbody>
-                                                {sectionLabelRow('Batters', isMobile)}
-                                                {activeBatters.map(p => renderLineupRow(p, src, lk, true))}
-                                                {benchBatters.length > 0 && <>{sectionLabelRow('Bench', isMobile, C.gray400)}{benchBatters.map(p => renderLineupRow(p, src, lk, true))}</>}
+                                                <tbody>
+                                                    {sectionLabelRow('Batters', isMobile)}
+                                                {activeBatters.map(p => renderLineupRow(p, src, lk, hitterCols, true))}
+                                                {benchBatters.length > 0 && <>{sectionLabelRow('Bench', isMobile, C.gray400)}{benchBatters.map(p => renderLineupRow(p, src, lk, hitterCols, true))}</>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1891,8 +1906,8 @@ export default function Dashboard({ api }) {
                                             {tableHead(pitcherCols)}
                                             <tbody>
                                                 {sectionLabelRow('Pitchers', isMobile)}
-                                                {activePitchers.map(p => renderLineupRow(p, src, lk))}
-                                                {benchPitchers.length > 0 && <>{sectionLabelRow('Bench', isMobile, C.gray400)}{benchPitchers.map(p => renderLineupRow(p, src, lk))}</>}
+                                                {activePitchers.map(p => renderLineupRow(p, src, lk, pitcherCols))}
+                                                {benchPitchers.length > 0 && <>{sectionLabelRow('Bench', isMobile, C.gray400)}{benchPitchers.map(p => renderLineupRow(p, src, lk, pitcherCols))}</>}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1904,7 +1919,7 @@ export default function Dashboard({ api }) {
                                                 {tableHead(hitterCols)}
                                                 <tbody>
                                                     {sectionLabelRow('Injured List', isMobile, C.red)}
-                                                    {ilPlayers.map(p => renderLineupRow(p, src, lk))}
+                                                    {ilPlayers.map(p => renderLineupRow(p, src, lk, isPitcher(p.position) ? pitcherCols : hitterCols))}
                                                 </tbody>
                                             </table>
                                         </div>
