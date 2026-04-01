@@ -1895,7 +1895,20 @@ export default function Dashboard({ api }) {
             )}
 
             {/* Matchup Cards */}
-            <div className="stagger-container" style={{ padding: `18px ${px} 8px`, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+            <div
+                className="stagger-container scrollbar-hidden"
+                style={{
+                    padding: `18px ${px} 8px`,
+                    display: 'flex',
+                    gap: 14,
+                    overflowX: 'auto',
+                    overflowY: 'visible',
+                    flexWrap: 'nowrap',
+                    WebkitOverflowScrolling: 'touch',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none',
+                }}
+            >
                 {data.map(lg => {
                     const isWinning = lg.matchup?.isWinning
                     const isLosing = lg.matchup && !isWinning && parseFloat(lg.matchup.oppScore || 0) > parseFloat(lg.matchup.myScore || 0)
@@ -1913,6 +1926,9 @@ export default function Dashboard({ api }) {
                             textDecoration: 'none', color: 'inherit', display: 'block',
                             background: bgGrad, borderRadius: 10, padding: '12px 14px',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: `1px solid ${borderColor}`,
+                            minWidth: isMobile ? 'calc(100vw - 24px)' : 280,
+                            maxWidth: isMobile ? 'calc(100vw - 24px)' : 320,
+                            flex: '0 0 auto',
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, flex: 1 }}>
