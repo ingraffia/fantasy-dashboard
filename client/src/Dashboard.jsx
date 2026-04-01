@@ -1286,6 +1286,7 @@ export default function Dashboard({ api }) {
     const [rankMap, setRankMap] = useState({})
     const [ranksLoading, setRanksLoading] = useState(false)
     const [playerSort, setPlayerSort] = useState('rank')
+    const [loadWarnings, setLoadWarnings] = useState([])
     const [games, setGames] = useState(() => {
         try {
             const stored = localStorage.getItem('games_cache')
@@ -1333,22 +1334,47 @@ export default function Dashboard({ api }) {
         setRanksLoading(false)
     }, [api])
 
-    const loadDashboard = useCallback(() => {
-        const yahooPromise = axios.get(`${api}/api/dashboard`, { withCredentials: true })
-        const espnPromise = axios.get(`${api}/api/espn-dashboard`, { withCredentials: true }).catch(e => {
-            console.warn('ESPN failed:', e.message); return null
+    const loadDashboard = useCallback(async () => {
+        const requests = [
+            { key: 'yahoo', label: 'Yahoo dashboard', url: `${api}/api/dashboard` },
+            { key: 'espn', label: 'ESPN dashboard', url: `${api}/api/espn-dashboard` },
+        ]
+
+        const results = await Promise.allSettled(
+            requests.map(req => axios.get(req.url, { withCredentials: true }))
+        )
+
+        const combined = []
+        const warnings = []
+
+        results.forEach((result, idx) => {
+            const req = requests[idx]
+            if (result.status === 'fulfilled') {
+                if (req.key === 'yahoo') combined.push(...(result.value.data || []))
+                if (req.key === 'espn' && result.value?.data) combined.push(result.value.data)
+                return
+            }
+
+            const err = result.reason
+            const detail = err?.response?.data?.error || err?.message || 'Request failed'
+            console.warn(`${req.label} failed:`, detail)
+            warnings.push(`${req.label}: ${detail}`)
         })
-        Promise.all([yahooPromise, espnPromise])
-            .then(([yahooRes, espnRes]) => {
-                const combined = [...yahooRes.data]
-                if (espnRes?.data) combined.push(espnRes.data)
-                setData(combined)
-                setActiveLeague(prev => prev ?? combined[0]?.leagueKey ?? null)
-                setLastUpdated(new Date())
-                setLoading(false)
-                fetchAllRankings(combined)
-            })
-            .catch(e => { setError(e.message); setLoading(false) })
+
+        setLoadWarnings(warnings)
+
+        if (combined.length === 0) {
+            setError(warnings.join(' | ') || 'Failed to load dashboard')
+            setLoading(false)
+            return
+        }
+
+        setError(null)
+        setData(combined)
+        setActiveLeague(prev => (prev && combined.some(l => l.leagueKey === prev)) ? prev : (combined[0]?.leagueKey ?? null))
+        setLastUpdated(new Date())
+        setLoading(false)
+        fetchAllRankings(combined)
     }, [api, fetchAllRankings])
 
     const loadScoreboard = useCallback(() => {
@@ -1718,6 +1744,21 @@ export default function Dashboard({ api }) {
             {/* Live Box Scores */}
             <LiveBoxScores games={games} boxscores={boxscores} myTeams={myTeams}
                 myPlayerNames={myPlayerNames} rosterPlayers={allRosterPlayers} imageMap={imageMap} px={px} />
+
+            {loadWarnings.length > 0 && (
+                <div className="surface-card" style={{ margin: `14px ${px} 0`, padding: '12px 14px', borderColor: '#f5c2c7', background: 'rgba(255,248,248,0.92)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: C.red, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+                        Partial Data Warning
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {loadWarnings.map((warning) => (
+                            <div key={warning} style={{ fontSize: 12, color: C.gray600 }}>
+                                {warning}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Matchup Cards */}
             <div className="stagger-container" style={{ padding: `18px ${px} 8px`, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>

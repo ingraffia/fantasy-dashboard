@@ -356,93 +356,98 @@ router.get('/dashboard', requireAuth, async (req, res) => {
         const leagues = await getUserLeagues(req.session);
         const dashboardData = [];
         for (const leagueObj of leagues) {
-            const leagueData = leagueObj.league?.[0];
-            if (!leagueData) continue;
-            const teamsData = await yahooGet(req.session, `/league/${leagueData.league_key}/teams`);
-            let lineupCategories = extractYahooLineupCategories(null);
             try {
-                const settingsData = await yahooGet(req.session, `/league/${leagueData.league_key}/settings`);
-                lineupCategories = extractYahooLineupCategories(settingsData);
-            } catch (settingsErr) {
-                console.warn('Yahoo settings fetch failed for', leagueData.name, settingsErr.response?.data || settingsErr.message);
-            }
-            const teamsRaw = teamsData.fantasy_content.league[1].teams;
-            let myTeamKey = null, myTeamName = null;
-            Object.values(teamsRaw).forEach(t => {
-                if (typeof t !== 'object' || !t.team) return;
-                const flat = flattenMeta(t.team[0]);
-                if (flat.is_owned_by_current_login == 1) { myTeamKey = flat.team_key; myTeamName = flat.name; }
-            });
-            if (!myTeamKey) continue;
-            const rosterData = await yahooGet(req.session, `/team/${myTeamKey}/roster/players`);
-            const playersRaw = rosterData.fantasy_content.team[1].roster[0].players;
-            const players = parsePlayers(playersRaw);
-            try {
-                await Promise.all(players.map(async (player) => {
-                    try {
-                        const statsMap = await fetchYahooPlayerSeasonStats(req.session, player.playerKey);
-                        player.stats = statsMap;
-                        player.yahooSeasonStats = mapYahooSeasonStatsByLabel(statsMap, lineupCategories);
-                    } catch (playerErr) {
-                        console.warn('Player season stats fetch failed for', player.playerKey, playerErr.message);
-                    }
-                }));
-            } catch (e) { console.warn('Stats fetch failed:', e.message); }
-            let matchup = null;
-            try {
-                const currentWeek = leagueData.current_week;
-                if (currentWeek) {
-                    const scoreData = await yahooGet(req.session, `/league/${leagueData.league_key}/scoreboard;week=${currentWeek}`);
-                    const scoreboard = scoreData.fantasy_content.league[1].scoreboard;
-                    const matchups = scoreboard?.['0']?.matchups;
-                    if (matchups) {
-                        Object.values(matchups).forEach(m => {
-                            if (typeof m !== 'object' || !m.matchup) return;
-                            const matchupTeams = m.matchup['0']?.teams;
-                            if (!matchupTeams) return;
-                            const myTeamInMatchup = Object.values(matchupTeams).find(t =>
-                                typeof t === 'object' && t.team && flattenMeta(t.team[0]).team_key === myTeamKey);
-                            if (!myTeamInMatchup) return;
-                            const oppTeamData = Object.values(matchupTeams).find(t =>
-                                typeof t === 'object' && t.team && flattenMeta(t.team[0]).team_key !== myTeamKey);
-                            if (!oppTeamData) return;
-                            const oppFlat = flattenMeta(oppTeamData.team[0]);
-                            matchup = {
-                                week: currentWeek,
-                                myScore: parseFloat(myTeamInMatchup.team[1]?.team_points?.total || 0).toFixed(2),
-                                myProjected: parseFloat(myTeamInMatchup.team[1]?.team_projected_points?.total || 0).toFixed(2),
-                                oppName: oppFlat.name,
-                                oppScore: parseFloat(oppTeamData.team[1]?.team_points?.total || 0).toFixed(2),
-                                oppProjected: parseFloat(oppTeamData.team[1]?.team_projected_points?.total || 0).toFixed(2),
-                                isWinning: parseFloat(myTeamInMatchup.team[1]?.team_points?.total || 0) >= parseFloat(oppTeamData.team[1]?.team_points?.total || 0),
-                            };
-                        });
-                    }
+                const leagueData = leagueObj.league?.[0];
+                if (!leagueData) continue;
+                const teamsData = await yahooGet(req.session, `/league/${leagueData.league_key}/teams`);
+                let lineupCategories = extractYahooLineupCategories(null);
+                try {
+                    const settingsData = await yahooGet(req.session, `/league/${leagueData.league_key}/settings`);
+                    lineupCategories = extractYahooLineupCategories(settingsData);
+                } catch (settingsErr) {
+                    console.warn('Yahoo settings fetch failed for', leagueData.name, settingsErr.response?.data || settingsErr.message);
                 }
-            } catch (e) { console.warn('Matchup fetch failed for', leagueData.name, e.message); }
-            let myStanding = null;
-            try {
-                const standingsData = await yahooGet(req.session, `/league/${leagueData.league_key}/standings`);
-                const standingsTeams = standingsData.fantasy_content.league[1].standings[0].teams;
-                Object.values(standingsTeams).forEach(t => {
+                const teamsRaw = teamsData.fantasy_content.league[1].teams;
+                let myTeamKey = null, myTeamName = null;
+                Object.values(teamsRaw).forEach(t => {
                     if (typeof t !== 'object' || !t.team) return;
                     const flat = flattenMeta(t.team[0]);
-                    if (flat.team_key === myTeamKey) {
-                        const s = t.team[2]?.team_standings;
-                        myStanding = {
-                            rank: s?.rank || '—', wins: s?.outcome_totals?.wins || 0,
-                            losses: s?.outcome_totals?.losses || 0, ties: s?.outcome_totals?.ties || 0,
-                            pointsFor: parseFloat(s?.points_for || 0).toFixed(1),
-                        };
-                    }
+                    if (flat.is_owned_by_current_login == 1) { myTeamKey = flat.team_key; myTeamName = flat.name; }
                 });
-            } catch (e) { console.warn('Standings fetch failed for', leagueData.name, e.message); }
-            dashboardData.push({
-                leagueName: leagueData.name, leagueKey: leagueData.league_key,
-                leagueUrl: leagueData.url, scoringType: leagueData.scoring_type,
-                currentWeek: leagueData.current_week, teamKey: myTeamKey,
-                teamName: myTeamName, players, matchup, standing: myStanding, lineupCategories,
-            });
+                if (!myTeamKey) continue;
+                const rosterData = await yahooGet(req.session, `/team/${myTeamKey}/roster/players`);
+                const playersRaw = rosterData.fantasy_content.team[1].roster[0].players;
+                const players = parsePlayers(playersRaw);
+                try {
+                    await Promise.all(players.map(async (player) => {
+                        try {
+                            const statsMap = await fetchYahooPlayerSeasonStats(req.session, player.playerKey);
+                            player.stats = statsMap;
+                            player.yahooSeasonStats = mapYahooSeasonStatsByLabel(statsMap, lineupCategories);
+                        } catch (playerErr) {
+                            console.warn('Player season stats fetch failed for', player.playerKey, playerErr.message);
+                        }
+                    }));
+                } catch (e) { console.warn('Stats fetch failed:', e.message); }
+                let matchup = null;
+                try {
+                    const currentWeek = leagueData.current_week;
+                    if (currentWeek) {
+                        const scoreData = await yahooGet(req.session, `/league/${leagueData.league_key}/scoreboard;week=${currentWeek}`);
+                        const scoreboard = scoreData.fantasy_content.league[1].scoreboard;
+                        const matchups = scoreboard?.['0']?.matchups;
+                        if (matchups) {
+                            Object.values(matchups).forEach(m => {
+                                if (typeof m !== 'object' || !m.matchup) return;
+                                const matchupTeams = m.matchup['0']?.teams;
+                                if (!matchupTeams) return;
+                                const myTeamInMatchup = Object.values(matchupTeams).find(t =>
+                                    typeof t === 'object' && t.team && flattenMeta(t.team[0]).team_key === myTeamKey);
+                                if (!myTeamInMatchup) return;
+                                const oppTeamData = Object.values(matchupTeams).find(t =>
+                                    typeof t === 'object' && t.team && flattenMeta(t.team[0]).team_key !== myTeamKey);
+                                if (!oppTeamData) return;
+                                const oppFlat = flattenMeta(oppTeamData.team[0]);
+                                matchup = {
+                                    week: currentWeek,
+                                    myScore: parseFloat(myTeamInMatchup.team[1]?.team_points?.total || 0).toFixed(2),
+                                    myProjected: parseFloat(myTeamInMatchup.team[1]?.team_projected_points?.total || 0).toFixed(2),
+                                    oppName: oppFlat.name,
+                                    oppScore: parseFloat(oppTeamData.team[1]?.team_points?.total || 0).toFixed(2),
+                                    oppProjected: parseFloat(oppTeamData.team[1]?.team_projected_points?.total || 0).toFixed(2),
+                                    isWinning: parseFloat(myTeamInMatchup.team[1]?.team_points?.total || 0) >= parseFloat(oppTeamData.team[1]?.team_points?.total || 0),
+                                };
+                            });
+                        }
+                    }
+                } catch (e) { console.warn('Matchup fetch failed for', leagueData.name, e.message); }
+                let myStanding = null;
+                try {
+                    const standingsData = await yahooGet(req.session, `/league/${leagueData.league_key}/standings`);
+                    const standingsTeams = standingsData.fantasy_content.league[1].standings[0].teams;
+                    Object.values(standingsTeams).forEach(t => {
+                        if (typeof t !== 'object' || !t.team) return;
+                        const flat = flattenMeta(t.team[0]);
+                        if (flat.team_key === myTeamKey) {
+                            const s = t.team[2]?.team_standings;
+                            myStanding = {
+                                rank: s?.rank || '—', wins: s?.outcome_totals?.wins || 0,
+                                losses: s?.outcome_totals?.losses || 0, ties: s?.outcome_totals?.ties || 0,
+                                pointsFor: parseFloat(s?.points_for || 0).toFixed(1),
+                            };
+                        }
+                    });
+                } catch (e) { console.warn('Standings fetch failed for', leagueData.name, e.message); }
+                dashboardData.push({
+                    leagueName: leagueData.name, leagueKey: leagueData.league_key,
+                    leagueUrl: leagueData.url, scoringType: leagueData.scoring_type,
+                    currentWeek: leagueData.current_week, teamKey: myTeamKey,
+                    teamName: myTeamName, players, matchup, standing: myStanding, lineupCategories,
+                });
+            } catch (leagueErr) {
+                console.warn('Skipping failed Yahoo league', leagueObj?.league?.[0]?.name || 'unknown', leagueErr.response?.data || leagueErr.message);
+                continue;
+            }
         }
         res.json(dashboardData);
     } catch (err) {
