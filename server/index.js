@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const session = require('express-session');
 const path = require('path');
 
 const { router: authRoutes } = require('./routes/auth');
@@ -16,16 +15,6 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
-app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: true,
-    saveUninitialized: true,
-    cookie: {
-        secure: isProd,
-        sameSite: isProd ? 'lax' : 'none',
-        maxAge: 7 * 24 * 60 * 60 * 1000
-    }
-}));
 
 app.use('/auth', authRoutes);
 app.use('/api', fantasyRoutes);

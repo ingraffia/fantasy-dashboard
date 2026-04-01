@@ -1,62 +1,53 @@
 const express = require('express');
 const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
+
 const router = express.Router();
 
-const { YAHOO_CLIENT_ID, YAHOO_CLIENT_SECRET, YAHOO_REDIRECT_URI } = process.env;
-const TOKEN_FILE = path.join(__dirname, '../.tokens.json');
-const STORE_FILE = path.join(__dirname, '../.token-store.json');
+const {
+    YAHOO_CLIENT_ID,
+    YAHOO_CLIENT_SECRET,
+    YAHOO_REDIRECT_URI,
+    SESSION_SECRET
+} = process.env;
 
-// In-memory token store: authToken -> yahooTokens
-const tokenStore = new Map();
+const AUTH_HEADER_NAME = 'x-auth-token';
+const AUTH_TOKEN_TTL = '30d';
 
-// Load persisted tokens on startup so logins survive Railway restarts
-function loadTokenStore() {
-    try {
-        if (fs.existsSync(STORE_FILE)) {
-            const saved = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
-            Object.entries(saved).forEach(([k, v]) => tokenStore.set(k, v));
-            console.log(`Loaded ${tokenStore.size} token(s) from disk`);
-        }
-    } catch (e) { console.warn('Could not load token store:', e.message); }
+function getJwtSecret() {
+    if (!SESSION_SECRET) {
+        throw new Error('SESSION_SECRET is required for auth token signing');
+    }
+    return SESSION_SECRET;
 }
 
-function persistTokenStore() {
-    try {
-        const obj = {};
-        tokenStore.forEach((v, k) => { obj[k] = v; });
-        fs.writeFileSync(STORE_FILE, JSON.stringify(obj, null, 2));
-    } catch (e) { console.warn('Could not persist token store:', e.message); }
-}
-
-loadTokenStore();
-
-function storeTokens(yahooTokens) {
-    const authToken = crypto.randomBytes(32).toString('hex');
-    tokenStore.set(authToken, yahooTokens);
-    persistTokenStore();
-    return authToken;
+function signAuthToken(yahooTokens) {
+    return jwt.sign(
+        {
+            yahoo: yahooTokens
+        },
+        getJwtSecret(),
+        { expiresIn: AUTH_TOKEN_TTL }
+    );
 }
 
 function getTokens(authToken) {
-    return tokenStore.get(authToken) || null;
+    if (!authToken) return null;
+    try {
+        const payload = jwt.verify(authToken, getJwtSecret());
+        return payload?.yahoo || null;
+    } catch (err) {
+        return null;
+    }
 }
 
-function updateTokens(authToken, yahooTokens) {
-    tokenStore.set(authToken, yahooTokens);
-    persistTokenStore();
+function extractBearerToken(req) {
+    const authHeader = req.headers.authorization;
+    return authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 }
 
-function removeTokens(authToken) {
-    tokenStore.delete(authToken);
-    persistTokenStore();
-}
-
-function saveTokensToFile(tokens) {
-    if (process.env.NODE_ENV === 'production') return;
-    try { fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2)); } catch (e) { }
+function attachAuthToken(res, authToken) {
+    res.setHeader(AUTH_HEADER_NAME, authToken);
 }
 
 router.get('/login', (req, res) => {
@@ -76,7 +67,6 @@ router.get('/callback', async (req, res) => {
     try {
         const credentials = Buffer.from(`${YAHOO_CLIENT_ID}:${YAHOO_CLIENT_SECRET}`).toString('base64');
 
-        // Retry up to 3 times with delays — handles Railway cold start network issues
         let data;
         let lastErr;
         for (let attempt = 1; attempt <= 3; attempt++) {
@@ -101,7 +91,7 @@ router.get('/callback', async (req, res) => {
             } catch (e) {
                 lastErr = e;
                 console.error(`OAuth attempt ${attempt} failed:`, e.message || e.code);
-                if (attempt < 3) await new Promise(r => setTimeout(r, 1000 * attempt));
+                if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
             }
         }
         if (!data) throw lastErr;
@@ -112,12 +102,11 @@ router.get('/callback', async (req, res) => {
             expires_at: Date.now() + data.expires_in * 1000
         };
 
-        const authToken = storeTokens(yahooTokens);
-        saveTokensToFile(yahooTokens);
+        const authToken = signAuthToken(yahooTokens);
 
         const isProd = process.env.NODE_ENV === 'production';
         const base = isProd ? '' : 'https://localhost:5173';
-        res.redirect(`${base}/?auth=${authToken}`);
+        res.redirect(`${base}/?auth=${encodeURIComponent(authToken)}`);
     } catch (err) {
         console.error('OAuth error:', JSON.stringify(err.response?.data) || err.message);
         console.error('OAuth status:', err.response?.status);
@@ -150,20 +139,38 @@ async function refreshYahooTokens(current) {
     };
 }
 
-router.get('/status', (req, res) => {
-    const authHeader = req.headers.authorization;
-    const authToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!authToken) return res.json({ authenticated: false });
+router.get('/status', async (req, res) => {
+    const authToken = extractBearerToken(req);
     const tokens = getTokens(authToken);
-    res.json({ authenticated: !!tokens?.access_token });
+
+    if (!tokens?.refresh_token) {
+        return res.json({ authenticated: false });
+    }
+
+    if (Date.now() <= tokens.expires_at - 5 * 60 * 1000) {
+        return res.json({ authenticated: true });
+    }
+
+    try {
+        const refreshedTokens = await refreshYahooTokens(tokens);
+        attachAuthToken(res, signAuthToken(refreshedTokens));
+        return res.json({ authenticated: true });
+    } catch (err) {
+        console.error('Status refresh failed:', err.response?.data || err.message);
+        return res.json({ authenticated: false });
+    }
 });
 
 router.get('/logout', (req, res) => {
-    const authHeader = req.headers.authorization;
-    const authToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (authToken) removeTokens(authToken);
-    try { fs.unlinkSync(TOKEN_FILE); } catch (e) { }
     res.json({ ok: true });
 });
 
-module.exports = { router, getTokens, updateTokens, refreshYahooTokens, storeTokens };
+module.exports = {
+    router,
+    AUTH_HEADER_NAME,
+    attachAuthToken,
+    extractBearerToken,
+    getTokens,
+    refreshYahooTokens,
+    signAuthToken
+};

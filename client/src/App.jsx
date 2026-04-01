@@ -3,6 +3,7 @@ import axios from 'axios'
 import Dashboard from './Dashboard'
 
 const API = import.meta.env.DEV ? 'https://localhost:3001' : ''
+const AUTH_HEADER_NAME = 'x-auth-token'
 
 // Read token from localStorage
 function getStoredToken() {
@@ -22,15 +23,25 @@ function setupAxiosAuth(token) {
   axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
 }
 
+function syncTokenFromResponse(response) {
+  const rotatedToken = response?.headers?.[AUTH_HEADER_NAME]
+  if (!rotatedToken) return
+  setStoredToken(rotatedToken)
+  setupAxiosAuth(rotatedToken)
+}
+
 export default function App() {
   const [authed, setAuthed] = useState(null)
 
   // Auto-redirect to login on any 401 (expired Yahoo token)
   useEffect(() => {
-    if (!authed) return
     const id = axios.interceptors.response.use(
-      r => r,
+      response => {
+        syncTokenFromResponse(response)
+        return response
+      },
       err => {
+        syncTokenFromResponse(err.response)
         if (err.response?.status === 401) {
           clearStoredToken()
           delete axios.defaults.headers.common['Authorization']
@@ -40,7 +51,7 @@ export default function App() {
       }
     )
     return () => axios.interceptors.response.eject(id)
-  }, [authed])
+  }, [])
 
   useEffect(() => {
     // Check if Yahoo OAuth just redirected back with ?auth=TOKEN in the URL
@@ -63,6 +74,7 @@ export default function App() {
       // Verify it's still valid
       axios.get(`${API}/auth/status`)
         .then(r => {
+          syncTokenFromResponse(r)
           if (r.data.authenticated) {
             setAuthed(true)
           } else {

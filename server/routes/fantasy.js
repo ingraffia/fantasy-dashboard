@@ -2,11 +2,16 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const { getUserLeagues, yahooGet } = require('../lib/yahoo');
-const { getTokens, updateTokens, refreshYahooTokens } = require('./auth');
+const {
+    attachAuthToken,
+    extractBearerToken,
+    getTokens,
+    refreshYahooTokens,
+    signAuthToken
+} = require('./auth');
 
 async function requireAuth(req, res, next) {
-    const authHeader = req.headers.authorization;
-    const authToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const authToken = extractBearerToken(req);
     if (!authToken) return res.status(401).json({ error: 'Not authenticated' });
 
     let yahooTokens = getTokens(authToken);
@@ -16,7 +21,7 @@ async function requireAuth(req, res, next) {
         try {
             console.log('Auto-refreshing expired token...');
             yahooTokens = await refreshYahooTokens(yahooTokens);
-            updateTokens(authToken, yahooTokens);
+            attachAuthToken(res, signAuthToken(yahooTokens));
         } catch (e) {
             console.error('Auto-refresh failed:', e.message);
             return res.status(401).json({ error: 'Token expired, please log in again' });
