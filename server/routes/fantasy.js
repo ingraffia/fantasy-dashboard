@@ -138,6 +138,7 @@ const ESPN_LINEUP_STAT_DEFS = {
     '53': { label: 'W', side: 'pitcher' },
 };
 const ESPN_REVERSE_CATEGORY_IDS = new Set(['41', '47']);
+const ESPN_HEAD_TO_HEAD_DEFAULT_ORDER = ['20', '8', '21', '23', '17', '48', '53', '51', '47', '41'];
 const YAHOO_LINEUP_STAT_SIDE_HINTS = {
     '3': 'hitter', '4': 'hitter', '7': 'hitter', '8': 'hitter', '12': 'hitter', '13': 'hitter', '16': 'hitter', '18': 'hitter',
     '26': 'pitcher', '27': 'pitcher', '28': 'pitcher', '29': 'pitcher', '32': 'pitcher', '33': 'pitcher', '42': 'pitcher',
@@ -431,12 +432,16 @@ function deriveEspnCategoryRecordFromScores(mySide, oppSide, settingsData) {
     if (!myStats || !oppStats || typeof myStats !== 'object' || typeof oppStats !== 'object') return null;
 
     const scoringMeta = extractEspnScoringItemMeta(settingsData);
+    const candidateStatIds = ESPN_HEAD_TO_HEAD_DEFAULT_ORDER.filter((statId) => myStats[statId] && oppStats[statId]);
+    const statIds = candidateStatIds.length > 0
+        ? candidateStatIds
+        : Object.keys(myStats).filter((statId) => oppStats[statId]);
     let wins = 0;
     let losses = 0;
     let ties = 0;
     let resolvedCategories = 0;
 
-    Object.keys(myStats).forEach((statId) => {
+    statIds.forEach((statId) => {
         const myEntry = myStats[statId];
         const oppEntry = oppStats[statId];
         if (!oppEntry) return;
