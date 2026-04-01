@@ -28,10 +28,20 @@ const ESPN_DEFAULT_LINEUP_CATEGORIES = {
     pitcherSeason: ['W', 'SV', 'K', 'ERA', 'WHIP'],
 }
 const YAHOO_DEFAULT_LINEUP_CATEGORIES = {
-    hitterSeason: ['AVG', 'OBP', 'R', 'HR', 'RBI', 'SB'],
-    pitcherSeason: ['W', 'SV', 'K', 'ERA', 'WHIP', 'IP'],
+    hitterSeason: [
+        { id: '3', label: 'AVG' }, { id: '4', label: 'OBP' }, { id: '7', label: 'R' },
+        { id: '12', label: 'HR' }, { id: '13', label: 'RBI' }, { id: '16', label: 'SB' },
+    ],
+    pitcherSeason: [
+        { id: '32', label: 'W' }, { id: '42', label: 'SV' }, { id: '26', label: 'K' },
+        { id: '27', label: 'ERA' }, { id: '29', label: 'WHIP' }, { id: '28', label: 'IP' },
+    ],
 }
 const isPitcher = pos => pos && (pos.includes('SP') || pos.includes('RP') || pos === 'P')
+
+function getSeasonColLabel(col) {
+    return typeof col === 'string' ? col : col?.label || '—'
+}
 
 function normName(name) {
     return (name || '').toLowerCase().replace(/[^a-z]/g, '')
@@ -1515,7 +1525,10 @@ export default function Dashboard({ api }) {
             if (showSeasonCategoryStats) {
                 const seasonStats = player.espnSeasonStats || player.yahooSeasonStats || {}
                 statCells = <>
-                    {seasonCols.map((label, idx) => numTd(seasonStats[label] ?? '—', idx < 3))}
+                    {seasonCols.map((col, idx) => {
+                        const label = getSeasonColLabel(col)
+                        return numTd(seasonStats[label] ?? '—', idx < 3)
+                    })}
                 </>
             } else if (isP) {
                 if (hasGameActivity) {
@@ -1865,7 +1878,10 @@ export default function Dashboard({ api }) {
                                                 <th style={thStyle}>Player</th>
                                                 <th style={thStyle}>Opp</th>
                                                 <th style={thStyle}>Status</th>
-                                                {cols.map(h => <th key={h} style={{ ...thStyle, textAlign: 'right' }}>{h}</th>)}
+                                                {cols.map(col => {
+                                                    const label = getSeasonColLabel(col)
+                                                    return <th key={label} style={{ ...thStyle, textAlign: 'right' }}>{label}</th>
+                                                })}
                                             </>}
                                     </tr>
                                 </thead>

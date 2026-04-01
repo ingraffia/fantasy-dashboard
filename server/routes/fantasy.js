@@ -137,22 +137,9 @@ const ESPN_LINEUP_STAT_DEFS = {
     '51': { label: 'SV', side: 'pitcher' },
     '53': { label: 'W', side: 'pitcher' },
 };
-const YAHOO_LINEUP_STAT_DEFS = {
-    '3': { label: 'AVG', side: 'hitter' },
-    '4': { label: 'OBP', side: 'hitter' },
-    '7': { label: 'R', side: 'hitter' },
-    '8': { label: 'H', side: 'hitter' },
-    '12': { label: 'HR', side: 'hitter' },
-    '13': { label: 'RBI', side: 'hitter' },
-    '16': { label: 'SB', side: 'hitter' },
-    '18': { label: 'OPS', side: 'hitter' },
-    '26': { label: 'K', side: 'pitcher' },
-    '27': { label: 'ERA', side: 'pitcher' },
-    '28': { label: 'IP', side: 'pitcher' },
-    '29': { label: 'WHIP', side: 'pitcher' },
-    '32': { label: 'W', side: 'pitcher' },
-    '33': { label: 'L', side: 'pitcher' },
-    '42': { label: 'SV', side: 'pitcher' },
+const YAHOO_LINEUP_STAT_SIDE_HINTS = {
+    '3': 'hitter', '4': 'hitter', '7': 'hitter', '8': 'hitter', '12': 'hitter', '13': 'hitter', '16': 'hitter', '18': 'hitter',
+    '26': 'pitcher', '27': 'pitcher', '28': 'pitcher', '29': 'pitcher', '32': 'pitcher', '33': 'pitcher', '42': 'pitcher',
 };
 
 function formatBaseballIpFromOuts(outs) {
@@ -216,6 +203,17 @@ function extractYahooSettingStats(statsNode) {
     return results;
 }
 
+function normalizeYahooStatLabel(stat) {
+    return stat?.display_name || stat?.name || stat?.displayName || String(stat?.stat_id || stat?.statId || '').trim();
+}
+
+function inferYahooStatSide(stat, statId) {
+    const positionType = stat?.position_type || stat?.positionType;
+    if (positionType === 'P') return 'pitcher';
+    if (positionType === 'B') return 'hitter';
+    return YAHOO_LINEUP_STAT_SIDE_HINTS[statId] || 'hitter';
+}
+
 function extractYahooLineupCategories(settingsData) {
     const leagueContent = settingsData?.fantasy_content?.league;
     const settingsNode = Array.isArray(leagueContent)
@@ -230,26 +228,51 @@ function extractYahooLineupCategories(settingsData) {
 
     stats.forEach(stat => {
         const statId = String(stat.stat_id || stat.statId || '');
-        const def = YAHOO_LINEUP_STAT_DEFS[statId];
-        if (!def) return;
+        const label = normalizeYahooStatLabel(stat);
+        if (!statId || !label) return;
         const enabled = stat.enabled;
         const isDisplayOnly = stat.is_only_display_stat == 1 || stat.is_only_display_stat === true;
-        if (enabled === 0 || enabled === '0' || isDisplayOnly || seen.has(def.label)) return;
-        seen.add(def.label);
-        if (def.side === 'hitter') hitters.push(def.label);
-        if (def.side === 'pitcher') pitchers.push(def.label);
+        if (enabled === 0 || enabled === '0' || isDisplayOnly || seen.has(label)) return;
+        seen.add(label);
+
+        const category = { id: statId, label };
+        const side = inferYahooStatSide(stat, statId);
+        if (side === 'hitter') hitters.push(category);
+        if (side === 'pitcher') pitchers.push(category);
     });
 
     return {
-        hitterSeason: hitters.length > 0 ? hitters : ['AVG', 'OBP', 'R', 'HR', 'RBI', 'SB'],
-        pitcherSeason: pitchers.length > 0 ? pitchers : ['W', 'SV', 'K', 'ERA', 'WHIP', 'IP'],
+        hitterSeason: hitters.length > 0 ? hitters : [
+            { id: '3', label: 'AVG' }, { id: '4', label: 'OBP' }, { id: '7', label: 'R' },
+            { id: '12', label: 'HR' }, { id: '13', label: 'RBI' }, { id: '16', label: 'SB' },
+        ],
+        pitcherSeason: pitchers.length > 0 ? pitchers : [
+            { id: '32', label: 'W' }, { id: '42', label: 'SV' }, { id: '26', label: 'K' },
+            { id: '27', label: 'ERA' }, { id: '29', label: 'WHIP' }, { id: '28', label: 'IP' },
+        ],
     };
 }
 
-function mapYahooSeasonStatsByLabel(stats = {}) {
+function formatYahooDerivedStatValue(category, stats = {}) {
+    const label = String(category?.label || '').replace(/\*+$/, '').trim().toUpperCase();
+    if (label === 'H/AB') {
+        const hits = stats['8'];
+        const atBats = stats['60'];
+        if (hits !== undefined && atBats !== undefined) return `${hits}/${atBats}`;
+    }
+    return undefined;
+}
+
+function mapYahooSeasonStatsByLabel(stats = {}, lineupCategories = { hitterSeason: [], pitcherSeason: [] }) {
     const byLabel = {};
-    Object.entries(YAHOO_LINEUP_STAT_DEFS).forEach(([statId, def]) => {
-        if (stats[statId] !== undefined) byLabel[def.label] = stats[statId];
+    [...(lineupCategories.hitterSeason || []), ...(lineupCategories.pitcherSeason || [])].forEach((category) => {
+        if (!category?.label) return;
+        if (stats[category.id] !== undefined) {
+            byLabel[category.label] = stats[category.id];
+            return;
+        }
+        const derived = formatYahooDerivedStatValue(category, stats);
+        if (derived !== undefined) byLabel[category.label] = derived;
     });
     return byLabel;
 }
@@ -356,7 +379,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                     try {
                         const statsMap = await fetchYahooPlayerSeasonStats(req.session, player.playerKey);
                         player.stats = statsMap;
-                        player.yahooSeasonStats = mapYahooSeasonStatsByLabel(statsMap);
+                        player.yahooSeasonStats = mapYahooSeasonStatsByLabel(statsMap, lineupCategories);
                     } catch (playerErr) {
                         console.warn('Player season stats fetch failed for', player.playerKey, playerErr.message);
                     }
