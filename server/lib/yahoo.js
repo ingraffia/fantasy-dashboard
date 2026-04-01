@@ -24,7 +24,8 @@ async function getUserLeagues(session) {
 
         const meta = game[0] || [];
         const flatMeta = {};
-        meta.forEach((item) => {
+        const metaItems = Array.isArray(meta) ? meta : Object.values(meta);
+        metaItems.forEach((item) => {
             if (typeof item === 'object') Object.assign(flatMeta, item);
         });
 
