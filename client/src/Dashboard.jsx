@@ -27,6 +27,10 @@ const ESPN_DEFAULT_LINEUP_CATEGORIES = {
     hitterSeason: ['R', 'HR', 'RBI', 'SB', 'OBP', 'TB'],
     pitcherSeason: ['W', 'SV', 'K', 'ERA', 'WHIP'],
 }
+const YAHOO_DEFAULT_LINEUP_CATEGORIES = {
+    hitterSeason: ['AVG', 'OBP', 'R', 'HR', 'RBI', 'SB'],
+    pitcherSeason: ['W', 'SV', 'K', 'ERA', 'WHIP', 'IP'],
+}
 const isPitcher = pos => pos && (pos.includes('SP') || pos.includes('RP') || pos === 'P')
 
 function normName(name) {
@@ -1475,7 +1479,7 @@ export default function Dashboard({ api }) {
         const gameInfo = teamGameMap[player.proTeam]
         const isP = !forceHitter && isPitcher(player.position)
         const rowBg = isIL ? '#fffafa' : C.white
-        const showEspnSeasonStats = source === 'espn'
+        const showSeasonCategoryStats = !hasGameActivity && (source === 'espn' || source === undefined)
 
         // OPP cell
         const oppDisplay = gameInfo
@@ -1508,8 +1512,8 @@ export default function Dashboard({ api }) {
 
         let statCells = null
         if (!isMobile) {
-            if (showEspnSeasonStats) {
-                const seasonStats = player.espnSeasonStats || {}
+            if (showSeasonCategoryStats) {
+                const seasonStats = player.espnSeasonStats || player.yahooSeasonStats || {}
                 statCells = <>
                     {seasonCols.map((label, idx) => numTd(seasonStats[label] ?? '—', idx < 3))}
                 </>
@@ -1843,13 +1847,14 @@ export default function Dashboard({ api }) {
                             const activePitchers = [...activeLeagueData.players].filter(p => ['P', 'SP', 'RP'].includes(p.selectedPosition)).sort((a, b) => slotOrder.indexOf(a.selectedPosition) - slotOrder.indexOf(b.selectedPosition))
                             const benchPitchers = [...activeLeagueData.players].filter(p => p.selectedPosition === 'BN' && isPitcher(p.position))
                             const ilPlayers = [...activeLeagueData.players].filter(p => IL_SLOTS.includes(p.selectedPosition))
-                            const espnLineupCategories = activeLeagueData.lineupCategories || ESPN_DEFAULT_LINEUP_CATEGORIES
-                            const hitterCols = src === 'espn'
-                                ? espnLineupCategories.hitterSeason
-                                : hasGameActivity ? ['H/AB', 'R', 'HR', 'RBI', 'SB', 'BB'] : ['AVG', 'OBP', 'R', 'HR', 'RBI', 'SB']
-                            const pitcherCols = src === 'espn'
-                                ? espnLineupCategories.pitcherSeason
-                                : hasGameActivity ? ['IP', 'K', 'H', 'BB', 'ER', 'W'] : ['W', 'SV', 'K', 'ERA', 'WHIP', 'IP']
+                            const leagueLineupCategories = activeLeagueData.lineupCategories
+                                || (src === 'espn' ? ESPN_DEFAULT_LINEUP_CATEGORIES : YAHOO_DEFAULT_LINEUP_CATEGORIES)
+                            const hitterCols = hasGameActivity
+                                ? ['H/AB', 'R', 'HR', 'RBI', 'SB', 'BB']
+                                : leagueLineupCategories.hitterSeason
+                            const pitcherCols = hasGameActivity
+                                ? ['IP', 'K', 'H', 'BB', 'ER', 'W']
+                                : leagueLineupCategories.pitcherSeason
                             const tableHead = (cols) => (
                                 <thead>
                                     <tr style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>

@@ -137,6 +137,23 @@ const ESPN_LINEUP_STAT_DEFS = {
     '51': { label: 'SV', side: 'pitcher' },
     '53': { label: 'W', side: 'pitcher' },
 };
+const YAHOO_LINEUP_STAT_DEFS = {
+    '3': { label: 'AVG', side: 'hitter' },
+    '4': { label: 'OBP', side: 'hitter' },
+    '7': { label: 'R', side: 'hitter' },
+    '8': { label: 'H', side: 'hitter' },
+    '12': { label: 'HR', side: 'hitter' },
+    '13': { label: 'RBI', side: 'hitter' },
+    '16': { label: 'SB', side: 'hitter' },
+    '18': { label: 'OPS', side: 'hitter' },
+    '26': { label: 'K', side: 'pitcher' },
+    '27': { label: 'ERA', side: 'pitcher' },
+    '28': { label: 'IP', side: 'pitcher' },
+    '29': { label: 'WHIP', side: 'pitcher' },
+    '32': { label: 'W', side: 'pitcher' },
+    '33': { label: 'L', side: 'pitcher' },
+    '42': { label: 'SV', side: 'pitcher' },
+};
 
 function formatBaseballIpFromOuts(outs) {
     const parsedOuts = Number(outs);
@@ -179,6 +196,57 @@ function extractEspnLineupCategories(settingsData) {
         hitterSeason: hitters.length > 0 ? hitters : ['R', 'HR', 'RBI', 'SB', 'OBP', 'TB'],
         pitcherSeason: pitchers.length > 0 ? pitchers : ['W', 'SV', 'K', 'ERA', 'WHIP'],
     };
+}
+
+function extractYahooSettingStats(statsNode) {
+    if (!statsNode) return [];
+    const values = Array.isArray(statsNode) ? statsNode : Object.values(statsNode);
+    const results = [];
+    values.forEach(item => {
+        if (!item || typeof item !== 'object') return;
+        if (item.stat) {
+            const stat = item.stat;
+            if (typeof stat === 'object') results.push(stat);
+            return;
+        }
+        if (item.stats) {
+            results.push(...extractYahooSettingStats(item.stats));
+        }
+    });
+    return results;
+}
+
+function extractYahooLineupCategories(settingsData) {
+    const rawStats = settingsData?.fantasy_content?.league?.[1]?.settings?.[0]?.stat_categories?.stats;
+    const stats = extractYahooSettingStats(rawStats);
+    const seen = new Set();
+    const hitters = [];
+    const pitchers = [];
+
+    stats.forEach(stat => {
+        const statId = String(stat.stat_id || stat.statId || '');
+        const def = YAHOO_LINEUP_STAT_DEFS[statId];
+        if (!def) return;
+        const enabled = stat.enabled;
+        const isDisplayOnly = stat.is_only_display_stat == 1 || stat.is_only_display_stat === true;
+        if (enabled === 0 || enabled === '0' || isDisplayOnly || seen.has(def.label)) return;
+        seen.add(def.label);
+        if (def.side === 'hitter') hitters.push(def.label);
+        if (def.side === 'pitcher') pitchers.push(def.label);
+    });
+
+    return {
+        hitterSeason: hitters.length > 0 ? hitters : ['AVG', 'OBP', 'R', 'HR', 'RBI', 'SB'],
+        pitcherSeason: pitchers.length > 0 ? pitchers : ['W', 'SV', 'K', 'ERA', 'WHIP', 'IP'],
+    };
+}
+
+function mapYahooSeasonStatsByLabel(stats = {}) {
+    const byLabel = {};
+    Object.entries(YAHOO_LINEUP_STAT_DEFS).forEach(([statId, def]) => {
+        if (stats[statId] !== undefined) byLabel[def.label] = stats[statId];
+    });
+    return byLabel;
 }
 
 function parseEspnRanks(player) {
@@ -252,7 +320,11 @@ router.get('/dashboard', requireAuth, async (req, res) => {
         for (const leagueObj of leagues) {
             const leagueData = leagueObj.league?.[0];
             if (!leagueData) continue;
-            const teamsData = await yahooGet(req.session, `/league/${leagueData.league_key}/teams`);
+            const [teamsData, settingsData] = await Promise.all([
+                yahooGet(req.session, `/league/${leagueData.league_key}/teams`),
+                yahooGet(req.session, `/league/${leagueData.league_key}/settings`),
+            ]);
+            const lineupCategories = extractYahooLineupCategories(settingsData);
             const teamsRaw = teamsData.fantasy_content.league[1].teams;
             let myTeamKey = null, myTeamName = null;
             Object.values(teamsRaw).forEach(t => {
@@ -277,6 +349,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                             const statsMap = {};
                             Object.values(spStats).forEach(s => { if (s?.stat) statsMap[s.stat.stat_id] = s.stat.value; });
                             player.stats = statsMap;
+                            player.yahooSeasonStats = mapYahooSeasonStatsByLabel(statsMap);
                         }
                     });
                 }
@@ -334,7 +407,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                 leagueName: leagueData.name, leagueKey: leagueData.league_key,
                 leagueUrl: leagueData.url, scoringType: leagueData.scoring_type,
                 currentWeek: leagueData.current_week, teamKey: myTeamKey,
-                teamName: myTeamName, players, matchup, standing: myStanding,
+                teamName: myTeamName, players, matchup, standing: myStanding, lineupCategories,
             });
         }
         res.json(dashboardData);
