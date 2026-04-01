@@ -1,6 +1,7 @@
 const axios = require('axios');
 
 const BASE_URL = 'https://fantasysports.yahooapis.com/fantasy/v2';
+const DEFAULT_MLB_GAME_KEY = process.env.YAHOO_MLB_GAME_KEY || '469';
 
 async function yahooGet(session, path) {
     const url = `${BASE_URL}${path}?format=json`;
@@ -10,14 +11,14 @@ async function yahooGet(session, path) {
     return data;
 }
 
-async function getUserLeagues(session) {
+async function getUserLeaguesFromGames(session) {
+    const allLeagues = [];
     const data = await yahooGet(session, `/users;use_login=1/games`);
     const users = data?.fantasy_content?.users;
     const user = users?.['0']?.user;
     const games = user?.[1]?.games;
-    if (!games || typeof games !== 'object') return [];
+    if (!games || typeof games !== 'object') return allLeagues;
 
-    const allLeagues = [];
     Object.values(games).forEach((gameEntry) => {
         const game = gameEntry?.game;
         if (!game) return;
@@ -42,6 +43,27 @@ async function getUserLeagues(session) {
     });
 
     return allLeagues;
+}
+
+function parseLeaguesFromKeyedResponse(data) {
+    const user = data?.fantasy_content?.users?.['0']?.user;
+    const games = user?.[1]?.games;
+    const game = games?.['0']?.game;
+    const leagues = game?.[1]?.leagues;
+    if (!leagues || typeof leagues !== 'object') return [];
+    return Object.values(leagues).filter(l => typeof l === 'object' && l.league);
+}
+
+async function getUserLeagues(session) {
+    try {
+        const keyedData = await yahooGet(session, `/users;use_login=1/games;game_keys=${DEFAULT_MLB_GAME_KEY}/leagues`);
+        const keyedLeagues = parseLeaguesFromKeyedResponse(keyedData);
+        if (keyedLeagues.length > 0) return keyedLeagues;
+    } catch (err) {
+        console.warn('Yahoo keyed league lookup failed:', err.response?.data || err.message);
+    }
+
+    return getUserLeaguesFromGames(session);
 }
 
 async function getTeamRoster(session, teamKey) {
