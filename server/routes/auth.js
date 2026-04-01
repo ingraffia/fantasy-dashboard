@@ -14,6 +14,15 @@ const {
 const AUTH_HEADER_NAME = 'x-auth-token';
 const AUTH_TOKEN_TTL = '30d';
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function parseOAuthResponseData(responseData) {
     if (!responseData) return {};
     if (typeof responseData === 'object') return responseData;
@@ -70,11 +79,19 @@ function classifyOAuthError(err) {
     const errorCode = responseData?.error || err?.code || '';
     const description = responseData?.error_description || responseData?.errorDescription || err?.message || '';
     const combined = `${errorCode} ${description}`.toLowerCase();
+    const diagnostics = {
+        status: err?.response?.status || 'none',
+        code: err?.code || 'none',
+        yahooError: responseData?.error || 'none',
+        yahooDescription: description || 'none',
+        redirectUri: YAHOO_REDIRECT_URI || 'missing',
+    };
 
     if (combined.includes('redirect')) {
         return {
             title: 'Redirect URI mismatch',
             message: 'Yahoo rejected the callback URL. Check that the Yahoo app callback URL exactly matches YAHOO_REDIRECT_URI in Railway.',
+            diagnostics,
         };
     }
 
@@ -82,6 +99,7 @@ function classifyOAuthError(err) {
         return {
             title: 'Yahoo client credentials rejected',
             message: 'Yahoo did not accept the client ID or client secret. Verify YAHOO_CLIENT_ID and YAHOO_CLIENT_SECRET in Railway and in the Yahoo app settings.',
+            diagnostics,
         };
     }
 
@@ -89,6 +107,7 @@ function classifyOAuthError(err) {
         return {
             title: 'Yahoo authorization code rejected',
             message: 'Yahoo rejected the authorization code. This usually means the callback was reused, expired, or the redirect/app config does not match.',
+            diagnostics,
         };
     }
 
@@ -96,6 +115,7 @@ function classifyOAuthError(err) {
         return {
             title: 'Yahoo network request failed',
             message: 'The server could not complete the Yahoo token exchange. This points to a timeout or network/runtime issue rather than a browser problem.',
+            diagnostics,
         };
     }
 
@@ -104,12 +124,21 @@ function classifyOAuthError(err) {
         message: description
             ? `Yahoo returned an OAuth error during token exchange: ${description}`
             : 'The server reached Yahoo but the OAuth token exchange did not complete successfully. Check the Railway logs for the OAuth error details.',
+        diagnostics,
     };
 }
 
 function renderAuthErrorPage(details) {
     const title = details?.title || 'Authentication failed';
     const message = details?.message || 'The Yahoo login flow failed.';
+    const diagnostics = details?.diagnostics || {};
+    const diagnosticRows = [
+        ['HTTP status', diagnostics.status],
+        ['Node error code', diagnostics.code],
+        ['Yahoo error', diagnostics.yahooError],
+        ['Yahoo description', diagnostics.yahooDescription],
+        ['Redirect URI', diagnostics.redirectUri],
+    ].filter(([, value]) => value != null && value !== '');
     return `<!doctype html>
 <html lang="en">
   <head>
@@ -169,6 +198,28 @@ function renderAuthErrorPage(details) {
         gap: 10px;
         flex-wrap: wrap;
       }
+      .diagnostics {
+        margin-top: 18px;
+        border-top: 1px solid rgba(148,163,184,0.16);
+        padding-top: 16px;
+        display: grid;
+        gap: 8px;
+      }
+      .diag-row {
+        display: grid;
+        grid-template-columns: 160px minmax(0, 1fr);
+        gap: 10px;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .diag-label {
+        color: #5f7389;
+        font-weight: 700;
+      }
+      .diag-value {
+        color: #22354d;
+        word-break: break-word;
+      }
       a {
         display: inline-flex;
         align-items: center;
@@ -195,6 +246,9 @@ function renderAuthErrorPage(details) {
       <h1>${title}</h1>
       <p>${message}</p>
       <div class="hint">This is a server-side issue, not a browser setting problem. The next place to check is the Railway logs for the OAuth callback request.</div>
+      <div class="diagnostics">
+        ${diagnosticRows.map(([label, value]) => `<div class="diag-row"><div class="diag-label">${escapeHtml(label)}</div><div class="diag-value">${escapeHtml(value)}</div></div>`).join('')}
+      </div>
       <div class="actions">
         <a class="primary" href="/auth/login">Try Yahoo Login Again</a>
         <a class="secondary" href="/">Back to App</a>
@@ -221,12 +275,32 @@ router.get('/login', (req, res) => {
 });
 
 router.get('/callback', async (req, res) => {
-    const { code } = req.query;
+    const { code, error, error_description: errorDescription } = req.query;
+    if (error) {
+        return res.status(400).send(renderAuthErrorPage({
+            title: 'Yahoo login was not completed',
+            message: errorDescription || `Yahoo returned an authorization error: ${error}`,
+            diagnostics: {
+                status: 'authorization',
+                code: 'none',
+                yahooError: error,
+                yahooDescription: errorDescription || 'none',
+                redirectUri: YAHOO_REDIRECT_URI || 'missing',
+            },
+        }));
+    }
     if (!code) return res.status(400).send('No auth code received');
     if (!YAHOO_CLIENT_ID || !YAHOO_CLIENT_SECRET || !YAHOO_REDIRECT_URI) {
         return res.status(500).send(renderAuthErrorPage({
             title: 'Yahoo auth config is incomplete',
             message: 'The server is missing Yahoo OAuth environment variables required for the token exchange.',
+            diagnostics: {
+                status: 'config',
+                code: 'none',
+                yahooError: 'none',
+                yahooDescription: 'missing env vars',
+                redirectUri: YAHOO_REDIRECT_URI || 'missing',
+            },
         }));
     }
 
