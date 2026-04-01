@@ -286,7 +286,7 @@ function CompactGamePill({ game }) {
     )
 }
 
-function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap }) {
+function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
     const isPitcherPos = bsPlayer.pitching !== null
     const statLine = isPitcherPos ? formatPitcherLine(bsPlayer.pitching) : formatHitterLine(bsPlayer.batting)
     const isActive = bsPlayer.status === 'batting' || bsPlayer.status === 'pitching'
@@ -313,7 +313,23 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap }) {
             <PlayerAvatar imageUrl={imgUrl} name={bsPlayer.name} size={32} />
             <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ fontWeight: 600, fontSize: 13, color: C.gray800 }}>{bsPlayer.name}</span>
+                    <button
+                        type="button"
+                        onClick={() => rosterPlayer && onOpenPlayer?.(rosterPlayer.playerKey, rosterPlayer.name)}
+                        disabled={!rosterPlayer}
+                        style={{
+                            fontWeight: 600,
+                            fontSize: 13,
+                            color: C.gray800,
+                            background: 'transparent',
+                            border: 'none',
+                            padding: 0,
+                            cursor: rosterPlayer ? 'pointer' : 'default',
+                            textAlign: 'left',
+                        }}
+                    >
+                        {bsPlayer.name}
+                    </button>
                     {isActive && (
                         <span style={{ fontSize: 9, fontWeight: 800, color: C.green, background: C.greenLight, padding: '1px 5px', borderRadius: 3 }}>
                             {bsPlayer.status === 'batting' ? 'AB' : 'P'}
@@ -332,7 +348,7 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap }) {
     )
 }
 
-function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }) {
+function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, onOpenPlayer }) {
     const started = game.isLive || game.isFinal
     const loading = !boxscore && started
 
@@ -388,14 +404,20 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap }
                 ) : withRoster.length === 0 ? (
                     <div style={{ padding: '14px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>No roster players in this game</div>
                 ) : withRoster.map(({ bsPlayer, rosterPlayer }) => (
-                    <MyPlayerStatRow key={bsPlayer.name} bsPlayer={bsPlayer} rosterPlayer={rosterPlayer} imageMap={imageMap} />
+                    <MyPlayerStatRow
+                        key={`${bsPlayer.name}-${bsPlayer.proTeam || bsPlayer.position || ''}`}
+                        bsPlayer={bsPlayer}
+                        rosterPlayer={rosterPlayer}
+                        imageMap={imageMap}
+                        onOpenPlayer={onOpenPlayer}
+                    />
                 ))}
             </div>
         </div>
     )
 }
 
-function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers, imageMap, px }) {
+function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers, imageMap, px, onOpenPlayer }) {
     if (games.length === 0) return null
     const myGames = games.filter(g => myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam))
     const otherGames = games.filter(g => !myTeams.has(g.awayTeam) && !myTeams.has(g.homeTeam))
@@ -430,7 +452,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                 }} className="scrollbar-hidden">
                     {myGames.map(g => (
                         <BoxScoreCard key={g.gamePk} game={g} boxscore={boxscores[g.gamePk]}
-                            myPlayerNames={myPlayerNames} rosterPlayers={rosterPlayers} imageMap={imageMap} />
+                            myPlayerNames={myPlayerNames} rosterPlayers={rosterPlayers} imageMap={imageMap} onOpenPlayer={onOpenPlayer} />
                     ))}
                 </div>
             )}
@@ -1886,7 +1908,7 @@ export default function Dashboard({ api }) {
                 transition: pullState.active ? 'none' : 'transform 180ms ease',
             }}>
             <LiveBoxScores games={games} boxscores={boxscores} myTeams={myTeams}
-                myPlayerNames={myPlayerNames} rosterPlayers={allRosterPlayers} imageMap={imageMap} px={px} />
+                myPlayerNames={myPlayerNames} rosterPlayers={allRosterPlayers} imageMap={imageMap} px={px} onOpenPlayer={openPlayer} />
 
             {loadWarnings.length > 0 && (
                 <div className="surface-card" style={{ margin: `14px ${px} 0`, padding: '12px 14px', borderColor: '#f5c2c7', background: 'rgba(255,248,248,0.92)' }}>
