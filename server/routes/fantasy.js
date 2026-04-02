@@ -823,14 +823,21 @@ router.get('/scoreboard', async (req, res) => {
         const games = (data.dates?.[0]?.games || []).map(g => {
             const ls = g.linescore || {};
             const away = g.teams?.away; const home = g.teams?.home;
+            const abstractState = g.status?.abstractGameState || null;
+            const detailedState = g.status?.detailedState || abstractState || null;
+            const normalizedDetailedState = String(detailedState || '').toLowerCase();
+            const isPostponed = /postponed|cancelled|canceled|delayed start/.test(normalizedDetailedState);
             return {
-                gamePk: g.gamePk, status: g.status?.abstractGameState,
+                gamePk: g.gamePk,
+                status: abstractState,
+                detailedStatus: detailedState,
                 startTime: g.gameDate, inning: ls.currentInning || null,
                 inningHalf: ls.inningHalf || null, outs: ls.outs ?? null,
                 awayTeam: away?.team?.abbreviation, awayScore: away?.score ?? null,
                 homeTeam: home?.team?.abbreviation, homeScore: home?.score ?? null,
-                isLive: g.status?.abstractGameState === 'Live',
-                isFinal: g.status?.abstractGameState === 'Final',
+                isLive: abstractState === 'Live',
+                isFinal: abstractState === 'Final' && !isPostponed,
+                isPostponed,
             };
         });
         res.json(games);

@@ -297,6 +297,13 @@ function GameStatusBadge({ game }) {
             </span>
         )
     }
+    if (game.isPostponed) {
+        return (
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.amber, background: C.amberLight, padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>
+                Postponed
+            </span>
+        )
+    }
     if (game.isFinal) return (
         <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, background: C.gray100, padding: '3px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>Final</span>
     )
@@ -311,16 +318,16 @@ function CompactGamePill({ game }) {
     return (
         <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px',
-            background: game.isLive ? C.greenLight : C.gray50,
-            border: `1px solid ${game.isLive ? '#86efac' : C.gray200}`,
+            background: game.isLive ? C.greenLight : game.isPostponed ? C.amberLight : C.gray50,
+            border: `1px solid ${game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : C.gray200}`,
             borderRadius: 20, fontSize: 11, fontWeight: 500,
-            color: game.isLive ? C.green : C.gray600, flexShrink: 0, whiteSpace: 'nowrap',
+            color: game.isLive ? C.green : game.isPostponed ? C.amber : C.gray600, flexShrink: 0, whiteSpace: 'nowrap',
         }}>
             {game.isLive && <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, flexShrink: 0, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />}
             <span style={{ fontWeight: 600 }}>{game.awayTeam}</span>
             {started
                 ? <span style={{ fontWeight: 800, color: game.isLive ? C.green : C.gray800 }}>{game.awayScore}–{game.homeScore}</span>
-                : <span style={{ color: C.gray400, fontSize: 10 }}>vs</span>}
+                : <span style={{ color: game.isPostponed ? C.amber : C.gray400, fontSize: 10 }}>{game.isPostponed ? 'PPD' : 'vs'}</span>}
             <span style={{ fontWeight: 600 }}>{game.homeTeam}</span>
             {game.isFinal && <span style={{ fontSize: 9, color: C.gray400, fontWeight: 700 }}>F</span>}
         </div>
@@ -416,8 +423,8 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     return (
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
             background: C.white,
-            border: `1px solid ${game.isLive ? '#86efac' : C.gray200}`,
-            borderLeft: `3px solid ${game.isLive ? C.green : game.isFinal ? C.gray200 : C.accent}`,
+            border: `1px solid ${game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : C.gray200}`,
+            borderLeft: `3px solid ${game.isLive ? C.green : game.isPostponed ? C.amber : game.isFinal ? C.gray200 : C.accent}`,
             borderRadius: 10, overflow: 'hidden',
             minWidth: 280, flexShrink: 0, minHeight: 286,
         }}>
@@ -441,6 +448,10 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
             <div style={{ padding: '0 14px 4px', minHeight: 172, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
                 {loading ? (
                     <div style={{ padding: '14px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading...</div>
+                ) : game.isPostponed ? (
+                    <div style={{ padding: '16px 0', fontSize: 12, color: C.amber, textAlign: 'center', fontWeight: 600 }}>
+                        {game.detailedStatus || 'Postponed'}
+                    </div>
                 ) : !started ? (
                     <div style={{ padding: '16px 0', fontSize: 12, color: C.gray400, textAlign: 'center' }}>
                         Starts {new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
@@ -1515,7 +1526,7 @@ export default function Dashboard({ api }) {
         axios.get(`${api}/api/scoreboard`)
             .then(r => {
                 setGames(r.data)
-                if (r.data.some(g => g.isLive || g.isFinal)) {
+                if (r.data.some(g => (g.isLive || g.isFinal) && !g.isPostponed)) {
                     try {
                         const today = getLocalDateKey()
                         localStorage.setItem('games_cache', JSON.stringify({ date: today, data: r.data }))
@@ -1566,8 +1577,8 @@ export default function Dashboard({ api }) {
         loadScoreboard()
         const interval = setInterval(() => {
             // Keep refreshing — stops being noisy once all final but persists cache
-            const allFinal = games.length > 0 && games.every(g => g.isFinal)
-            if (!allFinal) loadScoreboard()
+            const allResolved = games.length > 0 && games.every(g => g.isFinal || g.isPostponed)
+            if (!allResolved) loadScoreboard()
         }, 60 * 1000)
         return () => clearInterval(interval)
     }, [games.length])
@@ -1708,8 +1719,9 @@ export default function Dashboard({ api }) {
         return map
     }, [games])
 
-    const hasGameActivity = games.some(g => g.isLive || g.isFinal)
+    const hasGameActivity = games.some(g => (g.isLive || g.isFinal) && !g.isPostponed)
     const hasStartedGamesToday = games.some(g => {
+        if (g.isPostponed) return false
         if (g.isLive || g.isFinal) return true
         if (!g.startTime) return false
         return new Date(g.startTime).getTime() <= Date.now()
@@ -1773,7 +1785,7 @@ export default function Dashboard({ api }) {
         const gameInfo = teamGameMap[player.proTeam]
         const isP = !forceHitter && isPitcher(player.position)
         const rowBg = isIL ? '#fffafa' : C.white
-        const showSeasonCategoryStats = !hasStartedGamesToday && (source === 'espn' || source === undefined)
+        const showSeasonCategoryStats = !hasStartedGamesToday
 
         // OPP cell
         const oppDisplay = gameInfo
@@ -1784,6 +1796,9 @@ export default function Dashboard({ api }) {
         const gameCell = () => {
             if (!gameInfo?.game) return <span style={{ color: C.gray400 }}>—</span>
             const g = gameInfo.game
+            if (g.isPostponed) {
+                return <span style={{ fontSize: 11, color: C.amber, fontWeight: 700 }}>{g.detailedStatus || 'Postponed'}</span>
+            }
             if (!g.isLive && !g.isFinal) {
                 const t = g.startTime ? new Date(g.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'
                 return <span style={{ fontSize: 11, color: C.gray400 }}>{t}</span>
