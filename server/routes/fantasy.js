@@ -329,6 +329,15 @@ function parseEspnStats(player) {
     return stats;
 }
 
+function getChicagoDateString(date = new Date()) {
+    return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Chicago',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).format(date);
+}
+
 function parseEspnSeasonStatsByLabel(player) {
     const stats = {};
     const seasonStats = pickEspnSeasonStats(player);
@@ -809,7 +818,7 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
 
 router.get('/scoreboard', async (req, res) => {
     try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getChicagoDateString();
         const { data } = await axios.get(`https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=${today}&hydrate=linescore,team`);
         const games = (data.dates?.[0]?.games || []).map(g => {
             const ls = g.linescore || {};

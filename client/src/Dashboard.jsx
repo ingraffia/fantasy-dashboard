@@ -90,6 +90,14 @@ function useIsMobile() {
     return isMobile
 }
 
+function getLocalDateKey() {
+    const now = new Date()
+    const year = now.getFullYear()
+    const month = String(now.getMonth() + 1).padStart(2, '0')
+    const day = String(now.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+}
+
 function Tag({ text, bg = C.gray100, color = C.gray600 }) {
     return <span className="premium-badge" style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: bg, color, lineHeight: '18px', letterSpacing: '-0.01em' }}>{text}</span>
 }
@@ -1416,7 +1424,7 @@ export default function Dashboard({ api }) {
             const stored = localStorage.getItem('games_cache')
             if (stored) {
                 const { date, data } = JSON.parse(stored)
-                const today = new Date().toISOString().split('T')[0]
+                const today = getLocalDateKey()
                 if (date === today) return data
             }
         } catch (e) { }
@@ -1428,7 +1436,7 @@ export default function Dashboard({ api }) {
             const stored = localStorage.getItem('boxscores_cache')
             if (stored) {
                 const { date, data } = JSON.parse(stored)
-                const today = new Date().toISOString().split('T')[0]
+                const today = getLocalDateKey()
                 if (date === today) return data
             }
         } catch (e) { }
@@ -1509,7 +1517,7 @@ export default function Dashboard({ api }) {
                 setGames(r.data)
                 if (r.data.some(g => g.isLive || g.isFinal)) {
                     try {
-                        const today = new Date().toISOString().split('T')[0]
+                        const today = getLocalDateKey()
                         localStorage.setItem('games_cache', JSON.stringify({ date: today, data: r.data }))
                     } catch (e) { }
                 }
@@ -1540,7 +1548,7 @@ export default function Dashboard({ api }) {
                 const updated = { ...prev, ...nb }
                 // Persist to localStorage with today's date so stats survive page refresh
                 try {
-                    const today = new Date().toISOString().split('T')[0]
+                    const today = getLocalDateKey()
                     localStorage.setItem('boxscores_cache', JSON.stringify({ date: today, data: updated }))
                 } catch (e) { }
                 return updated
