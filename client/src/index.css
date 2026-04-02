@@ -160,6 +160,35 @@ select:focus {
   box-shadow: 0 10px 35px rgba(15, 23, 42, 0.04);
 }
 
+.dashboard-topbar--hero {
+  background:
+    radial-gradient(circle at top left, rgba(103, 166, 255, 0.22), transparent 34%),
+    linear-gradient(135deg, rgba(17, 38, 63, 0.96) 0%, rgba(30, 67, 112, 0.94) 52%, rgba(57, 130, 246, 0.9) 100%);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.14);
+}
+
+.dashboard-topbar--hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.18), transparent 58%),
+    radial-gradient(circle at 85% 10%, rgba(255,255,255,0.18), transparent 22%);
+}
+
+.dashboard-topbar--hero .dashboard-brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 16px 32px rgba(10, 16, 32, 0.22);
+}
+
 .dashboard-brand {
   display: flex;
   align-items: center;

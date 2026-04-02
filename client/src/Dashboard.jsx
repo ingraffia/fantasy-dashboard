@@ -1964,30 +1964,34 @@ export default function Dashboard({ api }) {
             )}
 
             {/* Header */}
-            <div className="dashboard-topbar animate-slide-down" style={{
+            <div className="dashboard-topbar dashboard-topbar--hero animate-slide-down" style={{
                 padding: `0 ${px}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                height: isMobile ? 60 : 72,
+                height: isMobile ? 68 : 82,
                 transform: pullOffset ? `translateY(${Math.min(pullOffset, 56)}px)` : 'translateY(0)',
                 transition: pullState.active ? 'none' : 'transform 180ms ease',
+                position: 'relative',
+                overflow: 'hidden',
             }}>
-                <div className="dashboard-brand">
+                <div className="dashboard-brand" style={{ position: 'relative', zIndex: 1 }}>
                     <div className="dashboard-brand-mark">
-                        <span style={{ fontSize: 14 }}>⚾</span>
+                        <span style={{ fontSize: 16 }}>⚾</span>
                     </div>
                     <div>
-                        <div style={{ fontSize: isMobile ? 15 : 18, fontWeight: 800, color: C.navy, lineHeight: 1.05, letterSpacing: '-0.03em' }}>Fantasy Dashboard</div>
-                        <div style={{ fontSize: 10, color: C.gray400, marginTop: 3 }}>
+                        <div style={{ fontSize: isMobile ? 16 : 20, fontWeight: 800, color: C.white, lineHeight: 1.02, letterSpacing: '-0.035em' }}>Fantasy Dashboard</div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', marginTop: 5, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             {data.length} leagues · 2026
                             {ranksLoading && ' · Loading ranks...'}
                         </div>
                     </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14 }}>
-                    {!isMobile && lastUpdated && <span style={{ fontSize: 11, color: C.gray400 }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14, position: 'relative', zIndex: 1 }}>
+                    {!isMobile && lastUpdated && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)' }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
                     <button className="control-button control-button--primary" onClick={refreshAll} style={{
-                        fontSize: isMobile ? 11 : 12, fontWeight: 700, padding: isMobile ? '6px 12px' : '7px 16px',
-                        borderRadius: 999, border: 'none', color: C.white, cursor: 'pointer',
+                        fontSize: isMobile ? 11 : 12, fontWeight: 700, padding: isMobile ? '8px 13px' : '9px 18px',
+                        borderRadius: 999, border: '1px solid rgba(255,255,255,0.14)', color: C.white, cursor: 'pointer',
+                        background: 'rgba(255,255,255,0.14)',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 12px 26px rgba(10,16,32,0.18)',
                     }}>↻ {isMobile ? '' : 'Refresh'}</button>
                 </div>
             </div>
@@ -2103,7 +2107,7 @@ export default function Dashboard({ api }) {
             </div>
 
             {/* Tabs */}
-            <div className="dashboard-topbar" style={{ padding: `12px ${px}`, display: 'flex', justifyContent: 'center', position: 'sticky', top: isMobile ? 60 : 72, zIndex: 30 }}>
+            <div className="dashboard-topbar" style={{ padding: `12px ${px}`, display: 'flex', justifyContent: 'center', position: 'sticky', top: isMobile ? 68 : 82, zIndex: 30 }}>
                 <div className="surface-card" style={{ display: 'inline-flex', padding: 6, borderRadius: 18, width: isMobile ? '100%' : 'auto', background: 'rgba(255,255,255,0.66)' }}>
                     {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }, { id: 'trade', label: 'Trade' }].map(tab => {
                         const isActive = activeTab === tab.id
@@ -2244,10 +2248,11 @@ export default function Dashboard({ api }) {
                 {/* LINEUPS */}
                 {activeTab === 'lineup' && (
                     <>
-                        <div className="scrollbar-hidden" style={{ display: 'flex', gap: 8, marginBottom: 14, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+                        <div className="surface-card scrollbar-hidden" style={{ display: 'flex', gap: 10, marginBottom: 14, overflowX: 'auto', WebkitOverflowScrolling: 'touch', padding: '10px 12px', alignItems: 'center', background: 'rgba(255,255,255,0.76)' }}>
                             {data.map(lg => (
                                 <button className={`league-pill${activeLeague === lg.leagueKey ? ' is-active' : ''}`} key={lg.leagueKey} onClick={() => setActiveLeague(lg.leagueKey)} style={{
-                                    padding: '8px 14px', fontSize: 11, borderRadius: 999, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
+                                    minHeight: 42,
+                                    padding: '10px 16px', fontSize: 11, borderRadius: 999, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
                                     background: activeLeague === lg.leagueKey ? C.navy : C.white,
                                     color: activeLeague === lg.leagueKey ? C.white : C.gray600,
                                     border: `1px solid ${activeLeague === lg.leagueKey ? C.navy : C.gray200}`,
