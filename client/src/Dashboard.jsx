@@ -396,7 +396,7 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
     )
 }
 
-function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, onOpenPlayer }) {
+function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, onOpenPlayer, pregameCompact = false }) {
     const started = game.isLive || game.isFinal
     const loading = !boxscore && started
     const [expanded, setExpanded] = useState(false)
@@ -419,6 +419,11 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     const homeAhead = started && (game.homeScore ?? 0) > (game.awayScore ?? 0)
     const hasOverflow = withRoster.length > 4
     const visibleRoster = expanded ? withRoster : withRoster.slice(0, 4)
+    const compactCard = pregameCompact && !started
+    const headerPadding = compactCard ? '10px 14px' : '12px 14px'
+    const scoreFontSize = compactCard ? 20 : 24
+    const bodyPadding = compactCard ? '0 14px' : '0 14px 4px'
+    const bodyMinHeight = compactCard ? 52 : 172
 
     return (
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
@@ -426,34 +431,34 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
             border: `1px solid ${game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : C.gray200}`,
             borderLeft: `3px solid ${game.isLive ? C.green : game.isPostponed ? C.amber : game.isFinal ? C.gray200 : C.accent}`,
             borderRadius: 10, overflow: 'hidden',
-            minWidth: 280, flexShrink: 0, minHeight: 286,
+            minWidth: 280, flexShrink: 0, minHeight: compactCard ? 112 : 286,
         }}>
             {/* Stacked score header */}
-            <div style={{ padding: '12px 14px', borderBottom: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <MlbLogo team={game.awayTeam} size={16} showText={false} />
                         <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, minWidth: 32 }}>{game.awayTeam}</span>
-                        {started && <span style={{ fontSize: 24, fontWeight: 900, color: awayAhead ? C.gray800 : C.gray400, minWidth: 26, lineHeight: 1 }}>{game.awayScore ?? 0}</span>}
+                        {started && <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: awayAhead ? C.gray800 : C.gray400, minWidth: 26, lineHeight: 1 }}>{game.awayScore ?? 0}</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <MlbLogo team={game.homeTeam} size={16} showText={false} />
                         <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, minWidth: 32 }}>{game.homeTeam}</span>
-                        {started && <span style={{ fontSize: 24, fontWeight: 900, color: homeAhead ? C.gray800 : C.gray400, minWidth: 26, lineHeight: 1 }}>{game.homeScore ?? 0}</span>}
+                        {started && <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: homeAhead ? C.gray800 : C.gray400, minWidth: 26, lineHeight: 1 }}>{game.homeScore ?? 0}</span>}
                     </div>
                 </div>
                 <GameStatusBadge game={game} />
             </div>
             {/* Player rows */}
-            <div style={{ padding: '0 14px 4px', minHeight: 172, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 {loading ? (
                     <div style={{ padding: '14px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading...</div>
                 ) : game.isPostponed ? (
-                    <div style={{ padding: '16px 0', fontSize: 12, color: C.amber, textAlign: 'center', fontWeight: 600 }}>
+                    <div style={{ padding: compactCard ? '12px 0' : '16px 0', fontSize: 12, color: C.amber, textAlign: 'center', fontWeight: 600 }}>
                         {game.detailedStatus || 'Postponed'}
                     </div>
                 ) : !started ? (
-                    <div style={{ padding: '16px 0', fontSize: 12, color: C.gray400, textAlign: 'center' }}>
+                    <div style={{ padding: compactCard ? '12px 0' : '16px 0', fontSize: 12, color: C.gray400, textAlign: 'center' }}>
                         Starts {new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </div>
                 ) : withRoster.length === 0 ? (
@@ -500,6 +505,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     const myGames = games.filter(g => myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam))
     const otherGames = games.filter(g => !myTeams.has(g.awayTeam) && !myTeams.has(g.homeTeam))
     const liveCount = games.filter(g => g.isLive).length
+    const hasStartedGames = games.some(g => (g.isLive || g.isFinal) && !g.isPostponed)
 
     return (
         <div className="surface-card surface-card--strong animate-fade-up" style={{ background: C.white, borderBottom: `1px solid ${C.gray100}`, paddingTop: 10, paddingBottom: 12 }}>
@@ -530,7 +536,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                 }} className="scrollbar-hidden">
                     {myGames.map(g => (
                         <BoxScoreCard key={g.gamePk} game={g} boxscore={boxscores[g.gamePk]}
-                            myPlayerNames={myPlayerNames} rosterPlayers={rosterPlayers} imageMap={imageMap} onOpenPlayer={onOpenPlayer} />
+                            myPlayerNames={myPlayerNames} rosterPlayers={rosterPlayers} imageMap={imageMap} onOpenPlayer={onOpenPlayer} pregameCompact={!hasStartedGames} />
                     ))}
                 </div>
             )}
