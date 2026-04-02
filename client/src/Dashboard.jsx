@@ -508,7 +508,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     const hasStartedGames = games.some(g => (g.isLive || g.isFinal) && !g.isPostponed)
 
     return (
-        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: C.white, borderBottom: `1px solid ${C.gray100}`, paddingTop: 10, paddingBottom: 12 }}>
+        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: C.white, borderBottom: `1px solid ${C.gray100}`, paddingTop: 10, paddingBottom: 12, borderRadius: 0 }}>
             {/* Header row */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 10 }}>
                 <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
