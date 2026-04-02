@@ -1989,9 +1989,6 @@ export default function Dashboard({ api }) {
                         fontSize: isMobile ? 11 : 12, fontWeight: 700, padding: isMobile ? '6px 12px' : '7px 16px',
                         borderRadius: 999, border: 'none', color: C.white, cursor: 'pointer',
                     }}>↻ {isMobile ? '' : 'Refresh'}</button>
-                    <a className="control-button control-button--ghost" href={`${api}/auth/logout`} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: C.gray600, textDecoration: 'none', padding: '7px 12px', borderRadius: 999 }}>
-                        {isMobile ? '↪' : 'Sign Out'}
-                    </a>
                 </div>
             </div>
 
