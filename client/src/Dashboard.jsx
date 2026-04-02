@@ -508,9 +508,9 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     const hasStartedGames = games.some(g => (g.isLive || g.isFinal) && !g.isPostponed)
 
     return (
-        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: C.white, borderBottom: `1px solid ${C.gray100}`, paddingTop: 10, paddingBottom: 12, borderRadius: 0 }}>
+        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: C.white, borderBottom: `1px solid ${C.gray100}`, paddingTop: 12, paddingBottom: 12, borderRadius: 0 }}>
             {/* Header row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 12 }}>
                 <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                 </span>
@@ -2001,7 +2001,7 @@ export default function Dashboard({ api }) {
                 myPlayerNames={myPlayerNames} rosterPlayers={allRosterPlayers} imageMap={imageMap} px={px} onOpenPlayer={openPlayer} />
 
             {loadWarnings.length > 0 && (
-                <div className="surface-card" style={{ margin: `14px ${px} 0`, padding: '12px 14px', borderColor: '#f5c2c7', background: 'rgba(255,248,248,0.92)' }}>
+                <div className="surface-card" style={{ margin: `14px ${px} 0`, padding: '14px 16px', borderColor: '#f5c2c7', background: 'rgba(255,248,248,0.92)' }}>
                     <div style={{ fontSize: 11, fontWeight: 800, color: C.red, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
                         Partial Data Warning
                     </div>
@@ -2019,7 +2019,7 @@ export default function Dashboard({ api }) {
             <div
                 className="stagger-container scrollbar-hidden"
                 style={{
-                    padding: `18px ${px} 8px`,
+                    padding: `16px ${px} 10px`,
                     display: 'flex',
                     gap: 14,
                     overflowX: 'auto',
@@ -2045,13 +2045,16 @@ export default function Dashboard({ api }) {
                     return (
                         <a className="surface-card surface-card--interactive matchup-card animate-fade-up" href={href} target="_blank" rel="noopener noreferrer" key={lg.leagueKey} style={{
                             textDecoration: 'none', color: 'inherit', display: 'block',
-                            background: bgGrad, borderRadius: 10, padding: '12px 14px',
+                            background: bgGrad, borderRadius: 10, padding: '14px 16px 16px',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: `1px solid ${borderColor}`,
                             minWidth: isMobile ? 'calc(100vw - 24px)' : 280,
                             maxWidth: isMobile ? 'calc(100vw - 24px)' : 320,
                             flex: '0 0 auto',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 12,
                         }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, flex: 1 }}>
                                     {lg.source === 'espn'
                                         ? <img src="https://a.espncdn.com/favicon.ico" width={12} height={12} alt="ESPN" />
@@ -2077,14 +2080,14 @@ export default function Dashboard({ api }) {
                                     </div>
                                 </div>
                             ) : (
-                                <div style={{ textAlign: 'center', padding: '4px 0' }}>
+                                <div style={{ textAlign: 'center', padding: '2px 0' }}>
                                     {lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0
                                         ? <div style={{ fontWeight: 900, fontSize: 36, color: C.navy }}>{lg.standing.pointsFor}<span style={{ fontSize: 13, fontWeight: 500, color: C.gray400 }}> pts</span></div>
                                         : <div style={{ fontSize: 13, color: C.gray400 }}>{lg.standing ? `${lg.standing.wins}W – ${lg.standing.losses}L` : 'No data'}</div>}
                                 </div>
                             )}
                             {lg.matchup && lg.standing && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px dashed ${borderColor}`, paddingTop: 8, marginTop: 10 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: `1px dashed ${borderColor}`, paddingTop: 10 }}>
                                     <span style={{ fontSize: 10, color: C.gray400 }}>Week {lg.matchup.week}</span>
                                     <span style={{ fontSize: 10, color: C.navy, fontWeight: 700 }}>{lg.standing.wins}W – {lg.standing.losses}L</span>
                                 </div>
@@ -2100,7 +2103,7 @@ export default function Dashboard({ api }) {
             </div>
 
             {/* Tabs */}
-            <div className="dashboard-topbar" style={{ padding: `14px ${px} 14px`, display: 'flex', justifyContent: 'center', position: 'sticky', top: isMobile ? 60 : 72, zIndex: 30 }}>
+            <div className="dashboard-topbar" style={{ padding: `12px ${px}`, display: 'flex', justifyContent: 'center', position: 'sticky', top: isMobile ? 60 : 72, zIndex: 30 }}>
                 <div className="surface-card" style={{ display: 'inline-flex', padding: 6, borderRadius: 18, width: isMobile ? '100%' : 'auto', background: 'rgba(255,255,255,0.66)' }}>
                     {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }, { id: 'trade', label: 'Trade' }].map(tab => {
                         const isActive = activeTab === tab.id
@@ -2119,12 +2122,12 @@ export default function Dashboard({ api }) {
                 </div>
             </div>
 
-            <div className="section-stack animate-tab-content" style={{ padding: `16px ${px} 24px` }}>
+            <div className="section-stack animate-tab-content" style={{ padding: `14px ${px} 24px` }}>
 
                 {/* ALL PLAYERS */}
                 {activeTab === 'feed' && (
                     <>
-                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center', padding: 12 }}>
+                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', padding: 14 }}>
                             <input placeholder="Search players..." value={search} onChange={e => setSearch(e.target.value)}
                                 style={{ ...inputStyle, flex: isMobile ? 1 : 'none', width: isMobile ? 'auto' : 200 }} />
                             <select value={posFilter} onChange={e => setPosFilter(e.target.value)} style={selStyle}>
@@ -2241,7 +2244,7 @@ export default function Dashboard({ api }) {
                 {/* LINEUPS */}
                 {activeTab === 'lineup' && (
                     <>
-                        <div className="scrollbar-hidden" style={{ display: 'flex', gap: 8, marginBottom: 12, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }}>
+                        <div className="scrollbar-hidden" style={{ display: 'flex', gap: 8, marginBottom: 14, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
                             {data.map(lg => (
                                 <button className={`league-pill${activeLeague === lg.leagueKey ? ' is-active' : ''}`} key={lg.leagueKey} onClick={() => setActiveLeague(lg.leagueKey)} style={{
                                     padding: '8px 14px', fontSize: 11, borderRadius: 999, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
@@ -2291,8 +2294,8 @@ export default function Dashboard({ api }) {
                             return (
                                 <>
                                     {/* League / matchup header */}
-                                    <div style={{ ...tableCard, marginBottom: 10 }}>
-                                        <div style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ ...tableCard, marginBottom: 12 }}>
+                                        <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div>
                                                 <div style={{ fontWeight: 800, fontSize: 15, color: C.navy }}>{activeLeagueData.teamName}</div>
                                                 <a href={activeLeagueData.leagueUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>
@@ -2312,7 +2315,7 @@ export default function Dashboard({ api }) {
                                     </div>
 
                                     {/* Batters */}
-                                    <div style={{ ...tableCard, marginBottom: 10 }}>
+                                    <div style={{ ...tableCard, marginBottom: 12 }}>
                                         <table style={tableStyle}>
                                             {tableHead(hitterCols)}
                                                 <tbody>
@@ -2324,7 +2327,7 @@ export default function Dashboard({ api }) {
                                     </div>
 
                                     {/* Pitchers */}
-                                    <div style={{ ...tableCard, marginBottom: ilPlayers.length > 0 ? 10 : 0 }}>
+                                    <div style={{ ...tableCard, marginBottom: ilPlayers.length > 0 ? 12 : 0 }}>
                                         <table style={tableStyle}>
                                             {tableHead(pitcherCols)}
                                             <tbody>
@@ -2356,7 +2359,7 @@ export default function Dashboard({ api }) {
                 {/* WAIVER WIRE */}
                 {activeTab === 'waiver' && (
                     <>
-                        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', padding: 14 }}>
                             <select value={faLeague || ''} onChange={e => { setFaLeague(e.target.value); fetchFreeAgents(e.target.value, faPos, faSearch) }} style={{ ...selStyle, flex: isMobile ? 1 : 'none' }}>
                                 {yahooLeagues.map(lg => <option key={lg.leagueKey} value={lg.leagueKey}>{lg.leagueName}</option>)}
                             </select>
@@ -2459,10 +2462,10 @@ export default function Dashboard({ api }) {
     )
 }
 
-const tableCard = { background: 'rgba(255,255,255,0.88)', borderRadius: 18, border: `1px solid rgba(148,163,184,0.18)`, overflow: 'hidden', boxShadow: '0 16px 40px rgba(15,23,42,0.05)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }
+const tableCard = { background: 'rgba(255,255,255,0.88)', borderRadius: 16, border: `1px solid rgba(148,163,184,0.18)`, overflow: 'hidden', boxShadow: '0 16px 40px rgba(15,23,42,0.05)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
-const thStyle = { padding: '11px 14px', textAlign: 'left', fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em' }
-const tdStyle = { padding: '11px 14px', fontSize: 13, verticalAlign: 'middle', background: 'inherit' }
-const inputStyle = { padding: '10px 12px', border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 13, outline: 'none', color: C.gray800, background: 'rgba(255,255,255,0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
-const selStyle = { padding: '10px 12px', border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 12, background: 'rgba(255,255,255,0.84)', outline: 'none', cursor: 'pointer', color: C.gray800, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
+const thStyle = { padding: '12px 16px', textAlign: 'left', fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em' }
+const tdStyle = { padding: '12px 16px', fontSize: 13, verticalAlign: 'middle', background: 'inherit' }
+const inputStyle = { padding: '10px 12px', minHeight: 40, border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 13, outline: 'none', color: C.gray800, background: 'rgba(255,255,255,0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
+const selStyle = { padding: '10px 12px', minHeight: 40, border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 12, background: 'rgba(255,255,255,0.84)', outline: 'none', cursor: 'pointer', color: C.gray800, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
 const btnStyle = { padding: '9px 16px', borderRadius: 12, border: `1px solid rgba(148,163,184,0.24)`, background: 'rgba(255,255,255,0.84)', cursor: 'pointer', fontSize: 13, color: C.gray600, fontWeight: 700, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
