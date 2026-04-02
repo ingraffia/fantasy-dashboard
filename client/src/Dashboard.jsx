@@ -1709,6 +1709,11 @@ export default function Dashboard({ api }) {
     }, [games])
 
     const hasGameActivity = games.some(g => g.isLive || g.isFinal)
+    const hasStartedGamesToday = games.some(g => {
+        if (g.isLive || g.isFinal) return true
+        if (!g.startTime) return false
+        return new Date(g.startTime).getTime() <= Date.now()
+    })
 
     const allPlayers = (() => {
         const playerMap = {}
@@ -1768,7 +1773,7 @@ export default function Dashboard({ api }) {
         const gameInfo = teamGameMap[player.proTeam]
         const isP = !forceHitter && isPitcher(player.position)
         const rowBg = isIL ? '#fffafa' : C.white
-        const showSeasonCategoryStats = !hasGameActivity && (source === 'espn' || source === undefined)
+        const showSeasonCategoryStats = !hasStartedGamesToday && (source === 'espn' || source === undefined)
 
         // OPP cell
         const oppDisplay = gameInfo
@@ -1810,7 +1815,7 @@ export default function Dashboard({ api }) {
                     })}
                 </>
             } else if (isP) {
-                if (hasGameActivity) {
+                if (hasStartedGamesToday) {
                     const sp = todayData?.pitching
                     statCells = <>
                         {numTd(sp?.ip ?? '—', true)} {numTd(sp?.k ?? '—', true)}
@@ -1826,7 +1831,7 @@ export default function Dashboard({ api }) {
                     </>
                 }
             } else {
-                if (hasGameActivity) {
+                if (hasStartedGamesToday) {
                     const b = todayData?.batting
                     statCells = <>
                         {numTd(b ? `${b.h ?? 0}/${b.ab ?? 0}` : '—', true)}
@@ -2238,10 +2243,10 @@ export default function Dashboard({ api }) {
                             const ilPlayers = [...activeLeagueData.players].filter(p => IL_SLOTS.includes(p.selectedPosition))
                             const leagueLineupCategories = activeLeagueData.lineupCategories
                                 || (src === 'espn' ? ESPN_DEFAULT_LINEUP_CATEGORIES : YAHOO_DEFAULT_LINEUP_CATEGORIES)
-                            const hitterCols = hasGameActivity
+                            const hitterCols = hasStartedGamesToday
                                 ? ['H/AB', 'R', 'HR', 'RBI', 'SB', 'BB']
                                 : leagueLineupCategories.hitterSeason
-                            const pitcherCols = hasGameActivity
+                            const pitcherCols = hasStartedGamesToday
                                 ? ['IP', 'K', 'H', 'BB', 'ER', 'W']
                                 : leagueLineupCategories.pitcherSeason
                             const hitterColSpan = isMobile ? 3 : 4 + hitterCols.length
