@@ -1,5 +1,7 @@
 const express = require('express');
 const axios = require('axios');
+const https = require('https');
+const dns = require('dns');
 const jwt = require('jsonwebtoken');
 
 const router = express.Router();
@@ -13,6 +15,51 @@ const {
 
 const AUTH_HEADER_NAME = 'x-auth-token';
 const AUTH_TOKEN_TTL = '30d';
+
+// Low-level HTTPS POST that bypasses axios connection pooling
+function httpsPost(url, body, headers, timeoutMs = 25000) {
+    return new Promise((resolve, reject) => {
+        const parsed = new URL(url);
+        const postData = typeof body === 'string' ? body : body.toString();
+        const options = {
+            hostname: parsed.hostname,
+            port: 443,
+            path: parsed.pathname + parsed.search,
+            method: 'POST',
+            headers: {
+                ...headers,
+                'Content-Length': Buffer.byteLength(postData),
+            },
+            // Fresh agent per request — no keep-alive pool
+            agent: new https.Agent({ keepAlive: false }),
+        };
+        const req = https.request(options, (res) => {
+            let raw = '';
+            res.setEncoding('utf8');
+            res.on('data', chunk => { raw += chunk; });
+            res.on('end', () => {
+                let parsed;
+                try { parsed = JSON.parse(raw); } catch { parsed = raw; }
+                if (res.statusCode >= 400) {
+                    const err = new Error(`HTTP ${res.statusCode}`);
+                    err.status = res.statusCode;
+                    err.data = parsed;
+                    return reject(err);
+                }
+                resolve(parsed);
+            });
+        });
+        req.setTimeout(timeoutMs, () => {
+            req.destroy();
+            const err = new Error('Request timed out');
+            err.code = 'ETIMEDOUT';
+            reject(err);
+        });
+        req.on('error', reject);
+        req.write(postData);
+        req.end();
+    });
+}
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -307,12 +354,19 @@ router.get('/callback', async (req, res) => {
     try {
         const credentials = Buffer.from(`${YAHOO_CLIENT_ID}:${YAHOO_CLIENT_SECRET}`).toString('base64');
 
+        // DNS pre-flight: log whether we can resolve Yahoo's hostname
+        dns.lookup('api.login.yahoo.com', (dnsErr, address) => {
+            if (dnsErr) console.error('DNS lookup failed for api.login.yahoo.com:', dnsErr.code);
+            else console.log('DNS resolved api.login.yahoo.com ->', address);
+        });
+
         let data;
         let lastErr;
-        const RETRYABLE_CODES = new Set(['ECONNABORTED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN']);
+        const RETRYABLE_CODES = new Set(['ECONNABORTED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED']);
         for (let attempt = 1; attempt <= 4; attempt++) {
             try {
-                const resp = await axios.post(
+                console.log(`OAuth attempt ${attempt}: posting to Yahoo token endpoint`);
+                data = await httpsPost(
                     'https://api.login.yahoo.com/oauth2/get_token',
                     new URLSearchParams({
                         grant_type: 'authorization_code',
@@ -320,20 +374,18 @@ router.get('/callback', async (req, res) => {
                         redirect_uri: YAHOO_REDIRECT_URI
                     }),
                     {
-                        headers: {
-                            Authorization: `Basic ${credentials}`,
-                            'Content-Type': 'application/x-www-form-urlencoded'
-                        },
-                        timeout: 20000
-                    }
+                        Authorization: `Basic ${credentials}`,
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    25000
                 );
-                data = resp.data;
+                console.log('OAuth success on attempt', attempt);
                 break;
             } catch (e) {
                 lastErr = e;
-                const status = e?.response?.status;
+                const status = e?.status || e?.response?.status;
                 const isRetryable = !status || status >= 500 || status === 429 || RETRYABLE_CODES.has(e.code);
-                console.error(`OAuth attempt ${attempt} failed:`, status || e.code || e.message, JSON.stringify(parseOAuthResponseData(e?.response?.data)));
+                console.error(`OAuth attempt ${attempt} failed:`, e.code || status || e.message);
                 if (!isRetryable || attempt === 4) break;
                 await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
             }
@@ -363,19 +415,17 @@ router.get('/callback', async (req, res) => {
 
 async function refreshYahooTokens(current) {
     const credentials = Buffer.from(`${YAHOO_CLIENT_ID}:${YAHOO_CLIENT_SECRET}`).toString('base64');
-    const { data } = await axios.post(
+    const data = await httpsPost(
         'https://api.login.yahoo.com/oauth2/get_token',
         new URLSearchParams({
             grant_type: 'refresh_token',
             refresh_token: current.refresh_token
         }),
         {
-            headers: {
-                Authorization: `Basic ${credentials}`,
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            timeout: 20000
-        }
+            Authorization: `Basic ${credentials}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        25000
     );
     return {
         access_token: data.access_token,
