@@ -1421,6 +1421,7 @@ export default function Dashboard({ api }) {
     const [error, setError] = useState(null)
     const [lastUpdated, setLastUpdated] = useState(null)
     const [activeTab, setActiveTab] = useState('lineup')
+    const [tabScrolled, setTabScrolled] = useState(false)
     const [activeLeague, setActiveLeague] = useState(null)
     const [search, setSearch] = useState('')
     const [posFilter, setPosFilter] = useState('All')
@@ -1441,6 +1442,13 @@ export default function Dashboard({ api }) {
     const [playerSort, setPlayerSort] = useState('rank')
     const [loadWarnings, setLoadWarnings] = useState([])
     const [pullState, setPullState] = useState({ active: false, distance: 0, ready: false, refreshing: false })
+
+    useEffect(() => {
+        const headerHeight = isMobile ? 68 : 82
+        const handler = () => setTabScrolled(window.scrollY > headerHeight)
+        window.addEventListener('scroll', handler, { passive: true })
+        return () => window.removeEventListener('scroll', handler)
+    }, [isMobile])
     const [games, setGames] = useState(() => {
         try {
             const stored = localStorage.getItem('games_cache')
@@ -2112,20 +2120,63 @@ export default function Dashboard({ api }) {
             </div>
 
             {/* Tabs */}
-            <div className="dashboard-topbar" style={{ padding: `12px ${px}`, display: 'flex', justifyContent: 'center', position: 'sticky', top: 0, zIndex: 30 }}>
-                <div className="surface-card" style={{ display: 'inline-flex', padding: 6, borderRadius: 18, width: isMobile ? '100%' : 'auto', background: 'rgba(255,255,255,0.66)' }}>
+            <div
+                className="dashboard-topbar"
+                style={{
+                    padding: `12px ${px}`,
+                    display: 'flex',
+                    justifyContent: 'center',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 30,
+                    transition: 'background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease',
+                    background: tabScrolled
+                        ? 'linear-gradient(135deg, rgba(17,38,63,0.97) 0%, rgba(30,67,112,0.95) 52%, rgba(45,100,180,0.93) 100%)'
+                        : undefined,
+                    boxShadow: tabScrolled ? '0 4px 24px rgba(10,20,40,0.22)' : undefined,
+                    borderBottom: tabScrolled ? '1px solid rgba(255,255,255,0.08)' : undefined,
+                    backdropFilter: tabScrolled ? 'blur(24px) saturate(1.4)' : undefined,
+                    WebkitBackdropFilter: tabScrolled ? 'blur(24px) saturate(1.4)' : undefined,
+                }}
+            >
+                <div
+                    className="surface-card"
+                    style={{
+                        display: 'inline-flex',
+                        padding: 6,
+                        borderRadius: 18,
+                        width: isMobile ? '100%' : 'auto',
+                        transition: 'background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
+                        background: tabScrolled ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.66)',
+                        border: tabScrolled ? '1px solid rgba(255,255,255,0.1)' : undefined,
+                        boxShadow: tabScrolled ? 'inset 0 1px 0 rgba(255,255,255,0.08)' : undefined,
+                    }}
+                >
                     {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }, { id: 'trade', label: 'Trade' }].map(tab => {
                         const isActive = activeTab === tab.id
                         return (
-                            <button className={`tab-pill${isActive ? ' is-active' : ''}`} key={tab.id} onClick={() => setActiveTab(tab.id)} style={{
-                                flex: isMobile ? 1 : 'none',
-                                padding: isMobile ? '10px 8px' : '10px 28px',
-                                fontSize: isMobile ? 13 : 14, fontWeight: isActive ? 800 : 600,
-                                color: isActive ? C.white : C.gray400,
-                                background: isActive ? C.navy : 'transparent', border: 'none', borderRadius: 12,
-                                boxShadow: isActive ? '0 14px 28px rgba(22,50,79,0.18)' : 'none',
-                                cursor: 'pointer', transition: 'all 0.15s',
-                            }}>{tab.label}</button>
+                            <button
+                                className={`tab-pill${isActive ? ' is-active' : ''}`}
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                style={{
+                                    flex: isMobile ? 1 : 'none',
+                                    padding: isMobile ? '10px 8px' : '10px 28px',
+                                    fontSize: isMobile ? 13 : 14,
+                                    fontWeight: isActive ? 800 : 600,
+                                    color: isActive ? C.white : tabScrolled ? 'rgba(255,255,255,0.45)' : C.gray400,
+                                    background: isActive
+                                        ? tabScrolled ? 'rgba(255,255,255,0.15)' : C.navy
+                                        : 'transparent',
+                                    border: isActive && tabScrolled ? '1px solid rgba(255,255,255,0.18)' : 'none',
+                                    borderRadius: 12,
+                                    boxShadow: isActive
+                                        ? tabScrolled ? '0 2px 12px rgba(0,0,0,0.25)' : '0 14px 28px rgba(22,50,79,0.18)'
+                                        : 'none',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                }}
+                            >{tab.label}</button>
                         )
                     })}
                 </div>
