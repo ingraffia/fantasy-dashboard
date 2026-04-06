@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import axios from 'axios'
 const POSITIONS = ['All', 'SP', 'RP', 'C', '1B', '2B', '3B', 'SS', 'OF', 'DH', 'Util']
 const IL_SLOTS = ['IL', 'IL10', 'IL15', 'IL60', 'NA']
@@ -1443,12 +1443,18 @@ export default function Dashboard({ api }) {
     const [loadWarnings, setLoadWarnings] = useState([])
     const [pullState, setPullState] = useState({ active: false, distance: 0, ready: false, refreshing: false })
 
+    const tabSentinelRef = useRef(null)
+
     useEffect(() => {
-        const headerHeight = isMobile ? 68 : 82
-        const handler = () => setTabScrolled(window.scrollY > headerHeight)
-        window.addEventListener('scroll', handler, { passive: true })
-        return () => window.removeEventListener('scroll', handler)
-    }, [isMobile])
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                setTabScrolled(entry.intersectionRatio < 1 && entry.boundingClientRect.top < 0)
+            },
+            { threshold: [1] }
+        )
+        if (tabSentinelRef.current) observer.observe(tabSentinelRef.current)
+        return () => observer.disconnect()
+    }, [])
     const [games, setGames] = useState(() => {
         try {
             const stored = localStorage.getItem('games_cache')
@@ -2165,6 +2171,8 @@ export default function Dashboard({ api }) {
                     )
                 })}
             </div>
+            {/* Sentinel for sticky tabs */}
+            <div ref={tabSentinelRef} style={{ width: '100%', height: 1, visibility: 'hidden' }} />
 
             {/* Tabs */}
             <div
