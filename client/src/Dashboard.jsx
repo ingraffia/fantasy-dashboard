@@ -838,7 +838,7 @@ function SuggestionCard({ suggestion, expanded, onToggle }) {
                                             <PlayerAvatar imageUrl={player.imageUrl} name={player.name} size={28} />
                                             <div>
                                                 <div style={{ fontWeight: 700, fontSize: 12 }}>{player.name}</div>
-                                                <div style={{ fontSize: 11, color: C.gray400 }}>{player.position} · {player.proTeam}</div>
+                                                <div style={{ fontSize: 11, color: C.gray400, display: 'flex', alignItems: 'center', gap: 4 }}>{player.position} · <MlbLogo team={player.proTeam} size={14} showText={true} /></div>
                                             </div>
                                         </div>
                                         <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>2025</div>
@@ -1039,7 +1039,7 @@ function TradePlayerCard({ player, onRemove }) {
                     <Tag text={player.position || '—'} />
                     {player.injuryStatus && <Tag text={player.injuryStatus} bg={C.redLight} color={C.red} />}
                 </div>
-                <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>{player.proTeamAbbr || player.proTeam}</div>
+                <div style={{ marginTop: 2 }}><MlbLogo team={player.proTeamAbbr || player.proTeam} size={14} showText={true} /></div>
                 {player.overallRank && (
                     <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>
                         Overall <RankBadge rank={player.overallRank} />
@@ -1236,7 +1236,7 @@ function TradeAnalyzer({ api, data, allRosterPlayers, getResImg }) {
                         <PlayerAvatar imageUrl={p.imageUrl} name={p.name} size={28} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
-                            <div style={{ fontSize: 11, color: C.gray400 }}>{p.position} · {p.proTeam}</div>
+                            <div style={{ fontSize: 11, color: C.gray400, display: 'flex', alignItems: 'center', gap: 4 }}>{p.position} · <MlbLogo team={p.proTeam} size={14} showText={true} /></div>
                         </div>
                         {p.overallRank && <RankBadge rank={p.overallRank} />}
                     </div>
@@ -1902,7 +1902,7 @@ export default function Dashboard({ api }) {
                             <PlayerAvatar imageUrl={getResImg(player)} name={player.name} size={34} />
                             <div>
                                 <div style={{ fontWeight: 600, fontSize: 13 }}>{player.name}</div>
-                                <div style={{ fontSize: 11, color: C.gray400 }}>{player.proTeam} · {player.position}</div>
+                                <div style={{ fontSize: 11, color: C.gray400, display: 'flex', alignItems: 'center', gap: 4 }}><MlbLogo team={player.proTeam} size={14} showText={true} /> · {player.position}</div>
                             </div>
                         </div>
                     </td>
@@ -1922,7 +1922,7 @@ export default function Dashboard({ api }) {
                         <PlayerAvatar imageUrl={getResImg(player)} name={player.name} size={38} />
                         <div>
                             <div style={{ fontWeight: 600, fontSize: 13, color: C.gray800 }}>{player.name}</div>
-                            <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>{player.proTeam} · {player.position}</div>
+                            <div style={{ fontSize: 11, color: C.gray400, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}><MlbLogo team={player.proTeam} size={14} showText={true} /> · {player.position}</div>
                         </div>
                     </div>
                 </td>
@@ -2134,21 +2134,41 @@ export default function Dashboard({ api }) {
                                 {lg.standing && <span style={{ fontSize: 11, color: C.gray400, fontWeight: 600, background: C.gray100, padding: '1px 7px', borderRadius: 8, flexShrink: 0 }}>#{lg.standing.rank}</span>}
                             </div>
                             {lg.matchup ? (
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div>
-                                        <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>My Team</div>
-                                        <div style={{ fontWeight: 900, fontSize: 28, color: myColor, lineHeight: 1 }}>
-                                            {lg.scoringType === 'head' ? Math.round(lg.matchup.myScore) : lg.matchup.myScore}
+                                (() => {
+                                    const isStrScore = typeof lg.matchup.myScore === 'string' && lg.matchup.myScore.includes('-');
+                                    return (
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            {isStrScore ? (
+                                                <div style={{ flex: 1 }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
+                                                        <span style={{ fontWeight: 900, fontSize: 24, color: myColor, letterSpacing: '-0.02em' }}>{lg.matchup.myScore}</span>
+                                                        <span style={{ fontSize: 13, color: C.gray200, fontWeight: 700 }}>–</span>
+                                                        <span style={{ fontWeight: 600, fontSize: 16, color: C.gray500 }}>{lg.matchup.oppScore}</span>
+                                                    </div>
+                                                    <div style={{ textAlign: 'center', fontSize: 11, color: C.gray500, textTransform: 'uppercase', fontWeight: 600 }}>
+                                                        {lg.matchup.oppName || 'Opp'}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div>
+                                                        <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>My Team</div>
+                                                        <div style={{ fontWeight: 900, fontSize: 28, color: myColor, lineHeight: 1 }}>
+                                                            {lg.scoringType === 'head' ? Math.round(lg.matchup.myScore) : lg.matchup.myScore}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontSize: 11, color: C.gray200, fontWeight: 700 }}>VS</div>
+                                                    <div style={{ textAlign: 'right' }}>
+                                                        <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lg.matchup.oppName || 'Opp'}</div>
+                                                        <div style={{ fontWeight: 900, fontSize: 28, color: oppColor, lineHeight: 1 }}>
+                                                            {lg.scoringType === 'head' ? Math.round(lg.matchup.oppScore) : lg.matchup.oppScore}
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
-                                    </div>
-                                    <div style={{ fontSize: 11, color: C.gray200, fontWeight: 700 }}>VS</div>
-                                    <div style={{ textAlign: 'right' }}>
-                                        <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lg.matchup.oppName || 'Opp'}</div>
-                                        <div style={{ fontWeight: 900, fontSize: 28, color: oppColor, lineHeight: 1 }}>
-                                            {lg.scoringType === 'head' ? Math.round(lg.matchup.oppScore) : lg.matchup.oppScore}
-                                        </div>
-                                    </div>
-                                </div>
+                                    )
+                                })()
                             ) : (
                                 <div style={{ textAlign: 'center', padding: '2px 0' }}>
                                     {lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0
@@ -2507,7 +2527,7 @@ export default function Dashboard({ api }) {
                                                     <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
                                                     <div style={{ display: 'flex', gap: 4, marginTop: 3, alignItems: 'center' }}>
                                                         <Tag text={p.position || '—'} />
-                                                        <span style={{ fontSize: 11, color: C.gray400 }}>{p.proTeam}</span>
+                                                        <span style={{ fontSize: 11, color: C.gray400 }}><MlbLogo team={p.proTeam} size={13} showText={true} /></span>
                                                     </div>
                                                     <div style={{ display: 'flex', gap: 10, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                                                         <span style={{ fontSize: 11, color: C.gray400 }}>Overall <RankBadge rank={p.overallRank} /></span>
