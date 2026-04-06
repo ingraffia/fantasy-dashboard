@@ -1928,9 +1928,41 @@ export default function Dashboard({ api }) {
     }
 
     if (loading) return (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', flexDirection: 'column', gap: 12, background: C.gray50 }}>
-            <div style={{ fontSize: 36 }}>⚾</div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: C.navy }}>Loading your leagues...</div>
+        <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: '100vh', flexDirection: 'column', gap: 0,
+            background: 'linear-gradient(160deg, #0d1f3c 0%, #16324f 50%, #1a4068 100%)',
+        }}>
+            {/* Logo */}
+            <div style={{
+                width: 72, height: 72, borderRadius: 22, marginBottom: 20,
+                background: 'rgba(255,255,255,0.10)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 24px 50px rgba(5,10,25,0.4)',
+                display: 'grid', placeItems: 'center', fontSize: 34,
+            }}>⚾</div>
+            {/* Wordmark */}
+            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.05em', color: '#fff', lineHeight: 1, display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 6 }}>
+                Dugout
+                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#2d7ff9', marginLeft: 2, marginBottom: 2, boxShadow: '0 0 12px rgba(45,127,249,0.8)' }} />
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: 36 }}>Loading your leagues</div>
+            {/* Progress bar */}
+            <div style={{ width: 160, height: 3, background: 'rgba(255,255,255,0.10)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{
+                    height: '100%', borderRadius: 99,
+                    background: 'linear-gradient(90deg, #2d7ff9, #6ba8e0)',
+                    boxShadow: '0 0 10px rgba(45,127,249,0.6)',
+                    animation: 'dashboardLoadBar 1.8s ease-in-out infinite',
+                }} />
+            </div>
+            <style>{`
+                @keyframes dashboardLoadBar {
+                    0%   { width: 0%;   margin-left: 0%; }
+                    50%  { width: 70%;  margin-left: 15%; }
+                    100% { width: 0%;   margin-left: 100%; }
+                }
+            `}</style>
         </div>
     )
     if (error) return <div style={{ padding: '2rem', color: C.red }}>Error: {error} <button onClick={loadDashboard} style={btnStyle}>Retry</button></div>
@@ -1984,28 +2016,43 @@ export default function Dashboard({ api }) {
                 transform: pullOffset ? `translateY(${Math.min(pullOffset, 56)}px)` : 'translateY(0)',
                 transition: pullState.active ? 'none' : 'transform 180ms ease',
                 position: 'relative',
-                overflow: 'hidden',
             }}>
-                <div className="dashboard-brand" style={{ position: 'relative', zIndex: 1 }}>
+                <div className="dashboard-brand">
                     <div className="dashboard-brand-mark">
-                        <span style={{ fontSize: 16 }}>⚾</span>
+                        <span style={{ fontSize: 18 }}>⚾</span>
                     </div>
                     <div>
-                        <div style={{ fontSize: isMobile ? 16 : 20, fontWeight: 800, color: C.white, lineHeight: 1.02, letterSpacing: '-0.035em' }}>Fantasy Dashboard</div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.72)', marginTop: 5, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <div className="brand-wordmark" style={{ fontSize: isMobile ? 17 : 20 }}>
+                            Dugout
+                            <span className="brand-dot" />
+                        </div>
+                        <div className="brand-sub">
                             {data.length} leagues · 2026
-                            {ranksLoading && ' · Loading ranks...'}
+                            {ranksLoading && ' · Ranking…'}
                         </div>
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14, position: 'relative', zIndex: 1 }}>
-                    {!isMobile && lastUpdated && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.72)' }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
-                    <button className="control-button control-button--primary" onClick={refreshAll} style={{
-                        fontSize: isMobile ? 11 : 12, fontWeight: 700, padding: isMobile ? '8px 13px' : '9px 18px',
-                        borderRadius: 999, border: '1px solid rgba(255,255,255,0.14)', color: C.white, cursor: 'pointer',
-                        background: 'rgba(255,255,255,0.14)',
-                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 12px 26px rgba(10,16,32,0.18)',
-                    }}>↻ {isMobile ? '' : 'Refresh'}</button>
+                    {!isMobile && lastUpdated && (
+                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>
+                            Updated {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                        </span>
+                    )}
+                    <button
+                        className="control-button"
+                        onClick={refreshAll}
+                        style={{
+                            fontSize: isMobile ? 11 : 12, fontWeight: 700,
+                            padding: isMobile ? '7px 13px' : '8px 18px',
+                            borderRadius: 999,
+                            border: '1px solid rgba(255,255,255,0.16)',
+                            color: 'rgba(255,255,255,0.88)',
+                            cursor: 'pointer',
+                            background: 'rgba(255,255,255,0.12)',
+                            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.18), 0 8px 20px rgba(10,16,32,0.2)',
+                            backdropFilter: 'blur(8px)',
+                        }}
+                    >↻ {isMobile ? '' : 'Refresh'}</button>
                 </div>
             </div>
 
