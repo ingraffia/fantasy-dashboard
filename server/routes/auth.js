@@ -309,7 +309,8 @@ router.get('/callback', async (req, res) => {
 
         let data;
         let lastErr;
-        for (let attempt = 1; attempt <= 3; attempt++) {
+        const RETRYABLE_CODES = new Set(['ECONNABORTED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN']);
+        for (let attempt = 1; attempt <= 4; attempt++) {
             try {
                 const resp = await axios.post(
                     'https://api.login.yahoo.com/oauth2/get_token',
@@ -323,7 +324,7 @@ router.get('/callback', async (req, res) => {
                             Authorization: `Basic ${credentials}`,
                             'Content-Type': 'application/x-www-form-urlencoded'
                         },
-                        timeout: 10000
+                        timeout: 20000
                     }
                 );
                 data = resp.data;
@@ -331,10 +332,10 @@ router.get('/callback', async (req, res) => {
             } catch (e) {
                 lastErr = e;
                 const status = e?.response?.status;
-                const isRetryable = !status || status >= 500 || status === 429 || e.code === 'ECONNABORTED' || e.code === 'ECONNRESET';
+                const isRetryable = !status || status >= 500 || status === 429 || RETRYABLE_CODES.has(e.code);
                 console.error(`OAuth attempt ${attempt} failed:`, status || e.code || e.message, JSON.stringify(parseOAuthResponseData(e?.response?.data)));
-                if (!isRetryable || attempt === 3) break;
-                await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+                if (!isRetryable || attempt === 4) break;
+                await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
             }
         }
         if (!data) throw lastErr;
@@ -373,7 +374,7 @@ async function refreshYahooTokens(current) {
                 Authorization: `Basic ${credentials}`,
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
-            timeout: 10000
+            timeout: 20000
         }
     );
     return {
