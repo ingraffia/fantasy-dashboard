@@ -359,7 +359,7 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
             background: isActive ? `${C.green}08` : 'transparent',
         }}>
             <PlayerAvatar imageUrl={imgUrl} name={bsPlayer.name} size={32} />
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <button
                         type="button"
@@ -374,12 +374,16 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
                             padding: 0,
                             cursor: rosterPlayer ? 'pointer' : 'default',
                             textAlign: 'left',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '100%',
                         }}
                     >
                         {bsPlayer.name}
                     </button>
                     {isActive && (
-                        <span style={{ fontSize: 9, fontWeight: 800, color: C.green, background: C.greenLight, padding: '1px 5px', borderRadius: 3 }}>
+                        <span style={{ fontSize: 9, fontWeight: 800, color: C.green, background: C.greenLight, padding: '1px 5px', borderRadius: 3, flexShrink: 0 }}>
                             {bsPlayer.status === 'batting' ? 'AB' : 'P'}
                         </span>
                     )}
@@ -389,7 +393,7 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
                     {rosterPlayer && <SlotPill slot={rosterPlayer.selectedPosition} />}
                 </div>
             </div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: perfColor, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: perfColor, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0, maxWidth: '45%', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {statLine || '—'}
             </div>
         </div>
@@ -431,26 +435,27 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
             border: `1px solid ${game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : C.gray200}`,
             borderLeft: `3px solid ${game.isLive ? C.green : game.isPostponed ? C.amber : game.isFinal ? C.gray200 : C.accent}`,
             borderRadius: 10, overflow: 'hidden',
-            minWidth: 280, flexShrink: 0, minHeight: compactCard ? 112 : 286,
+            width: 300, minWidth: 300, maxWidth: 300, flexShrink: 0,
+            minHeight: compactCard ? 112 : 286,
         }}>
             {/* Stacked score header */}
             <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <MlbLogo team={game.awayTeam} size={16} showText={false} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, minWidth: 32 }}>{game.awayTeam}</span>
-                        {started && <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: awayAhead ? C.gray800 : C.gray400, minWidth: 26, lineHeight: 1 }}>{game.awayScore ?? 0}</span>}
+                        <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, width: 32, flexShrink: 0 }}>{game.awayTeam}</span>
+                        {started && <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: awayAhead ? C.gray800 : C.gray400, width: 26, flexShrink: 0, lineHeight: 1 }}>{game.awayScore ?? 0}</span>}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <MlbLogo team={game.homeTeam} size={16} showText={false} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, minWidth: 32 }}>{game.homeTeam}</span>
-                        {started && <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: homeAhead ? C.gray800 : C.gray400, minWidth: 26, lineHeight: 1 }}>{game.homeScore ?? 0}</span>}
+                        <span style={{ fontSize: 12, fontWeight: 600, color: C.gray600, width: 32, flexShrink: 0 }}>{game.homeTeam}</span>
+                        {started && <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: homeAhead ? C.gray800 : C.gray400, width: 26, flexShrink: 0, lineHeight: 1 }}>{game.homeScore ?? 0}</span>}
                     </div>
                 </div>
                 <GameStatusBadge game={game} />
             </div>
             {/* Player rows */}
-            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}>
                 {loading ? (
                     <div style={{ padding: '14px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading...</div>
                 ) : game.isPostponed ? (
