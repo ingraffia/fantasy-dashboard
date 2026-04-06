@@ -2136,36 +2136,24 @@ export default function Dashboard({ api }) {
                             {lg.matchup ? (
                                 (() => {
                                     const isStrScore = typeof lg.matchup.myScore === 'string' && lg.matchup.myScore.includes('-');
+                                    const scoreSize = isStrScore ? 20 : 28;
                                     return (
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            {isStrScore ? (
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-                                                        <span style={{ fontWeight: 900, fontSize: 24, color: myColor, letterSpacing: '-0.02em' }}>{lg.matchup.myScore}</span>
-                                                        <span style={{ fontSize: 13, color: C.gray200, fontWeight: 700 }}>–</span>
-                                                        <span style={{ fontWeight: 600, fontSize: 16, color: C.gray500 }}>{lg.matchup.oppScore}</span>
-                                                    </div>
-                                                    <div style={{ textAlign: 'center', fontSize: 11, color: C.gray500, textTransform: 'uppercase', fontWeight: 600 }}>
-                                                        {lg.matchup.oppName || 'Opp'}
-                                                    </div>
+                                            <div>
+                                                <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>My Team</div>
+                                                <div style={{ fontWeight: 900, fontSize: scoreSize, color: myColor, lineHeight: 1, letterSpacing: isStrScore ? '-0.02em' : 'normal' }}>
+                                                    {lg.scoringType === 'head' ? isStrScore ? lg.matchup.myScore : Math.round(lg.matchup.myScore) : lg.matchup.myScore}
                                                 </div>
-                                            ) : (
-                                                <>
-                                                    <div>
-                                                        <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>My Team</div>
-                                                        <div style={{ fontWeight: 900, fontSize: 28, color: myColor, lineHeight: 1 }}>
-                                                            {lg.scoringType === 'head' ? Math.round(lg.matchup.myScore) : lg.matchup.myScore}
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ fontSize: 11, color: C.gray200, fontWeight: 700 }}>VS</div>
-                                                    <div style={{ textAlign: 'right' }}>
-                                                        <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lg.matchup.oppName || 'Opp'}</div>
-                                                        <div style={{ fontWeight: 900, fontSize: 28, color: oppColor, lineHeight: 1 }}>
-                                                            {lg.scoringType === 'head' ? Math.round(lg.matchup.oppScore) : lg.matchup.oppScore}
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
+                                            </div>
+                                            <div style={{ fontSize: 11, color: C.gray200, fontWeight: 700, padding: '0 8px' }}>VS</div>
+                                            <div style={{ textAlign: 'right' }}>
+                                                <div style={{ fontSize: 9, color: C.gray400, textTransform: 'uppercase', fontWeight: 700, marginBottom: 2, maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {lg.matchup.oppName || 'Opp'}
+                                                </div>
+                                                <div style={{ fontWeight: 900, fontSize: scoreSize, color: oppColor, lineHeight: 1, letterSpacing: isStrScore ? '-0.02em' : 'normal' }}>
+                                                    {lg.scoringType === 'head' ? isStrScore ? lg.matchup.oppScore : Math.round(lg.matchup.oppScore) : lg.matchup.oppScore}
+                                                </div>
+                                            </div>
                                         </div>
                                     )
                                 })()
