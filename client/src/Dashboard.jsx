@@ -2107,7 +2107,7 @@ export default function Dashboard({ api }) {
             </div>
 
             {/* Tabs */}
-            <div className="dashboard-topbar" style={{ padding: `12px ${px}`, display: 'flex', justifyContent: 'center', position: 'sticky', top: isMobile ? 68 : 82, zIndex: 30 }}>
+            <div className="dashboard-topbar" style={{ padding: `12px ${px}`, display: 'flex', justifyContent: 'center', position: 'sticky', top: 0, zIndex: 30 }}>
                 <div className="surface-card" style={{ display: 'inline-flex', padding: 6, borderRadius: 18, width: isMobile ? '100%' : 'auto', background: 'rgba(255,255,255,0.66)' }}>
                     {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }, { id: 'trade', label: 'Trade' }].map(tab => {
                         const isActive = activeTab === tab.id
