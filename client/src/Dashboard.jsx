@@ -1412,12 +1412,111 @@ const sectionLabelRow = (text, isMobile, colSpan, color = C.gray600) => (
     </tr>
 )
 
+function DashboardLoadingScreen({ isDataReady, onFinished }) {
+    const [progress, setProgress] = useState(0)
+    const [phase, setPhase] = useState('Authenticating session...')
+    const [opacity, setOpacity] = useState(1)
+
+    useEffect(() => {
+        const phases = [
+            'Authenticating session...',
+            'Fetching Yahoo leagues...',
+            'Compiling ESPN rosters...',
+            'Aggregating live matchups...',
+            'Calculating player rankings...',
+            'Evaluating trade values...'
+        ]
+
+        let currentPhase = 0
+        let p = 0
+        let isDone = false
+        
+        const interval = setInterval(() => {
+            if (isDone) return;
+            const increment = p < 30 ? 4 : p < 60 ? 1 : p < 85 ? 0.3 : 0.05
+            p += increment
+            if (p >= 94) p = 94
+            setProgress(p)
+
+            if (p > 10 && currentPhase === 0) { currentPhase++; setPhase(phases[1]) }
+            if (p > 25 && currentPhase === 1) { currentPhase++; setPhase(phases[2]) }
+            if (p > 45 && currentPhase === 2) { currentPhase++; setPhase(phases[3]) }
+            if (p > 65 && currentPhase === 3) { currentPhase++; setPhase(phases[4]) }
+            if (p > 85 && currentPhase === 4) { currentPhase++; setPhase(phases[5]) }
+        }, 50)
+
+        return () => { isDone = true; clearInterval(interval) }
+    }, [])
+
+    useEffect(() => {
+        if (isDataReady) {
+            setProgress(100)
+            setPhase('Dashboard ready')
+            const t = setTimeout(() => {
+                setOpacity(0)
+                setTimeout(() => onFinished(), 300)
+            }, 600)
+            return () => clearTimeout(t)
+        }
+    }, [isDataReady, onFinished])
+
+    return (
+        <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            height: '100vh', flexDirection: 'column', gap: 0,
+            background: 'linear-gradient(160deg, #0d1f3c 0%, #16324f 50%, #1a4068 100%)',
+            opacity, transition: 'opacity 0.3s ease'
+        }}>
+            <div style={{
+                width: 72, height: 72, borderRadius: 22, marginBottom: 20,
+                background: 'rgba(255,255,255,0.10)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 24px 50px rgba(5,10,25,0.4)',
+                display: 'grid', placeItems: 'center', fontSize: 34,
+            }}>⚾</div>
+            
+            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.05em', color: '#fff', lineHeight: 1, display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 6 }}>
+                Dugout
+                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#2d7ff9', marginLeft: 2, marginBottom: 2, boxShadow: '0 0 12px rgba(45,127,249,0.8)' }} />
+            </div>
+
+            <div style={{ position: 'relative', height: 18, marginBottom: 28, display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <div key={phase} style={{ 
+                    fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', 
+                    color: 'rgba(255,255,255,0.5)', position: 'absolute',
+                    animation: 'dashboardFadeInUp 0.3s ease-out forwards'
+                }}>
+                    {phase}
+                </div>
+            </div>
+
+            <div style={{ width: 180, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{
+                    height: '100%', borderRadius: 99,
+                    background: 'linear-gradient(90deg, #2d7ff9, #6ba8e0)',
+                    boxShadow: '0 0 12px rgba(45,127,249,0.6)',
+                    width: `${progress}%`,
+                    transition: 'width 0.15s ease-out'
+                }} />
+            </div>
+            
+            <style>{`
+                @keyframes dashboardFadeInUp {
+                    from { opacity: 0; transform: translateY(4px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
+        </div>
+    )
+}
+
 // ─── Main Dashboard ──────────────────────────────────────────────────────────
 
 export default function Dashboard({ api }) {
     const isMobile = useIsMobile()
     const [data, setData] = useState([])
     const [loading, setLoading] = useState(true)
+    const [showLoadingScreen, setShowLoadingScreen] = useState(true)
     const [error, setError] = useState(null)
     const [lastUpdated, setLastUpdated] = useState(null)
     const [activeTab, setActiveTab] = useState('lineup')
@@ -1933,43 +2032,11 @@ export default function Dashboard({ api }) {
         )
     }
 
-    if (loading) return (
-        <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            height: '100vh', flexDirection: 'column', gap: 0,
-            background: 'linear-gradient(160deg, #0d1f3c 0%, #16324f 50%, #1a4068 100%)',
-        }}>
-            {/* Logo */}
-            <div style={{
-                width: 72, height: 72, borderRadius: 22, marginBottom: 20,
-                background: 'rgba(255,255,255,0.10)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 24px 50px rgba(5,10,25,0.4)',
-                display: 'grid', placeItems: 'center', fontSize: 34,
-            }}>⚾</div>
-            {/* Wordmark */}
-            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.05em', color: '#fff', lineHeight: 1, display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 6 }}>
-                Dugout
-                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#2d7ff9', marginLeft: 2, marginBottom: 2, boxShadow: '0 0 12px rgba(45,127,249,0.8)' }} />
-            </div>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.38)', marginBottom: 36 }}>Loading your leagues</div>
-            {/* Progress bar */}
-            <div style={{ width: 160, height: 3, background: 'rgba(255,255,255,0.10)', borderRadius: 99, overflow: 'hidden' }}>
-                <div style={{
-                    height: '100%', borderRadius: 99,
-                    background: 'linear-gradient(90deg, #2d7ff9, #6ba8e0)',
-                    boxShadow: '0 0 10px rgba(45,127,249,0.6)',
-                    animation: 'dashboardLoadBar 1.8s ease-in-out infinite',
-                }} />
-            </div>
-            <style>{`
-                @keyframes dashboardLoadBar {
-                    0%   { width: 0%;   margin-left: 0%; }
-                    50%  { width: 70%;  margin-left: 15%; }
-                    100% { width: 0%;   margin-left: 100%; }
-                }
-            `}</style>
-        </div>
+    if (showLoadingScreen) return (
+        <DashboardLoadingScreen 
+            isDataReady={!loading} 
+            onFinished={() => setShowLoadingScreen(false)} 
+        />
     )
     if (error) return <div style={{ padding: '2rem', color: C.red }}>Error: {error} <button onClick={loadDashboard} style={btnStyle}>Retry</button></div>
 
