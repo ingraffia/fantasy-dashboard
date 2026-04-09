@@ -167,7 +167,7 @@ export default function App() {
         </div>
       )}
       {authed === false && splashDone && <LoginScreen api={API} />}
-      {authed === true && <Dashboard api={API} onLogout={handleLogout} />}
+      {authed === true && splashDone && <Dashboard api={API} onLogout={handleLogout} />}
     </>
   )
 }

@@ -1568,7 +1568,7 @@ export default function Dashboard({ api }) {
     const [data, setData] = useState([])
     const [loading, setLoading] = useState(true)
     const [showLoadingScreen, setShowLoadingScreen] = useState(true)
-    const [bootState, setBootState] = useState({ progress: 8, phase: 'Starting dashboard...' })
+    const [bootState, setBootState] = useState({ progress: 4, phase: 'Starting dashboard...' })
     const [error, setError] = useState(null)
     const [lastUpdated, setLastUpdated] = useState(null)
     const [activeTab, setActiveTab] = useState('lineup')
@@ -1660,7 +1660,7 @@ export default function Dashboard({ api }) {
     }, [api])
 
     const loadDashboard = useCallback(async () => {
-        setBootState({ progress: 12, phase: 'Loading league dashboards...' })
+        setBootState({ progress: 8, phase: 'Loading league dashboards...' })
         const requests = [
             { key: 'yahoo', label: 'Yahoo dashboard', url: `${api}/api/dashboard` },
             { key: 'espn', label: 'ESPN dashboard', url: `${api}/api/espn-dashboard` },
@@ -1675,7 +1675,7 @@ export default function Dashboard({ api }) {
                 } finally {
                     completedRequests += 1
                     setBootState((prev) => ({
-                        progress: Math.max(prev.progress, 12 + (completedRequests / requests.length) * 44),
+                        progress: Math.max(prev.progress, 8 + (completedRequests / requests.length) * 40),
                         phase: completedRequests === requests.length ? 'Combining league data...' : `Loading ${req.label}...`,
                     }))
                 }
@@ -1710,16 +1710,16 @@ export default function Dashboard({ api }) {
             return
         }
 
-        setBootState((prev) => ({ progress: Math.max(prev.progress, 72), phase: 'Preparing lineup views...' }))
+        setBootState((prev) => ({ progress: Math.max(prev.progress, 68), phase: 'Preparing lineup views...' }))
         setError(null)
         setData(combined)
         setActiveLeague(prev => (prev && combined.some(l => l.leagueKey === prev)) ? prev : (combined[0]?.leagueKey ?? null))
         setLastUpdated(new Date())
-        setBootState((prev) => ({ progress: Math.max(prev.progress, 82), phase: 'Calculating player rankings...' }))
+        setBootState((prev) => ({ progress: Math.max(prev.progress, 80), phase: 'Calculating player rankings...' }))
         await fetchAllRankings(combined, (completed, total) => {
             const ratio = total <= 0 ? 1 : completed / total
             setBootState((prev) => ({
-                progress: Math.max(prev.progress, 82 + ratio * 16),
+                progress: Math.max(prev.progress, 80 + ratio * 18),
                 phase: completed >= total ? 'Finalizing dashboard...' : 'Calculating player rankings...',
             }))
         })
