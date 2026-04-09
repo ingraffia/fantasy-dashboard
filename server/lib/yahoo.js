@@ -1,14 +1,41 @@
 const axios = require('axios');
+const https = require('https');
+const dns = require('dns');
 
 const BASE_URL = 'https://fantasysports.yahooapis.com/fantasy/v2';
 const DEFAULT_MLB_GAME_KEY = process.env.YAHOO_MLB_GAME_KEY || '469';
+const RETRYABLE_CODES = new Set(['ECONNABORTED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED']);
+const yahooHttpsAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: 12,
+    maxCachedSessions: 0,
+    lookup: (hostname, options, callback) => dns.lookup(hostname, { family: 4 }, callback),
+});
 
 async function yahooGet(session, path) {
     const url = `${BASE_URL}${path}?format=json`;
-    const { data } = await axios.get(url, {
-        headers: { Authorization: `Bearer ${session.tokens.access_token}` }
-    });
-    return data;
+    let lastErr;
+
+    for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+            const { data } = await axios.get(url, {
+                headers: { Authorization: `Bearer ${session.tokens.access_token}` },
+                timeout: 15000,
+                httpsAgent: yahooHttpsAgent,
+            });
+            return data;
+        } catch (err) {
+            lastErr = err;
+            const status = err.response?.status;
+            const code = err.code;
+            const retryable = !status || status >= 500 || status === 429 || RETRYABLE_CODES.has(code);
+            console.warn(`Yahoo API attempt ${attempt} failed for ${path}:`, code || status || err.message);
+            if (!retryable || attempt === 3) break;
+            await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
+        }
+    }
+
+    throw lastErr;
 }
 
 async function getUserLeaguesFromGames(session) {

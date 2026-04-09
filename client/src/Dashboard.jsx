@@ -355,10 +355,10 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
     return (
         <div style={{
             display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
-            borderBottom: `1px solid ${C.gray100}`,
             background: isActive ? `${C.green}10` : 'rgba(255,255,255,0.82)',
             borderRadius: 14,
-            boxShadow: isActive ? 'inset 0 0 0 1px rgba(22,163,74,0.10)' : 'none',
+            border: `1px solid ${isActive ? 'rgba(22,163,74,0.18)' : 'rgba(226,232,240,0.9)'}`,
+            boxShadow: isActive ? '0 10px 22px rgba(22,163,74,0.08)' : '0 8px 18px rgba(15,23,42,0.05)',
         }}>
             <PlayerAvatar imageUrl={imgUrl} name={bsPlayer.name} size={32} />
             <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
@@ -402,7 +402,7 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
     )
 }
 
-function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, onOpenPlayer, pregameCompact = false }) {
+function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, onOpenPlayer, pregameCompact = false, isRosterGame = false }) {
     const started = game.isLive || game.isFinal
     const loading = !boxscore && started
     const [expanded, setExpanded] = useState(false)
@@ -426,69 +426,103 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     const hasOverflow = withRoster.length > 4
     const visibleRoster = expanded ? withRoster : withRoster.slice(0, 4)
     const compactCard = pregameCompact && !started
-    const headerPadding = compactCard ? '12px 14px' : '14px 14px'
-    const scoreFontSize = compactCard ? 26 : 34
-    const bodyPadding = compactCard ? '10px 12px 12px' : '10px 12px 12px'
-    const bodyMinHeight = compactCard ? 52 : 172
-    const cardBorder = game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : game.isFinal ? '#cbd5e1' : '#dbe7ff'
-    const cardGlow = game.isLive
-        ? '0 18px 42px rgba(22,163,74,0.12)'
-        : game.isFinal
-            ? '0 14px 32px rgba(15,23,42,0.08)'
-            : '0 16px 34px rgba(37,99,235,0.09)'
-    const headerBg = game.isLive
-        ? 'linear-gradient(160deg, #f7fff9 0%, #ecfdf3 44%, #ffffff 100%)'
+    const hasRosterPlayers = withRoster.length > 0
+    const headerPadding = compactCard ? '12px 13px' : '13px'
+    const scoreFontSize = compactCard ? 34 : 40
+    const bodyPadding = '12px'
+    const bodyMinHeight = hasRosterPlayers ? 148 : compactCard ? 86 : 94
+    const leadLabel = started ? (awayAhead ? `${game.awayTeam} lead` : homeAhead ? `${game.homeTeam} lead` : 'Game tied') : 'First pitch ahead'
+    const cardBorder = game.isLive
+        ? '#86efac'
         : game.isPostponed
-            ? 'linear-gradient(160deg, #fffdf2 0%, #fff8dc 48%, #ffffff 100%)'
-            : game.isFinal
-                ? 'linear-gradient(160deg, #ffffff 0%, #f8fafc 55%, #f1f5f9 100%)'
-                : 'linear-gradient(160deg, #f7fbff 0%, #eef4ff 48%, #ffffff 100%)'
+            ? '#fcd34d'
+            : isRosterGame
+                ? '#bfdbfe'
+                : game.isFinal
+                    ? '#cbd5e1'
+                    : '#dbe7ff'
+    const cardGlow = game.isLive
+        ? '0 20px 44px rgba(22,163,74,0.12)'
+        : isRosterGame
+            ? '0 16px 34px rgba(37,99,235,0.11)'
+            : '0 14px 30px rgba(15,23,42,0.07)'
+    const headerBg = game.isLive
+        ? 'linear-gradient(160deg, #f3fff7 0%, #e8fbef 42%, #ffffff 100%)'
+        : game.isPostponed
+            ? 'linear-gradient(160deg, #fffef3 0%, #fff7d6 44%, #ffffff 100%)'
+            : isRosterGame
+                ? 'linear-gradient(160deg, #f4f8ff 0%, #edf4ff 46%, #ffffff 100%)'
+                : 'linear-gradient(160deg, #f9fbfd 0%, #f2f6fb 48%, #ffffff 100%)'
+    const scoreRowBg = game.isLive
+        ? 'rgba(255,255,255,0.8)'
+        : isRosterGame
+            ? 'rgba(255,255,255,0.74)'
+            : 'rgba(255,255,255,0.9)'
+    const scoreCardBorder = game.isLive ? 'rgba(134,239,172,0.8)' : 'rgba(226,232,240,0.95)'
 
     return (
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
             background: C.white,
             border: `1px solid ${cardBorder}`,
             borderRadius: 18, overflow: 'hidden',
-            width: 300, minWidth: 300, maxWidth: 300, flexShrink: 0,
-            minHeight: compactCard ? 112 : 286,
+            width: 278, minWidth: 278, maxWidth: 278, flexShrink: 0,
+            minHeight: hasRosterPlayers ? 294 : compactCard ? 176 : 194,
             boxShadow: cardGlow,
         }}>
-            <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, background: headerBg }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                        <MlbLogo team={game.awayTeam} size={18} showText={false} />
-                        <span style={{ fontSize: 13, fontWeight: 800, color: C.gray800, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.awayTeam}</span>
-                        {started && <span style={{ marginLeft: 'auto', fontSize: scoreFontSize, fontWeight: 900, color: awayAhead ? C.gray800 : C.gray400, lineHeight: 0.9, letterSpacing: '-0.05em' }}>{game.awayScore ?? 0}</span>}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                        <MlbLogo team={game.homeTeam} size={18} showText={false} />
-                        <span style={{ fontSize: 13, fontWeight: 800, color: C.gray800, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.homeTeam}</span>
-                        {started && <span style={{ marginLeft: 'auto', fontSize: scoreFontSize, fontWeight: 900, color: homeAhead ? C.gray800 : C.gray400, lineHeight: 0.9, letterSpacing: '-0.05em' }}>{game.homeScore ?? 0}</span>}
-                    </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
-                    <GameStatusBadge game={game} />
-                    {started && (
-                        <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                            {awayAhead ? `${game.awayTeam} lead` : homeAhead ? `${game.homeTeam} lead` : 'Tied'}
+            <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, background: headerBg }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+                    <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: isRosterGame ? C.accent : C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                            {isRosterGame ? 'Your game' : 'League game'}
                         </div>
-                    )}
+                        <div style={{ fontSize: 11, fontWeight: 700, color: C.gray600, letterSpacing: '-0.01em' }}>
+                            {leadLabel}
+                        </div>
+                    </div>
+                    <GameStatusBadge game={game} />
+                </div>
+                <div style={{ display: 'grid', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '11px 12px', borderRadius: 16, background: scoreRowBg, border: `1px solid ${scoreCardBorder}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                            <MlbLogo team={game.awayTeam} size={20} showText={false} />
+                            <span style={{ fontSize: 14, fontWeight: 800, color: C.gray800, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.awayTeam}</span>
+                        </div>
+                        {started && <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: awayAhead ? C.gray800 : C.gray400, lineHeight: 0.85, letterSpacing: '-0.06em', minWidth: 30, textAlign: 'right' }}>{game.awayScore ?? 0}</span>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '11px 12px', borderRadius: 16, background: scoreRowBg, border: `1px solid ${scoreCardBorder}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                            <MlbLogo team={game.homeTeam} size={20} showText={false} />
+                            <span style={{ fontSize: 14, fontWeight: 800, color: C.gray800, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.homeTeam}</span>
+                        </div>
+                        {started && <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: homeAhead ? C.gray800 : C.gray400, lineHeight: 0.85, letterSpacing: '-0.06em', minWidth: 30, textAlign: 'right' }}>{game.homeScore ?? 0}</span>}
+                    </div>
                 </div>
             </div>
-            {/* Player rows */}
-            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.95) 100%)', gap: withRoster.length > 0 ? 8 : 0 }}>
+            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.96) 100%)', gap: hasRosterPlayers ? 10 : 0 }}>
+                {hasRosterPlayers && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                            Your players
+                        </div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400 }}>
+                            {withRoster.length} tracked
+                        </div>
+                    </div>
+                )}
                 {loading ? (
-                    <div style={{ padding: '14px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading...</div>
+                    <div style={{ padding: '20px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading live stats...</div>
                 ) : game.isPostponed ? (
-                    <div style={{ padding: compactCard ? '12px 0' : '16px 0', fontSize: 12, color: C.amber, textAlign: 'center', fontWeight: 600 }}>
+                    <div style={{ padding: compactCard ? '14px 0' : '18px 0', fontSize: 12, color: C.amber, textAlign: 'center', fontWeight: 700 }}>
                         {game.detailedStatus || 'Postponed'}
                     </div>
                 ) : !started ? (
-                    <div style={{ padding: compactCard ? '12px 0' : '16px 0', fontSize: 12, color: C.gray400, textAlign: 'center' }}>
+                    <div style={{ padding: compactCard ? '14px 0' : '18px 0', fontSize: 12, color: C.gray600, textAlign: 'center', fontWeight: 600 }}>
                         Starts {new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </div>
-                ) : withRoster.length === 0 ? (
-                    <div style={{ padding: '14px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>No roster players in this game</div>
+                ) : !hasRosterPlayers ? (
+                    <div style={{ padding: '18px 12px', fontSize: 11, color: C.gray400, textAlign: 'center', borderRadius: 16, border: `1px dashed ${C.gray200}`, background: 'rgba(255,255,255,0.78)' }}>
+                        No roster players in this matchup
+                    </div>
                 ) : visibleRoster.map(({ bsPlayer, rosterPlayer }) => (
                     <MyPlayerStatRow
                         key={`${bsPlayer.name}-${bsPlayer.proTeam || bsPlayer.position || ''}`}
@@ -529,13 +563,26 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
 function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers, imageMap, px, onOpenPlayer }) {
     if (games.length === 0) return null
     const myGames = games.filter(g => myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam))
-    const otherGames = games.filter(g => !myTeams.has(g.awayTeam) && !myTeams.has(g.homeTeam))
     const liveCount = games.filter(g => g.isLive).length
     const hasStartedGames = games.some(g => (g.isLive || g.isFinal) && !g.isPostponed)
+    const statusRank = (game) => {
+        if (myTeams.has(game.awayTeam) || myTeams.has(game.homeTeam)) return 0
+        if (game.isLive) return 1
+        if (game.isFinal) return 2
+        if (game.isPostponed) return 4
+        return 3
+    }
+    const sortedGames = [...games].sort((a, b) => {
+        const rankDiff = statusRank(a) - statusRank(b)
+        if (rankDiff !== 0) return rankDiff
+        const aTime = a.startTime ? new Date(a.startTime).getTime() : Number.MAX_SAFE_INTEGER
+        const bTime = b.startTime ? new Date(b.startTime).getTime() : Number.MAX_SAFE_INTEGER
+        if (aTime !== bTime) return aTime - bTime
+        return String(a.gamePk).localeCompare(String(b.gamePk))
+    })
 
     return (
-        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: C.white, borderBottom: `1px solid ${C.gray100}`, paddingTop: 12, paddingBottom: 12, borderRadius: 0 }}>
-            {/* Header row */}
+        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: 'rgba(255,255,255,0.9)', borderBottom: `1px solid ${C.gray100}`, paddingTop: 14, paddingBottom: 14, borderRadius: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 12 }}>
                 <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -550,33 +597,34 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                     {games.length} games · {myGames.length} with your players
                 </span>
             </div>
-
-            {/* My-player games — full-bleed scroll, hidden scrollbar */}
-            {myGames.length > 0 && (
-                <div style={{
+            <div style={{ paddingLeft: px, paddingRight: px, marginBottom: 10 }}>
+                <div style={{ fontSize: 12, color: C.gray600, fontWeight: 600 }}>
+                    Your games appear first, followed by the rest of the slate.
+                </div>
+            </div>
+            <div style={{
                 display: 'flex', gap: 10,
                 overflowX: 'auto', overflowY: 'visible',
                 paddingLeft: px, paddingRight: px, paddingBottom: 2,
                 scrollbarWidth: 'none', msOverflowStyle: 'none',
                 WebkitOverflowScrolling: 'touch',
-                }} className="scrollbar-hidden">
-                    {myGames.map(g => (
-                        <BoxScoreCard key={g.gamePk} game={g} boxscore={boxscores[g.gamePk]}
-                            myPlayerNames={myPlayerNames} rosterPlayers={rosterPlayers} imageMap={imageMap} onOpenPlayer={onOpenPlayer} pregameCompact={!hasStartedGames} />
-                    ))}
-                </div>
-            )}
-
-            {/* Other games — compact pills */}
-            {otherGames.length > 0 && (
-                <div style={{ paddingLeft: px, paddingRight: px, marginTop: myGames.length > 0 ? 10 : 0 }}>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Other Games</div>
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-                        {otherGames.map(g => <CompactGamePill key={g.gamePk} game={g} />)}
+                scrollSnapType: 'x proximity',
+            }} className="scrollbar-hidden">
+                {sortedGames.map(g => (
+                    <div key={g.gamePk} style={{ scrollSnapAlign: 'start' }}>
+                        <BoxScoreCard
+                            game={g}
+                            boxscore={boxscores[g.gamePk]}
+                            myPlayerNames={myPlayerNames}
+                            rosterPlayers={rosterPlayers}
+                            imageMap={imageMap}
+                            onOpenPlayer={onOpenPlayer}
+                            pregameCompact={!hasStartedGames}
+                            isRosterGame={myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam)}
+                        />
                     </div>
-                </div>
-            )}
-
+                ))}
+            </div>
             <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
         </div>
     )
@@ -1433,53 +1481,39 @@ const sectionLabelRow = (text, isMobile, colSpan, color = C.gray600) => (
     </tr>
 )
 
-function DashboardLoadingScreen({ isDataReady, onFinished }) {
-    const [progress, setProgress] = useState(0)
-    const [phase, setPhase] = useState('Authenticating session...')
+function DashboardLoadingScreen({ targetProgress, phase, isDataReady, onFinished }) {
+    const [displayProgress, setDisplayProgress] = useState(0)
     const [opacity, setOpacity] = useState(1)
+    const hasFinishedRef = useRef(false)
 
     useEffect(() => {
-        const phases = [
-            'Authenticating session...',
-            'Fetching Yahoo leagues...',
-            'Compiling ESPN rosters...',
-            'Aggregating live matchups...',
-            'Calculating player rankings...',
-            'Evaluating trade values...'
-        ]
-
-        let currentPhase = 0
-        let p = 0
-        let isDone = false
-        
         const interval = setInterval(() => {
-            if (isDone) return;
-            const increment = p < 30 ? 4 : p < 60 ? 1 : p < 85 ? 0.3 : 0.05
-            p += increment
-            if (p >= 94) p = 94
-            setProgress(p)
+            setDisplayProgress((prev) => {
+                if (prev >= targetProgress) return targetProgress
+                const gap = targetProgress - prev
+                const step = targetProgress >= 100
+                    ? Math.max(1.2, gap * 0.22)
+                    : Math.max(0.35, gap * 0.16)
+                return Math.min(targetProgress, prev + step)
+            })
+        }, 16)
 
-            if (p > 10 && currentPhase === 0) { currentPhase++; setPhase(phases[1]) }
-            if (p > 25 && currentPhase === 1) { currentPhase++; setPhase(phases[2]) }
-            if (p > 45 && currentPhase === 2) { currentPhase++; setPhase(phases[3]) }
-            if (p > 65 && currentPhase === 3) { currentPhase++; setPhase(phases[4]) }
-            if (p > 85 && currentPhase === 4) { currentPhase++; setPhase(phases[5]) }
-        }, 50)
-
-        return () => { isDone = true; clearInterval(interval) }
-    }, [])
+        return () => clearInterval(interval)
+    }, [targetProgress])
 
     useEffect(() => {
-        if (isDataReady) {
-            setProgress(100)
-            setPhase('Dashboard ready')
-            const t = setTimeout(() => {
-                setOpacity(0)
-                setTimeout(() => onFinished(), 300)
-            }, 600)
-            return () => clearTimeout(t)
+        if (!isDataReady || displayProgress < 100 || hasFinishedRef.current) return
+        hasFinishedRef.current = true
+        let finishTimer
+        const fadeTimer = setTimeout(() => {
+            setOpacity(0)
+            finishTimer = setTimeout(() => onFinished(), 280)
+        }, 180)
+        return () => {
+            clearTimeout(fadeTimer)
+            if (finishTimer) clearTimeout(finishTimer)
         }
-    }, [isDataReady, onFinished])
+    }, [displayProgress, isDataReady, onFinished])
 
     return (
         <div style={{
@@ -1516,9 +1550,12 @@ function DashboardLoadingScreen({ isDataReady, onFinished }) {
                     height: '100%', borderRadius: 99,
                     background: 'linear-gradient(90deg, #2d7ff9, #6ba8e0)',
                     boxShadow: '0 0 12px rgba(45,127,249,0.6)',
-                    width: `${progress}%`,
-                    transition: 'width 0.15s ease-out'
+                    width: `${displayProgress}%`,
+                    transition: 'width 0.16s linear'
                 }} />
+            </div>
+            <div style={{ marginTop: 12, fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.56)', letterSpacing: '0.04em' }}>
+                {Math.round(displayProgress)}%
             </div>
             
             <style>{`
@@ -1538,6 +1575,7 @@ export default function Dashboard({ api }) {
     const [data, setData] = useState([])
     const [loading, setLoading] = useState(true)
     const [showLoadingScreen, setShowLoadingScreen] = useState(true)
+    const [bootState, setBootState] = useState({ progress: 8, phase: 'Starting dashboard...' })
     const [error, setError] = useState(null)
     const [lastUpdated, setLastUpdated] = useState(null)
     const [activeTab, setActiveTab] = useState('lineup')
@@ -1599,9 +1637,13 @@ export default function Dashboard({ api }) {
         return {}
     })
 
-    const fetchAllRankings = useCallback(async (leagues) => {
+    const fetchAllRankings = useCallback(async (leagues, onProgress) => {
         setRanksLoading(true)
         const results = {}
+        const yahooLeagues = leagues.filter(lg => !lg.leagueKey.startsWith('espn'))
+        let completedYahooLeagues = 0
+
+        onProgress?.(0, Math.max(yahooLeagues.length, 1))
         leagues.forEach(lg => {
             if (!lg.leagueKey.startsWith('espn')) return
             const espnRanks = {}
@@ -1617,19 +1659,34 @@ export default function Dashboard({ api }) {
                 const r = await axios.get(`${api}/api/rankings/${lg.leagueKey}?playerKeys=${playerKeys}`, { withCredentials: true })
                 results[lg.leagueKey] = r.data
             } catch (e) { console.warn('Rankings failed for', lg.leagueName) }
+            completedYahooLeagues += 1
+            onProgress?.(completedYahooLeagues, Math.max(yahooLeagues.length, 1))
         }))
         setRankMap(results)
         setRanksLoading(false)
     }, [api])
 
     const loadDashboard = useCallback(async () => {
+        setBootState({ progress: 12, phase: 'Loading league dashboards...' })
         const requests = [
             { key: 'yahoo', label: 'Yahoo dashboard', url: `${api}/api/dashboard` },
             { key: 'espn', label: 'ESPN dashboard', url: `${api}/api/espn-dashboard` },
         ]
 
+        let completedRequests = 0
         const results = await Promise.allSettled(
-            requests.map(req => axios.get(req.url, { withCredentials: true }))
+            requests.map(async (req) => {
+                try {
+                    const response = await axios.get(req.url, { withCredentials: true })
+                    return response
+                } finally {
+                    completedRequests += 1
+                    setBootState((prev) => ({
+                        progress: Math.max(prev.progress, 12 + (completedRequests / requests.length) * 44),
+                        phase: completedRequests === requests.length ? 'Combining league data...' : `Loading ${req.label}...`,
+                    }))
+                }
+            })
         )
 
         const combined = []
@@ -1655,16 +1712,26 @@ export default function Dashboard({ api }) {
 
         if (combined.length === 0) {
             setError(warnings.join(' | ') || 'Failed to load dashboard')
+            setBootState({ progress: 100, phase: 'Dashboard unavailable' })
             setLoading(false)
             return
         }
 
+        setBootState((prev) => ({ progress: Math.max(prev.progress, 72), phase: 'Preparing lineup views...' }))
         setError(null)
         setData(combined)
         setActiveLeague(prev => (prev && combined.some(l => l.leagueKey === prev)) ? prev : (combined[0]?.leagueKey ?? null))
         setLastUpdated(new Date())
+        setBootState((prev) => ({ progress: Math.max(prev.progress, 82), phase: 'Calculating player rankings...' }))
+        await fetchAllRankings(combined, (completed, total) => {
+            const ratio = total <= 0 ? 1 : completed / total
+            setBootState((prev) => ({
+                progress: Math.max(prev.progress, 82 + ratio * 16),
+                phase: completed >= total ? 'Finalizing dashboard...' : 'Calculating player rankings...',
+            }))
+        })
+        setBootState({ progress: 100, phase: 'Dashboard ready' })
         setLoading(false)
-        fetchAllRankings(combined)
     }, [api, fetchAllRankings])
 
     const loadScoreboard = useCallback(() => {
@@ -2055,7 +2122,9 @@ export default function Dashboard({ api }) {
 
     if (showLoadingScreen) return (
         <DashboardLoadingScreen 
-            isDataReady={!loading} 
+            targetProgress={bootState.progress}
+            phase={bootState.phase}
+            isDataReady={!loading && bootState.progress >= 100}
             onFinished={() => setShowLoadingScreen(false)} 
         />
     )
