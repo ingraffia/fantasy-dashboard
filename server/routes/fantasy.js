@@ -586,6 +586,17 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                         }
                     });
                 } catch (e) { console.warn('Standings fetch failed for', leagueData.name, e.message); }
+                try {
+                    if (leagueData.scoring_type === 'point' || leagueData.scoring_type === 'roto') {
+                        const todayStr = getChicagoDateString();
+                        const dailyData = await yahooGet(req.session, `/team/${myTeamKey}/stats;type=date;date=${todayStr}`);
+                        const t = dailyData?.fantasy_content?.team?.[1]?.team_points;
+                        if (t && t.total != null) {
+                            if (!myStanding) myStanding = {};
+                            myStanding.dailyPoints = parseFloat(t.total).toFixed(1);
+                        }
+                    }
+                } catch (e) { console.warn('Daily stats fetch failed for', leagueData.name, e.message); }
                 dashboardData.push({
                     leagueName: leagueData.name, leagueKey: leagueData.league_key,
                     leagueUrl: leagueData.url, scoringType: leagueData.scoring_type,

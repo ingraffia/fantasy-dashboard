@@ -2255,14 +2255,14 @@ export default function Dashboard({ api }) {
                     const isWinning = lg.matchup?.isWinning
                     const isLosing = lg.matchup && !isWinning && parseFloat(lg.matchup.oppScore || 0) > parseFloat(lg.matchup.myScore || 0)
                     const cardWidth = isMobile ? 'calc(100vw - 24px)' : 286
-                    const borderColor = isWinning ? '#86efac' : isLosing ? '#fca5a5' : '#bfdbfe'
+                    const borderColor = isWinning ? '#86efac' : '#bfdbfe'
                     const headerBg = isWinning
                         ? 'linear-gradient(180deg, #0f3b2d 0%, #14532d 100%)'
                         : isLosing
-                            ? 'linear-gradient(180deg, #5a1620 0%, #7f1d1d 100%)'
+                            ? 'linear-gradient(180deg, #1e293b 0%, #334155 100%)'
                             : 'linear-gradient(180deg, #0f2040 0%, #16324f 100%)'
-                    const myColor = isWinning ? '#14532d' : isLosing ? '#991b1b' : C.navy
-                    const oppColor = isWinning ? 'rgba(15,23,42,0.52)' : isLosing ? 'rgba(15,23,42,0.52)' : C.gray400
+                    const myColor = isWinning ? '#14532d' : C.navy
+                    const oppColor = isWinning ? 'rgba(15,23,42,0.52)' : C.gray400
                     const platformBg = lg.source === 'espn' ? 'rgba(240,72,62,0.16)' : 'rgba(96,1,210,0.16)'
                     const platformColor = lg.source === 'espn' ? '#ffb7b1' : '#e0c7ff'
                     const href = lg.source === 'espn'
@@ -2272,7 +2272,7 @@ export default function Dashboard({ api }) {
                         ? (lg.scoringType === 'head'
                             ? (typeof lg.matchup.myScore === 'string' && lg.matchup.myScore.includes('-') ? lg.matchup.myScore : Math.round(lg.matchup.myScore))
                             : lg.matchup.myScore)
-                        : (lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? lg.standing.pointsFor : `${lg.standing?.wins || 0}-${lg.standing?.losses || 0}`)
+                        : (lg.standing?.dailyPoints != null ? lg.standing.dailyPoints : (lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? lg.standing.pointsFor : `${lg.standing?.wins || 0}-${lg.standing?.losses || 0}`))
                     const oppDisplayScore = lg.matchup
                         ? (lg.scoringType === 'head'
                             ? (typeof lg.matchup.oppScore === 'string' && lg.matchup.oppScore.includes('-') ? lg.matchup.oppScore : Math.round(lg.matchup.oppScore))
@@ -2282,7 +2282,7 @@ export default function Dashboard({ api }) {
                     const rankText = lg.standing?.rank ? `#${lg.standing.rank}` : '—'
                     const matchupLabel = lg.matchup?.oppName || (lg.matchup ? 'Opponent' : 'Season total')
                     const matchupTone = isWinning ? 'Winning' : isLosing ? 'Trailing' : 'Even'
-                    const matchupToneColor = isWinning ? '#bbf7d0' : isLosing ? '#fecaca' : '#dbe7ff'
+                    const matchupToneColor = isWinning ? '#bbf7d0' : isLosing ? '#cbd5e1' : '#dbe7ff'
                     const scoreFontSize = typeof myDisplayScore === 'string' && String(myDisplayScore).includes('-') ? 28 : 34
                     const oppScoreFontSize = oppDisplayScore && typeof oppDisplayScore === 'string' && String(oppDisplayScore).includes('-') ? 28 : 34
                     return (
@@ -2324,18 +2324,12 @@ export default function Dashboard({ api }) {
                                 <div style={{ display: 'grid', gap: 8 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                                            <div style={{ width: 24, height: 24, borderRadius: 12, background: 'rgba(255,255,255,0.96)', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 8px 16px rgba(8,15,27,0.18), inset 0 1px 0 rgba(255,255,255,0.95)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, color: C.navy }}>
-                                                ME
-                                            </div>
                                             <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>My Team</span>
                                         </div>
                                         <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: (isWinning || (!isLosing && lg.matchup) || !lg.matchup) ? '#ffffff' : 'rgba(255,255,255,0.58)', lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right' }}>{myDisplayScore ?? '—'}</span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                                            <div style={{ width: 24, height: 24, borderRadius: 12, background: 'rgba(255,255,255,0.96)', border: '1px solid rgba(255,255,255,0.18)', boxShadow: '0 8px 16px rgba(8,15,27,0.18), inset 0 1px 0 rgba(255,255,255,0.95)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, color: C.navy }}>
-                                                {lg.matchup ? 'OPP' : 'SSN'}
-                                            </div>
                                             <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{matchupLabel}</span>
                                         </div>
                                         <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing && lg.matchup ? '#ffffff' : oppDisplayScore == null ? 'transparent' : 'rgba(255,255,255,0.58)', lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right' }}>{oppDisplayScore ?? '—'}</span>
