@@ -194,16 +194,34 @@ function LeagueSlotRow({ slot, leagueName }) {
     )
 }
 
-function MlbLogo({ team, size = 20, showText = true, whiteText = false }) {
+function MlbLogo({ team, size = 20, showText = true, whiteText = false, badge = false }) {
     if (!team || team === '—') return <span style={{ color: whiteText ? 'rgba(255,255,255,0.6)' : C.gray400 }}>—</span>
     const normalized = team.toUpperCase()
     const map = { 'AZ': 'ari', 'WAS': 'wsh', 'CWS': 'chw', 'LA': 'lad' }
     const abbr = map[normalized] || normalized.toLowerCase()
+    const logo = (
+        <img src={`https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/${abbr}.png`}
+            alt={team} style={{ width: size, height: size, objectFit: 'contain' }}
+            onError={(e) => { e.target.style.display = 'none' }} />
+    )
     return (
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <img src={`https://a.espncdn.com/i/teamlogos/mlb/500/scoreboard/${abbr}.png`}
-                alt={team} style={{ width: size, height: size, objectFit: 'contain' }}
-                onError={(e) => { e.target.style.display = 'none' }} />
+            {badge ? (
+                <span style={{
+                    width: size + 12,
+                    height: size + 12,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: 12,
+                    background: 'rgba(255,255,255,0.96)',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    boxShadow: '0 8px 16px rgba(8,15,27,0.18), inset 0 1px 0 rgba(255,255,255,0.95)',
+                    flexShrink: 0,
+                }}>
+                    {logo}
+                </span>
+            ) : logo}
             {showText && <span style={{ color: whiteText ? 'rgba(255,255,255,0.6)' : C.gray600, fontSize: 12 }}>{team}</span>}
         </div>
     )
@@ -470,14 +488,14 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                 <div style={{ display: 'grid', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                            <MlbLogo team={game.awayTeam} size={20} showText={false} />
+                            <MlbLogo team={game.awayTeam} size={24} showText={false} badge={true} />
                             <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.awayTeam}</span>
                         </div>
                         <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: awayAhead ? '#ffffff' : 'rgba(255,255,255,0.58)', lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right' }}>{started ? (game.awayScore ?? 0) : '—'}</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                            <MlbLogo team={game.homeTeam} size={20} showText={false} />
+                            <MlbLogo team={game.homeTeam} size={24} showText={false} badge={true} />
                             <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.homeTeam}</span>
                         </div>
                         <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: homeAhead ? '#ffffff' : 'rgba(255,255,255,0.58)', lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right' }}>{started ? (game.homeScore ?? 0) : '—'}</span>
