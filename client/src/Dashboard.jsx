@@ -598,7 +598,8 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
             <div style={{
                 display: 'flex', gap: 10,
                 overflowX: 'auto', overflowY: 'visible',
-                paddingLeft: `calc(${px} + 4px)`, paddingRight: `calc(${px} + 4px)`, paddingBottom: 2,
+                paddingLeft: `calc(${px} + 14px)`, paddingRight: `calc(${px} + 14px)`, paddingBottom: 2,
+                scrollPaddingLeft: `calc(${px} + 14px)`,
                 scrollbarWidth: 'none', msOverflowStyle: 'none',
                 WebkitOverflowScrolling: 'touch',
                 scrollSnapType: 'x proximity',
@@ -2280,6 +2281,10 @@ export default function Dashboard({ api }) {
                     const recordText = lg.standing ? `${lg.standing.wins}W-${lg.standing.losses}L${lg.standing.ties ? `-${lg.standing.ties}T` : ''}` : 'No standings'
                     const rankText = lg.standing?.rank ? `#${lg.standing.rank}` : '—'
                     const matchupLabel = lg.matchup?.oppName || (lg.matchup ? 'Opponent' : 'Season total')
+                    const matchupTone = isWinning ? 'Winning' : isLosing ? 'Trailing' : 'Even'
+                    const matchupToneColor = isWinning ? '#bbf7d0' : isLosing ? '#fecaca' : '#dbe7ff'
+                    const scoreFontSize = typeof myDisplayScore === 'string' && String(myDisplayScore).includes('-') ? 24 : 38
+                    const oppScoreFontSize = oppDisplayScore && typeof oppDisplayScore === 'string' && String(oppDisplayScore).includes('-') ? 24 : 38
                     return (
                         <a className="surface-card surface-card--interactive matchup-card animate-fade-up" href={href} target="_blank" rel="noopener noreferrer" key={lg.leagueKey} style={{
                             textDecoration: 'none',
@@ -2319,53 +2324,59 @@ export default function Dashboard({ api }) {
                                         {rankText}
                                     </span>
                                 </div>
-                                <div style={{ display: 'grid', gap: 8 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-                                        <div style={{ minWidth: 0 }}>
-                                            <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(219,231,255,0.68)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>My Team</div>
-                                            <div style={{ fontSize: 14, fontWeight: 800, color: '#ffffff' }}>Score</div>
-                                        </div>
-                                        <div style={{ fontWeight: 900, fontSize: typeof myDisplayScore === 'string' && String(myDisplayScore).includes('-') ? 22 : 36, color: '#ffffff', lineHeight: 0.9, letterSpacing: '-0.05em', textAlign: 'right' }}>
-                                            {myDisplayScore}
-                                        </div>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingTop: 2 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 800, color: matchupToneColor, letterSpacing: '0.01em' }}>
+                                        {lg.matchup ? `${matchupTone} this week` : 'Season snapshot'}
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-                                        <div style={{ minWidth: 0, maxWidth: '68%' }}>
-                                            <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(219,231,255,0.68)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3 }}>
-                                                {lg.matchup ? 'Opponent' : 'Season'}
-                                            </div>
-                                            <div style={{ fontSize: 14, fontWeight: 800, color: '#ffffff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {matchupLabel}
-                                            </div>
-                                        </div>
-                                        <div style={{ fontWeight: 900, fontSize: oppDisplayScore && typeof oppDisplayScore === 'string' && String(oppDisplayScore).includes('-') ? 22 : 36, color: lg.matchup ? 'rgba(255,255,255,0.62)' : '#ffffff', lineHeight: 0.9, letterSpacing: '-0.05em', textAlign: 'right' }}>
-                                            {oppDisplayScore ?? '—'}
-                                        </div>
+                                    <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(219,231,255,0.68)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                        {lg.matchup ? `Week ${lg.matchup.week}` : (lg.scoringType || 'Season')}
                                     </div>
                                 </div>
                             </div>
-                            <div style={{ padding: '14px', display: 'grid', gap: 10, background: '#f8fafc', flex: 1 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                    <div style={{ padding: '11px 12px', borderRadius: 14, background: '#ffffff', border: `1px solid ${C.gray100}` }}>
-                                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Record</div>
-                                        <div style={{ fontSize: 16, fontWeight: 800, color: myColor, letterSpacing: '-0.02em' }}>{recordText}</div>
+                            <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: 12, background: '#f8fafc', flex: 1 }}>
+                                <div style={{ padding: '14px', borderRadius: 16, background: '#ffffff', border: `1px solid ${C.gray100}`, display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto minmax(0,1fr)', alignItems: 'center', gap: 10 }}>
+                                    <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>My Team</div>
+                                        <div style={{ fontSize: scoreFontSize, fontWeight: 900, color: myColor, lineHeight: 0.9, letterSpacing: '-0.05em', marginBottom: 6 }}>
+                                            {myDisplayScore}
+                                        </div>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: C.gray500 }}>
+                                            {recordText}
+                                        </div>
                                     </div>
-                                    <div style={{ padding: '11px 12px', borderRadius: 14, background: '#ffffff', border: `1px solid ${C.gray100}` }}>
-                                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{lg.matchup ? 'Week' : 'Format'}</div>
-                                        <div style={{ fontSize: 16, fontWeight: 800, color: C.navy, letterSpacing: '-0.02em' }}>
-                                            {lg.matchup ? `Week ${lg.matchup.week}` : (lg.scoringType || 'Season')}
+                                    <div style={{ fontSize: 11, fontWeight: 800, color: C.gray300, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                        VS
+                                    </div>
+                                    <div style={{ minWidth: 0, textAlign: 'right' }}>
+                                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 5 }}>
+                                            {lg.matchup ? 'Opponent' : 'Season'}
+                                        </div>
+                                        <div style={{ fontSize: oppDisplayScore == null ? 18 : oppScoreFontSize, fontWeight: 900, color: oppDisplayScore == null ? C.gray500 : oppColor, lineHeight: 0.9, letterSpacing: '-0.05em', marginBottom: 6 }}>
+                                            {oppDisplayScore ?? '—'}
+                                        </div>
+                                        <div style={{ fontSize: 11, fontWeight: 700, color: C.gray500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {matchupLabel}
                                         </div>
                                     </div>
                                 </div>
-                                <div style={{ padding: '12px 12px', borderRadius: 14, background: '#ffffff', border: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                                    <div>
-                                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>League standing</div>
-                                        <div style={{ fontSize: 14, fontWeight: 700, color: C.gray600 }}>
-                                            {lg.standing ? `Rank ${rankText}` : 'No standings available'}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                                    <div style={{ padding: '11px 10px', borderRadius: 14, background: '#ffffff', border: `1px solid ${C.gray100}` }}>
+                                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>Rank</div>
+                                        <div style={{ fontSize: 15, fontWeight: 800, color: C.navy }}>{rankText}</div>
+                                    </div>
+                                    <div style={{ padding: '11px 10px', borderRadius: 14, background: '#ffffff', border: `1px solid ${C.gray100}` }}>
+                                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>{lg.matchup ? 'Week' : 'Format'}</div>
+                                        <div style={{ fontSize: 15, fontWeight: 800, color: C.navy, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {lg.matchup ? lg.matchup.week : (lg.scoringType || '—')}
                                         </div>
                                     </div>
-                                    <div style={{ fontSize: 12, fontWeight: 800, color: myColor }}>
-                                        {lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? `${lg.standing.pointsFor} pts` : ''}
+                                    <div style={{ padding: '11px 10px', borderRadius: 14, background: '#ffffff', border: `1px solid ${C.gray100}` }}>
+                                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
+                                            {lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? 'Points' : 'Record'}
+                                        </div>
+                                        <div style={{ fontSize: 15, fontWeight: 800, color: myColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? lg.standing.pointsFor : recordText}
+                                        </div>
                                     </div>
                                 </div>
                                 {lg.source === 'espn' && lg.matchup?.debugSource && (
