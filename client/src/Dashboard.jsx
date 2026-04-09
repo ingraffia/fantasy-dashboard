@@ -456,14 +456,12 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
         ? 'linear-gradient(180deg, #0f3b2d 0%, #14532d 100%)'
         : game.isPostponed
             ? 'linear-gradient(180deg, #5b3b10 0%, #7c4a12 100%)'
-            : 'linear-gradient(180deg, #0f2040 0%, #16324f 100%)'
-    const statMessage = !started
-        ? `Starts ${new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
-        : game.isPostponed
-            ? (game.detailedStatus || 'Postponed')
-            : !hasRosterPlayers
-                ? 'No roster players in this matchup'
-                : null
+            : game.isFinal
+                ? 'linear-gradient(180deg, #1e293b 0%, #334155 100%)'
+                : 'linear-gradient(180deg, #0f2040 0%, #16324f 100%)'
+    
+    // Only show the body if we are loading live data, or we actually have roster players to display.
+    const showBody = loading || hasRosterPlayers
 
     return (
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
@@ -475,7 +473,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
             minWidth: cardWidth,
             maxWidth: cardWidth,
             flexShrink: 0,
-            minHeight: 312,
+            minHeight: showBody ? 312 : undefined,
             boxShadow: cardShadow,
         }}>
             <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, background: headerBg }}>
@@ -502,26 +500,21 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                     </div>
                 </div>
             </div>
-            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: '#f8fafc', gap: hasRosterPlayers ? 8 : 0 }}>
-                {hasRosterPlayers && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                            Player impact
+            {showBody && (
+                <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: '#f8fafc', gap: hasRosterPlayers ? 8 : 0 }}>
+                    {hasRosterPlayers && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                            <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                Player impact
+                            </div>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400 }}>
+                                {withRoster.length} tracked
+                            </div>
                         </div>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400 }}>
-                            {withRoster.length} tracked
-                        </div>
-                    </div>
-                )}
-                {loading ? (
-                    <div style={{ flex: 1, display: 'grid', placeItems: 'center', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading live stats...</div>
-                ) : statMessage ? (
-                    <div style={{ flex: 1, display: 'grid', placeItems: 'center' }}>
-                        <div style={{ padding: '16px 14px', fontSize: 11, color: C.gray500, textAlign: 'center', borderRadius: 12, border: `1px solid ${C.gray200}`, background: '#ffffff', width: '100%', fontWeight: 700 }}>
-                            {statMessage}
-                        </div>
-                    </div>
-                ) : visibleRoster.map(({ bsPlayer, rosterPlayer }) => (
+                    )}
+                    {loading ? (
+                        <div style={{ flex: 1, display: 'grid', placeItems: 'center', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading live stats...</div>
+                    ) : visibleRoster.map(({ bsPlayer, rosterPlayer }) => (
                     <MyPlayerStatRow
                         key={`${bsPlayer.name}-${bsPlayer.proTeam || bsPlayer.position || ''}`}
                         bsPlayer={bsPlayer}
@@ -554,6 +547,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                     </button>
                 )}
             </div>
+            )}
         </div>
     )
 }
@@ -2322,8 +2316,18 @@ export default function Dashboard({ api }) {
                     const matchupToneColor = isWinning ? '#166534' : isLosing ? '#f0483e' : C.gray500
                     const matchupToneBg = isWinning ? '#dcfce7' : isLosing ? 'rgba(240,72,62,0.12)' : C.gray100
                     const matchupToneBorder = isWinning ? 'rgba(22,101,52,0.15)' : isLosing ? 'rgba(240,72,62,0.2)' : 'rgba(0,0,0,0.06)'
-                    const scoreFontSize = typeof myDisplayScore === 'string' && String(myDisplayScore).includes('-') ? 28 : 34
-                    const oppScoreFontSize = oppDisplayScore && typeof oppDisplayScore === 'string' && String(oppDisplayScore).includes('-') ? 28 : 34
+                    
+                    const getDynSize = (str) => {
+                        if (!str) return 34;
+                        const len = String(str).length;
+                        if (len > 9) return 18;
+                        if (len > 7) return 22;
+                        if (len > 5) return 26;
+                        return 34;
+                    }
+                    const scoreFontSize = getDynSize(myDisplayScore)
+                    const oppScoreFontSize = getDynSize(oppDisplayScore)
+                    
                     return (
                         <a className="surface-card surface-card--interactive matchup-card animate-fade-up" href={href} target="_blank" rel="noopener noreferrer" key={lg.leagueKey} style={{
                             textDecoration: 'none',
@@ -2363,13 +2367,13 @@ export default function Dashboard({ api }) {
                                 <div style={{ display: 'grid', gap: 8 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.gray100}` }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, paddingRight: 6 }}>
-                                            <span style={{ fontSize: 15, fontWeight: 800, color: C.navy, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>My Team</span>
+                                            <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, minWidth: 0, lineHeight: 1.15, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>My Team</span>
                                         </div>
                                         <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: (isWinning || (!isLosing && lg.matchup) || !lg.matchup) ? C.navy : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{myDisplayScore ?? '—'}</span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.gray100}` }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, paddingRight: 6 }}>
-                                            <span style={{ fontSize: 15, fontWeight: 800, color: C.navy, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{matchupLabel}</span>
+                                            <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, minWidth: 0, lineHeight: 1.15, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{matchupLabel}</span>
                                         </div>
                                         <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing && lg.matchup ? C.navy : oppDisplayScore == null ? 'transparent' : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{oppDisplayScore ?? '—'}</span>
                                     </div>
