@@ -291,7 +291,7 @@ function GameStatusBadge({ game }) {
         const half = game.inningHalf === 'Top' ? '▲' : '▼'
         const inningStr = game.inning ? `${half}${game.inning}` : 'LIVE'
         return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800, color: C.green, background: C.greenLight, padding: '6px 11px', borderRadius: 999, whiteSpace: 'nowrap', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.85)' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, color: '#14532d', background: '#dcfce7', padding: '5px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, flexShrink: 0, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
                 {inningStr} · {game.outs ?? 0} out{game.outs === 1 ? '' : 's'}
             </span>
@@ -299,18 +299,18 @@ function GameStatusBadge({ game }) {
     }
     if (game.isPostponed) {
         return (
-            <span style={{ fontSize: 11, fontWeight: 800, color: C.amber, background: C.amberLight, padding: '6px 11px', borderRadius: 999, whiteSpace: 'nowrap', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.85)' }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: '#92400e', background: '#fef3c7', padding: '5px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
                 Postponed
             </span>
         )
     }
     if (game.isFinal) return (
-        <span style={{ fontSize: 11, fontWeight: 800, color: C.gray600, background: C.gray100, padding: '6px 11px', borderRadius: 999, whiteSpace: 'nowrap', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.8)' }}>Final</span>
+        <span style={{ fontSize: 10, fontWeight: 800, color: C.gray600, background: '#e2e8f0', padding: '5px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>Final</span>
     )
     const timeStr = game.startTime
         ? new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
         : '—'
-    return <span style={{ fontSize: 11, color: C.gray600, fontWeight: 700, whiteSpace: 'nowrap', background: 'rgba(255,255,255,0.72)', padding: '6px 10px', borderRadius: 999, border: `1px solid ${C.gray100}` }}>{timeStr}</span>
+    return <span style={{ fontSize: 10, color: '#dbe7ff', fontWeight: 800, whiteSpace: 'nowrap', background: 'rgba(255,255,255,0.08)', padding: '5px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.12)', letterSpacing: '0.02em' }}>{timeStr}</span>
 }
 
 function CompactGamePill({ game }) {
@@ -354,11 +354,11 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
 
     return (
         <div style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
-            background: isActive ? `${C.green}10` : 'rgba(255,255,255,0.82)',
-            borderRadius: 14,
-            border: `1px solid ${isActive ? 'rgba(22,163,74,0.18)' : 'rgba(226,232,240,0.9)'}`,
-            boxShadow: isActive ? '0 10px 22px rgba(22,163,74,0.08)' : '0 8px 18px rgba(15,23,42,0.05)',
+            display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px',
+            background: isActive ? 'rgba(240,253,244,0.95)' : '#ffffff',
+            borderRadius: 12,
+            border: `1px solid ${isActive ? 'rgba(22,163,74,0.20)' : 'rgba(226,232,240,0.95)'}`,
+            minHeight: 54,
         }}>
             <PlayerAvatar imageUrl={imgUrl} name={bsPlayer.name} size={32} />
             <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
@@ -369,7 +369,7 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
                         disabled={!rosterPlayer}
                         style={{
                             fontWeight: 700,
-                            fontSize: 14,
+                            fontSize: 13,
                             color: C.gray800,
                             background: 'transparent',
                             border: 'none',
@@ -385,17 +385,17 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
                         {bsPlayer.name}
                     </button>
                     {isActive && (
-                        <span style={{ fontSize: 9, fontWeight: 800, color: C.green, background: C.greenLight, padding: '2px 6px', borderRadius: 999, flexShrink: 0 }}>
+                        <span style={{ fontSize: 8, fontWeight: 800, color: C.green, background: C.greenLight, padding: '2px 5px', borderRadius: 999, flexShrink: 0, letterSpacing: '0.04em' }}>
                             {bsPlayer.status === 'batting' ? 'AB' : 'P'}
                         </span>
                     )}
                 </div>
-                <div style={{ fontSize: 11, color: C.gray400, marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ fontSize: 10, color: C.gray400, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
                     <span>{bsPlayer.position}</span>
                     {rosterPlayer && <SlotPill slot={rosterPlayer.selectedPosition} />}
                 </div>
             </div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: perfColor, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0, maxWidth: '46%', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.02em' }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: perfColor, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0, maxWidth: '42%', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.02em' }}>
                 {statLine || '—'}
             </div>
         </div>
@@ -423,86 +423,72 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
 
     const awayAhead = started && (game.awayScore ?? 0) > (game.homeScore ?? 0)
     const homeAhead = started && (game.homeScore ?? 0) > (game.awayScore ?? 0)
-    const hasOverflow = withRoster.length > 4
-    const visibleRoster = expanded ? withRoster : withRoster.slice(0, 4)
+    const hasOverflow = withRoster.length > 3
+    const visibleRoster = expanded ? withRoster : withRoster.slice(0, 3)
     const compactCard = pregameCompact && !started
     const hasRosterPlayers = withRoster.length > 0
-    const headerPadding = compactCard ? '12px 13px' : '13px'
-    const scoreFontSize = compactCard ? 34 : 40
+    const headerPadding = '14px'
+    const scoreFontSize = compactCard ? 34 : 38
     const bodyPadding = '12px'
-    const bodyMinHeight = hasRosterPlayers ? 148 : compactCard ? 86 : 94
-    const leadLabel = started ? (awayAhead ? `${game.awayTeam} lead` : homeAhead ? `${game.homeTeam} lead` : 'Game tied') : 'First pitch ahead'
-    const cardBorder = game.isLive
-        ? '#86efac'
-        : game.isPostponed
-            ? '#fcd34d'
-            : isRosterGame
-                ? '#bfdbfe'
-                : game.isFinal
-                    ? '#cbd5e1'
-                    : '#dbe7ff'
-    const cardGlow = game.isLive
-        ? '0 20px 44px rgba(22,163,74,0.12)'
-        : isRosterGame
-            ? '0 16px 34px rgba(37,99,235,0.11)'
-            : '0 14px 30px rgba(15,23,42,0.07)'
+    const bodyMinHeight = 166
+    const cardWidth = 286
+    const cardBorder = game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : isRosterGame ? '#bfdbfe' : '#dbe7ff'
+    const cardShadow = isRosterGame ? '0 16px 36px rgba(37,99,235,0.12)' : '0 12px 28px rgba(15,23,42,0.08)'
     const headerBg = game.isLive
-        ? 'linear-gradient(160deg, #f3fff7 0%, #e8fbef 42%, #ffffff 100%)'
+        ? 'linear-gradient(180deg, #0f3b2d 0%, #14532d 100%)'
         : game.isPostponed
-            ? 'linear-gradient(160deg, #fffef3 0%, #fff7d6 44%, #ffffff 100%)'
-            : isRosterGame
-                ? 'linear-gradient(160deg, #f4f8ff 0%, #edf4ff 46%, #ffffff 100%)'
-                : 'linear-gradient(160deg, #f9fbfd 0%, #f2f6fb 48%, #ffffff 100%)'
-    const scoreRowBg = game.isLive
-        ? 'rgba(255,255,255,0.8)'
-        : isRosterGame
-            ? 'rgba(255,255,255,0.74)'
-            : 'rgba(255,255,255,0.9)'
-    const scoreCardBorder = game.isLive ? 'rgba(134,239,172,0.8)' : 'rgba(226,232,240,0.95)'
+            ? 'linear-gradient(180deg, #5b3b10 0%, #7c4a12 100%)'
+            : 'linear-gradient(180deg, #0f2040 0%, #16324f 100%)'
+    const statMessage = !started
+        ? `Starts ${new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`
+        : game.isPostponed
+            ? (game.detailedStatus || 'Postponed')
+            : !hasRosterPlayers
+                ? 'No roster players in this matchup'
+                : null
 
     return (
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
             background: C.white,
             border: `1px solid ${cardBorder}`,
-            borderRadius: 18, overflow: 'hidden',
-            width: 278, minWidth: 278, maxWidth: 278, flexShrink: 0,
-            minHeight: hasRosterPlayers ? 294 : compactCard ? 176 : 194,
-            boxShadow: cardGlow,
+            borderRadius: 18,
+            overflow: 'hidden',
+            width: cardWidth,
+            minWidth: cardWidth,
+            maxWidth: cardWidth,
+            flexShrink: 0,
+            minHeight: 312,
+            boxShadow: cardShadow,
         }}>
             <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, background: headerBg }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-                    <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: isRosterGame ? C.accent : C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 4 }}>
-                            {isRosterGame ? 'Your game' : 'League game'}
-                        </div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: C.gray600, letterSpacing: '-0.01em' }}>
-                            {leadLabel}
-                        </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(219,231,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
+                        MLB Today
                     </div>
                     <GameStatusBadge game={game} />
                 </div>
                 <div style={{ display: 'grid', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '11px 12px', borderRadius: 16, background: scoreRowBg, border: `1px solid ${scoreCardBorder}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                             <MlbLogo team={game.awayTeam} size={20} showText={false} />
-                            <span style={{ fontSize: 14, fontWeight: 800, color: C.gray800, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.awayTeam}</span>
+                            <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.awayTeam}</span>
                         </div>
-                        {started && <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: awayAhead ? C.gray800 : C.gray400, lineHeight: 0.85, letterSpacing: '-0.06em', minWidth: 30, textAlign: 'right' }}>{game.awayScore ?? 0}</span>}
+                        <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: awayAhead ? '#ffffff' : 'rgba(255,255,255,0.58)', lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right' }}>{started ? (game.awayScore ?? 0) : '—'}</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '11px 12px', borderRadius: 16, background: scoreRowBg, border: `1px solid ${scoreCardBorder}`, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.75)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                             <MlbLogo team={game.homeTeam} size={20} showText={false} />
-                            <span style={{ fontSize: 14, fontWeight: 800, color: C.gray800, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.homeTeam}</span>
+                            <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.homeTeam}</span>
                         </div>
-                        {started && <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: homeAhead ? C.gray800 : C.gray400, lineHeight: 0.85, letterSpacing: '-0.06em', minWidth: 30, textAlign: 'right' }}>{game.homeScore ?? 0}</span>}
+                        <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: homeAhead ? '#ffffff' : 'rgba(255,255,255,0.58)', lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right' }}>{started ? (game.homeScore ?? 0) : '—'}</span>
                     </div>
                 </div>
             </div>
-            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.96) 100%)', gap: hasRosterPlayers ? 10 : 0 }}>
+            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: '#f8fafc', gap: hasRosterPlayers ? 8 : 0 }}>
                 {hasRosterPlayers && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                         <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                            Your players
+                            Player impact
                         </div>
                         <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400 }}>
                             {withRoster.length} tracked
@@ -510,18 +496,12 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                     </div>
                 )}
                 {loading ? (
-                    <div style={{ padding: '20px 0', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading live stats...</div>
-                ) : game.isPostponed ? (
-                    <div style={{ padding: compactCard ? '14px 0' : '18px 0', fontSize: 12, color: C.amber, textAlign: 'center', fontWeight: 700 }}>
-                        {game.detailedStatus || 'Postponed'}
-                    </div>
-                ) : !started ? (
-                    <div style={{ padding: compactCard ? '14px 0' : '18px 0', fontSize: 12, color: C.gray600, textAlign: 'center', fontWeight: 600 }}>
-                        Starts {new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                    </div>
-                ) : !hasRosterPlayers ? (
-                    <div style={{ padding: '18px 12px', fontSize: 11, color: C.gray400, textAlign: 'center', borderRadius: 16, border: `1px dashed ${C.gray200}`, background: 'rgba(255,255,255,0.78)' }}>
-                        No roster players in this matchup
+                    <div style={{ flex: 1, display: 'grid', placeItems: 'center', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading live stats...</div>
+                ) : statMessage ? (
+                    <div style={{ flex: 1, display: 'grid', placeItems: 'center' }}>
+                        <div style={{ padding: '16px 14px', fontSize: 11, color: C.gray500, textAlign: 'center', borderRadius: 12, border: `1px solid ${C.gray200}`, background: '#ffffff', width: '100%', fontWeight: 700 }}>
+                            {statMessage}
+                        </div>
                     </div>
                 ) : visibleRoster.map(({ bsPlayer, rosterPlayer }) => (
                     <MyPlayerStatRow
@@ -582,7 +562,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     })
 
     return (
-        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: 'rgba(255,255,255,0.9)', borderBottom: `1px solid ${C.gray100}`, paddingTop: 14, paddingBottom: 14, borderRadius: 0 }}>
+        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: 'rgba(255,255,255,0.92)', borderBottom: `1px solid ${C.gray100}`, paddingTop: 14, paddingBottom: 14, borderRadius: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 12 }}>
                 <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -596,11 +576,6 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                 <span style={{ fontSize: 10, color: C.gray400, marginLeft: 'auto' }}>
                     {games.length} games · {myGames.length} with your players
                 </span>
-            </div>
-            <div style={{ paddingLeft: px, paddingRight: px, marginBottom: 10 }}>
-                <div style={{ fontSize: 12, color: C.gray600, fontWeight: 600 }}>
-                    Your games appear first, followed by the rest of the slate.
-                </div>
             </div>
             <div style={{
                 display: 'flex', gap: 10,
@@ -2135,7 +2110,7 @@ export default function Dashboard({ api }) {
     const pullOffset = isMobile ? (pullState.refreshing ? 56 : pullState.distance) : 0
 
     return (
-        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Inter", "Inter var", "Segoe UI Variable", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 13, color: C.gray800 }}>
+        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Manrope", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 13, color: C.gray800 }}>
 
             {isMobile && (
                 <div style={{
