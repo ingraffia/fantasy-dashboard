@@ -629,8 +629,12 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
 function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) {
     const [detail, setDetail] = useState(null)
     const [loading, setLoading] = useState(true)
+    const [imgLoaded, setImgLoaded] = useState(false)
+    const [imgFailed, setImgFailed] = useState(false)
 
     useEffect(() => {
+        setImgLoaded(false)
+        setImgFailed(false)
         if (!playerKey) return
         setLoading(true)
         if (playerKey.startsWith('espn.')) {
@@ -659,33 +663,57 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
     }))
     const overallRank = ranksByLeague.find(r => r.overallRank)?.overallRank
 
+    const imageSrc = detail?.imageUrl || (isEspn ? `https://a.espncdn.com/i/headshots/mlb/players/full/${playerKey.replace('espn.p.', '')}.png` : '')
+
+    const SectionTitle = ({ children }) => (
+        <div style={{ fontSize: 11, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>{children}</div>
+    )
+
     return (
         <>
-            <div className="player-panel-backdrop" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(8,15,27,0.36)', zIndex: 40, backdropFilter: 'blur(6px)' }} />
+            <div className="player-panel-backdrop" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(8,15,27,0.45)', zIndex: 40, backdropFilter: 'blur(6px)' }} />
             <div className="player-panel surface-card surface-card--strong" style={{
                 position: 'fixed', right: 0, top: 0, bottom: 0,
                 width: 'min(400px, 100vw)',
-                background: C.white, zIndex: 50,
-                boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
+                background: '#f8fafc', zIndex: 50,
+                boxShadow: '-8px 0 32px rgba(0,0,0,0.25)',
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
                 borderRadius: '24px 0 0 24px',
             }}>
-                <div style={{ background: isEspn ? '#1a1a2e' : C.navy, padding: '1rem 1.1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <img src={detail?.imageUrl || (isEspn ? `https://a.espncdn.com/i/headshots/mlb/players/full/${playerKey.replace('espn.p.', '')}.png` : '')} alt={playerName}
-                            style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(255,255,255,0.2)', background: C.navyLight, flexShrink: 0 }}
-                            onError={e => e.target.style.display = 'none'}
-                        />
-                        <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <span style={{ color: C.white, fontWeight: 700, fontSize: 15 }}>{playerName}</span>
-                                {isEspn && <Tag text="ESPN" bg="#f0483e30" color="#ff6b6b" />}
+                <div style={{ background: isEspn ? 'linear-gradient(145deg, #1f1118 0%, #1a1a2e 100%)' : 'linear-gradient(145deg, #0e192a 0%, #172c47 100%)', padding: '24px 20px', position: 'relative' }}>
+                    <button onClick={onClose} className="control-button" style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: C.white, cursor: 'pointer', borderRadius: 999, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, backdropFilter: 'blur(4px)' }}>✕</button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ position: 'relative', width: 68, height: 68, flexShrink: 0 }}>
+                            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '2px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 24, fontWeight: 800 }}>
+                                {playerName.trim().charAt(0).toUpperCase()}
                             </div>
-                            {detail && <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 }}>{detail.position} · {detail.proTeamAbbr || detail.proTeam}</div>}
-                            {overallRank && <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11 }}>Rank #{overallRank}</div>}
+                            {(!imgFailed && imageSrc) && (
+                                <img src={imageSrc} alt={playerName}
+                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: imgLoaded ? 'block' : 'none', position: 'relative', zIndex: 2 }}
+                                    onLoad={() => setImgLoaded(true)}
+                                    onError={() => setImgFailed(true)}
+                                />
+                            )}
+                        </div>
+                        <div style={{ paddingRight: 24 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <span style={{ color: C.white, fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{playerName}</span>
+                                {isEspn && <Tag text="ESPN" bg="rgba(240,72,62,0.2)" color="#ff8e86" />}
+                            </div>
+                            {detail && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 500 }}>
+                                    <span>{detail.position}</span>
+                                    {detail.proTeamAbbr && (
+                                        <>
+                                            <span style={{ opacity: 0.3 }}>•</span>
+                                            <MlbLogo team={detail.proTeamAbbr} size={18} showText={true} whiteText={true} />
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            {overallRank && <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, marginTop: 6, fontWeight: 500 }}>Global Rank #{overallRank}</div>}
                         </div>
                     </div>
-                    <button onClick={onClose} className="control-button" style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.14)', color: C.white, cursor: 'pointer', borderRadius: 10, padding: '6px 10px', fontSize: 16, lineHeight: 1, flexShrink: 0 }}>✕</button>
                 </div>
 
                 {loading ? (
@@ -693,75 +721,88 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
                 ) : !detail ? (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.gray400 }}>Failed to load</div>
                 ) : (
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', WebkitOverflowScrolling: 'touch' }}>
                         {detail.injuryStatus && (
-                            <div style={{ background: C.redLight, border: '1px solid #fecaca', borderRadius: 6, padding: '8px 10px', marginBottom: 12 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: C.red, textTransform: 'uppercase' }}>{detail.injuryStatus}</div>
-                                {detail.injuryNote && <div style={{ fontSize: 11, color: C.red, marginTop: 2 }}>{detail.injuryNote}</div>}
+                            <div style={{ background: C.redLight, border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px', marginBottom: 20 }}>
+                                <div style={{ fontSize: 11, fontWeight: 800, color: C.red, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{detail.injuryStatus}</div>
+                                {detail.injuryNote && <div style={{ fontSize: 12, fontWeight: 500, color: '#991b1b', marginTop: 3 }}>{detail.injuryNote}</div>}
                             </div>
                         )}
-                        <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Rankings</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                <div style={{ background: C.gray50, borderRadius: 6, padding: '8px', textAlign: 'center' }}>
-                                    <div style={{ fontSize: 20, fontWeight: 800, color: !overallRank ? C.gray400 : overallRank <= 50 ? C.green : overallRank <= 150 ? C.amber : C.gray800 }}>
+
+                        <div style={{ marginBottom: 24 }}>
+                            <SectionTitle>Platform Rankings</SectionTitle>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <div style={{ flex: 1, background: '#ffffff', borderRadius: 14, padding: '12px', border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)', textAlign: 'center' }}>
+                                    <div style={{ fontSize: 24, fontWeight: 900, color: !overallRank ? C.gray300 : overallRank <= 50 ? C.green : overallRank <= 150 ? C.amber : C.gray800, lineHeight: 1, marginBottom: 6 }}>
                                         {overallRank ? `#${overallRank}` : '—'}
                                     </div>
-                                    <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase' }}>Overall</div>
+                                    <div style={{ fontSize: 10, color: C.gray400, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Overall</div>
                                 </div>
-                                <div style={{ background: C.gray50, borderRadius: 6, padding: '8px' }}>
+                                <div style={{ flex: 1.5, background: '#ffffff', borderRadius: 14, padding: '12px', border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6 }}>
                                     {ranksByLeague.filter(r => r.leagueRank || r.overallRank).map(r => (
-                                        <div key={r.leagueKey} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontSize: 11 }}>
-                                            <span style={{ color: C.gray600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 90 }}>
+                                        <div key={r.leagueKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                                            <span style={{ color: C.gray500, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>
                                                 {r.leagueName.split(' ').slice(0, 2).join(' ')}
                                             </span>
-                                            <span style={{ fontWeight: 600, color: !r.leagueRank ? C.gray400 : r.leagueRank <= 50 ? C.green : C.gray800 }}>
+                                            <span style={{ fontWeight: 800, color: !r.leagueRank ? C.gray300 : r.leagueRank <= 50 ? C.green : C.gray800 }}>
                                                 {r.leagueRank ? `#${r.leagueRank}` : '—'}
                                             </span>
                                         </div>
                                     ))}
+                                    {ranksByLeague.filter(r => r.leagueRank || r.overallRank).length === 0 && (
+                                        <span style={{ color: C.gray300, fontSize: 12, fontWeight: 600 }}>No league ranks</span>
+                                    )}
                                 </div>
                             </div>
                         </div>
-                        <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>2026 Stats</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+
+                        <div style={{ marginBottom: 24 }}>
+                            <SectionTitle>2026 Season Stats</SectionTitle>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                                 {statDefs.map(s => (
-                                    <div key={s.id} style={{ background: C.gray50, borderRadius: 6, padding: '6px 8px', textAlign: 'center' }}>
-                                        <div style={{ fontSize: 15, fontWeight: 700, color: C.gray800 }}>{detail.stats[s.id] ?? '—'}</div>
-                                        <div style={{ fontSize: 9, color: C.gray400, fontWeight: 600, textTransform: 'uppercase' }}>{s.label}</div>
+                                    <div key={s.id} style={{ background: '#ffffff', borderRadius: 14, padding: '10px 8px', border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)', textAlign: 'center' }}>
+                                        <div style={{ fontSize: 16, fontWeight: 900, color: C.navy, marginBottom: 3, letterSpacing: '-0.02em' }}>{detail.stats[s.id] ?? '—'}</div>
+                                        <div style={{ fontSize: 9, color: C.gray400, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{s.label}</div>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Ownership</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ flex: 1, background: C.gray100, borderRadius: 99, height: 5, overflow: 'hidden' }}>
-                                    <div style={{ width: `${detail.percentOwned}%`, background: C.accent, height: '100%', borderRadius: 99 }} />
+
+                        <div style={{ marginBottom: 24 }}>
+                            <SectionTitle>Global {isEspn ? 'ESPN' : 'Yahoo'} Ownership</SectionTitle>
+                            <div style={{ background: '#ffffff', borderRadius: 14, padding: '16px 14px', border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: C.gray500 }}>Rostered in active leagues</span>
+                                    <span style={{ fontSize: 16, fontWeight: 900, color: C.navy }}>{detail.percentOwned}%</span>
                                 </div>
-                                <span style={{ fontSize: 13, fontWeight: 700, color: C.gray800 }}>{detail.percentOwned}%</span>
+                                <div style={{ background: C.gray100, borderRadius: 99, height: 8, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}>
+                                    <div style={{ width: `${detail.percentOwned}%`, background: 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)', height: '100%', borderRadius: 99 }} />
+                                </div>
                             </div>
                         </div>
-                        <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>Your Leagues</div>
-                            {leagues.map(lg => {
-                                const onRoster = lg.players?.some(p => p.playerKey === playerKey)
-                                const slot = lg.players?.find(p => p.playerKey === playerKey)?.selectedPosition
-                                return (
-                                    <div key={lg.leagueKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: `1px solid ${C.gray100}` }}>
-                                        <span style={{ fontSize: 12, color: C.gray800 }}>{lg.leagueName}</span>
-                                        {onRoster
-                                            ? <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><SlotPill slot={slot} /></div>
-                                            : <Tag text="Not owned" bg={C.gray100} color={C.gray400} />}
-                                    </div>
-                                )
-                            })}
+
+                        <div style={{ marginBottom: 24 }}>
+                            <SectionTitle>Your Rosters</SectionTitle>
+                            <div style={{ background: '#ffffff', borderRadius: 14, border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)', overflow: 'hidden' }}>
+                                {leagues.map((lg, i) => {
+                                    const onRoster = lg.players?.some(p => p.playerKey === playerKey)
+                                    const slot = lg.players?.find(p => p.playerKey === playerKey)?.selectedPosition
+                                    return (
+                                        <div key={lg.leagueKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderBottom: i < leagues.length - 1 ? `1px solid ${C.gray100}` : 'none' }}>
+                                            <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{lg.leagueName}</span>
+                                            {onRoster
+                                                ? <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><SlotPill slot={slot} /></div>
+                                                : <Tag text="Available" bg={C.gray100} color={C.gray400} />}
+                                        </div>
+                                    )
+                                })}
+                            </div>
                         </div>
+
                         {isEspn && (
                             <a href={`https://fantasy.espn.com/baseball/players/card?playerId=${playerKey.replace('espn.p.', '')}`}
                                 target="_blank" rel="noreferrer"
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', borderRadius: 8, background: '#f0483e10', color: '#f0483e', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '12px', borderRadius: 14, background: '#fef2f2', color: '#dc2626', fontSize: 13, fontWeight: 700, textDecoration: 'none', border: '1px solid #fecaca' }}>
                                 View on ESPN ↗
                             </a>
                         )}
