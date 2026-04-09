@@ -2297,15 +2297,11 @@ export default function Dashboard({ api }) {
                     const isLosing = lg.matchup && !isWinning && parseFloat(lg.matchup.oppScore || 0) > parseFloat(lg.matchup.myScore || 0)
                     const cardWidth = isMobile ? 'calc(100vw - 24px)' : 286
                     const borderColor = isWinning ? '#86efac' : '#bfdbfe'
-                    const headerBg = isWinning
-                        ? 'linear-gradient(180deg, #0f3b2d 0%, #14532d 100%)'
-                        : isLosing
-                            ? 'linear-gradient(180deg, #1e293b 0%, #334155 100%)'
-                            : 'linear-gradient(180deg, #0f2040 0%, #16324f 100%)'
-                    const myColor = isWinning ? '#14532d' : C.navy
-                    const oppColor = isWinning ? 'rgba(15,23,42,0.52)' : C.gray400
-                    const platformBg = lg.source === 'espn' ? 'rgba(240,72,62,0.16)' : 'rgba(96,1,210,0.16)'
-                    const platformColor = lg.source === 'espn' ? '#ffb7b1' : '#e0c7ff'
+                    const headerBg = '#ffffff'
+                    const myColor = C.navy
+                    const oppColor = C.gray400
+                    const platformBg = lg.source === 'espn' ? 'rgba(240,72,62,0.12)' : 'rgba(96,1,210,0.12)'
+                    const platformColor = lg.source === 'espn' ? '#f0483e' : '#6001d2'
                     const href = lg.source === 'espn'
                         ? `https://fantasy.espn.com/baseball/league?leagueId=${lg.leagueKey.split('.l.')[1]}`
                         : `https://baseball.fantasysports.yahoo.com/b1/${lg.leagueKey.split('.l.')[1]}`
@@ -2323,7 +2319,9 @@ export default function Dashboard({ api }) {
                     const rankText = lg.standing?.rank ? `#${lg.standing.rank}` : '—'
                     const matchupLabel = lg.matchup?.oppName || (lg.matchup ? 'Opponent' : 'Season total')
                     const matchupTone = isWinning ? 'Winning' : isLosing ? 'Trailing' : 'Even'
-                    const matchupToneColor = isWinning ? '#bbf7d0' : isLosing ? '#cbd5e1' : '#dbe7ff'
+                    const matchupToneColor = isWinning ? '#166534' : isLosing ? '#f0483e' : C.gray500
+                    const matchupToneBg = isWinning ? '#dcfce7' : isLosing ? 'rgba(240,72,62,0.12)' : C.gray100
+                    const matchupToneBorder = isWinning ? 'rgba(22,101,52,0.15)' : isLosing ? 'rgba(240,72,62,0.2)' : 'rgba(0,0,0,0.06)'
                     const scoreFontSize = typeof myDisplayScore === 'string' && String(myDisplayScore).includes('-') ? 28 : 34
                     const oppScoreFontSize = oppDisplayScore && typeof oppDisplayScore === 'string' && String(oppDisplayScore).includes('-') ? 28 : 34
                     return (
@@ -2344,36 +2342,36 @@ export default function Dashboard({ api }) {
                             overflow: 'hidden',
                             scrollSnapAlign: 'start',
                         }}>
-                            <div style={{ padding: '14px', background: headerBg, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                            <div style={{ padding: '14px', background: headerBg, borderBottom: `1px solid ${C.gray100}` }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-                                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 999, background: platformBg, border: '1px solid rgba(255,255,255,0.14)', flexShrink: 0 }}>
+                                        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 999, background: platformBg, border: `1px solid ${C.gray200}`, flexShrink: 0 }}>
                                             {lg.source === 'espn'
                                                 ? <img src="https://a.espncdn.com/favicon.ico" width={12} height={12} alt="ESPN" />
                                                 : <img src="https://s.yimg.com/cv/apiv2/default/icons/favicon_y19_32x32_custom.svg" width={12} height={12} alt="Yahoo" />}
                                         </span>
                                         <div style={{ minWidth: 0 }}>
-                                            <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(219,231,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                                            <div style={{ fontSize: 10, fontWeight: 800, color: C.gray500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                                                 {lg.leagueName}
                                             </div>
                                         </div>
                                     </div>
-                                    <span style={{ fontSize: 10, color: matchupToneColor, fontWeight: 800, background: 'rgba(255,255,255,0.08)', padding: '5px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.1)', flexShrink: 0 }}>
+                                    <span style={{ fontSize: 10, color: matchupToneColor, fontWeight: 800, background: matchupToneBg, padding: '5px 9px', borderRadius: 999, border: `1px solid ${matchupToneBorder}`, flexShrink: 0 }}>
                                         {lg.matchup ? `${matchupTone} this week` : 'Season format'}
                                     </span>
                                 </div>
                                 <div style={{ display: 'grid', gap: 8 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                                            <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>My Team</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.gray100}` }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, paddingRight: 6 }}>
+                                            <span style={{ fontSize: 15, fontWeight: 800, color: C.navy, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>My Team</span>
                                         </div>
-                                        <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: (isWinning || (!isLosing && lg.matchup) || !lg.matchup) ? '#ffffff' : 'rgba(255,255,255,0.58)', lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right' }}>{myDisplayScore ?? '—'}</span>
+                                        <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: (isWinning || (!isLosing && lg.matchup) || !lg.matchup) ? C.navy : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{myDisplayScore ?? '—'}</span>
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                                            <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{matchupLabel}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.gray100}` }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, paddingRight: 6 }}>
+                                            <span style={{ fontSize: 15, fontWeight: 800, color: C.navy, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{matchupLabel}</span>
                                         </div>
-                                        <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing && lg.matchup ? '#ffffff' : oppDisplayScore == null ? 'transparent' : 'rgba(255,255,255,0.58)', lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right' }}>{oppDisplayScore ?? '—'}</span>
+                                        <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing && lg.matchup ? C.navy : oppDisplayScore == null ? 'transparent' : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{oppDisplayScore ?? '—'}</span>
                                     </div>
                                 </div>
                             </div>
