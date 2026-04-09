@@ -1,5 +1,4 @@
 const express = require('express');
-const axios = require('axios');
 const https = require('https');
 const dns = require('dns');
 const jwt = require('jsonwebtoken');
@@ -15,47 +14,76 @@ const {
 
 const AUTH_HEADER_NAME = 'x-auth-token';
 const AUTH_TOKEN_TTL = '30d';
+const YAHOO_OAUTH_HOST = 'api.login.yahoo.com';
+
+async function resolveIpv4Address(hostname) {
+    const result = await dns.promises.lookup(hostname, { family: 4 });
+    return result.address;
+}
 
 // Low-level HTTPS POST that bypasses axios connection pooling
-function httpsPost(url, body, headers, timeoutMs = 25000) {
+async function httpsPost(url, body, headers, timeoutMs = 25000) {
+    const parsed = new URL(url);
+    const postData = typeof body === 'string' ? body : body.toString();
+    const resolvedAddress = await resolveIpv4Address(parsed.hostname);
+
     return new Promise((resolve, reject) => {
-        const parsed = new URL(url);
-        const postData = typeof body === 'string' ? body : body.toString();
         const options = {
-            hostname: parsed.hostname,
+            host: resolvedAddress,
+            servername: parsed.hostname,
+            family: 4,
             port: 443,
             path: parsed.pathname + parsed.search,
             method: 'POST',
             headers: {
+                Host: parsed.hostname,
                 ...headers,
                 'Content-Length': Buffer.byteLength(postData),
             },
-            // Fresh agent per request — no keep-alive pool
-            agent: new https.Agent({ keepAlive: false }),
+            // Fresh agent per request — no keep-alive pool or TLS session reuse
+            agent: new https.Agent({ keepAlive: false, maxCachedSessions: 0 }),
         };
+
         const req = https.request(options, (res) => {
             let raw = '';
             res.setEncoding('utf8');
             res.on('data', chunk => { raw += chunk; });
             res.on('end', () => {
-                let parsed;
-                try { parsed = JSON.parse(raw); } catch { parsed = raw; }
+                let parsedBody;
+                try { parsedBody = JSON.parse(raw); } catch { parsedBody = raw; }
                 if (res.statusCode >= 400) {
                     const err = new Error(`HTTP ${res.statusCode}`);
                     err.status = res.statusCode;
-                    err.data = parsed;
+                    err.data = parsedBody;
                     return reject(err);
                 }
-                resolve(parsed);
+                resolve(parsedBody);
             });
         });
+
+        req.on('socket', (socket) => {
+            socket.once('connect', () => {
+                console.log(`Yahoo OAuth socket connected to ${socket.remoteAddress || resolvedAddress}:${socket.remotePort || 443}`);
+            });
+            socket.once('secureConnect', () => {
+                console.log(`Yahoo OAuth TLS established via ${socket.getProtocol?.() || 'unknown TLS version'}`);
+            });
+            socket.once('timeout', () => {
+                console.error('Yahoo OAuth socket timeout before response completed');
+            });
+        });
+
         req.setTimeout(timeoutMs, () => {
             req.destroy();
-            const err = new Error('Request timed out');
+            const err = new Error(`Request timed out after ${timeoutMs}ms`);
             err.code = 'ETIMEDOUT';
+            err.phase = 'request';
             reject(err);
         });
-        req.on('error', reject);
+        req.on('error', (err) => {
+            if (!err.phase) err.phase = 'network';
+            reject(err);
+        });
         req.write(postData);
         req.end();
     });
@@ -355,9 +383,9 @@ router.get('/callback', async (req, res) => {
         const credentials = Buffer.from(`${YAHOO_CLIENT_ID}:${YAHOO_CLIENT_SECRET}`).toString('base64');
 
         // DNS pre-flight: log whether we can resolve Yahoo's hostname
-        dns.lookup('api.login.yahoo.com', (dnsErr, address) => {
-            if (dnsErr) console.error('DNS lookup failed for api.login.yahoo.com:', dnsErr.code);
-            else console.log('DNS resolved api.login.yahoo.com ->', address);
+        dns.lookup(YAHOO_OAUTH_HOST, { family: 4 }, (dnsErr, address) => {
+            if (dnsErr) console.error(`DNS lookup failed for ${YAHOO_OAUTH_HOST}:`, dnsErr.code);
+            else console.log(`DNS resolved ${YAHOO_OAUTH_HOST} ->`, address);
         });
 
         let data;
@@ -367,7 +395,7 @@ router.get('/callback', async (req, res) => {
             try {
                 console.log(`OAuth attempt ${attempt}: posting to Yahoo token endpoint`);
                 data = await httpsPost(
-                    'https://api.login.yahoo.com/oauth2/get_token',
+                    `https://${YAHOO_OAUTH_HOST}/oauth2/get_token`,
                     new URLSearchParams({
                         grant_type: 'authorization_code',
                         code,
@@ -385,7 +413,7 @@ router.get('/callback', async (req, res) => {
                 lastErr = e;
                 const status = e?.status || e?.response?.status;
                 const isRetryable = !status || status >= 500 || status === 429 || RETRYABLE_CODES.has(e.code);
-                console.error(`OAuth attempt ${attempt} failed:`, e.code || status || e.message);
+                console.error(`OAuth attempt ${attempt} failed:`, e.code || status || e.message, e.phase ? `(phase: ${e.phase})` : '');
                 if (!isRetryable || attempt === 4) break;
                 await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
             }
@@ -408,6 +436,7 @@ router.get('/callback', async (req, res) => {
         console.error('OAuth status:', err.response?.status);
         console.error('OAuth message:', err.message);
         console.error('OAuth code:', err.code);
+        console.error('OAuth phase:', err.phase);
         const details = classifyOAuthError(err);
         res.status(500).send(renderAuthErrorPage(details));
     }
@@ -416,7 +445,7 @@ router.get('/callback', async (req, res) => {
 async function refreshYahooTokens(current) {
     const credentials = Buffer.from(`${YAHOO_CLIENT_ID}:${YAHOO_CLIENT_SECRET}`).toString('base64');
     const data = await httpsPost(
-        'https://api.login.yahoo.com/oauth2/get_token',
+        `https://${YAHOO_OAUTH_HOST}/oauth2/get_token`,
         new URLSearchParams({
             grant_type: 'refresh_token',
             refresh_token: current.refresh_token
