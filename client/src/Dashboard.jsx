@@ -242,6 +242,15 @@ function PlayerAvatar({ imageUrl, name, size = 36 }) {
         setFailed(false)
     }, [imageUrl])
 
+    const getHighResUrl = (url) => {
+        if (!url) return url;
+        if (url.includes('yimg.com')) {
+            return url.replace(/w=\d+/g, 'w=140').replace(/h=\d+/g, 'h=180');
+        }
+        return url;
+    }
+    const betterUrl = getHighResUrl(imageUrl);
+
     const initials = name?.trim()?.charAt(0)?.toUpperCase() || '?'
     const fallback = (
         <div style={{
@@ -263,21 +272,29 @@ function PlayerAvatar({ imageUrl, name, size = 36 }) {
         </div>
     )
 
-    if (!imageUrl || failed) return fallback
+    if (!betterUrl || failed) return fallback
 
     return (
-        <div style={{ width: size, height: size, borderRadius: '50%', position: 'relative', overflow: 'hidden', flexShrink: 0, boxShadow: '0 6px 16px rgba(15,23,42,0.08)', border: '1px solid rgba(255,255,255,0.8)', background: C.gray100 }}>
-            {!loaded && fallback}
-            <img
-                src={imageUrl}
-                alt={name}
-                style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', display: loaded ? 'block' : 'none' }}
-                onLoad={() => setLoaded(true)}
-                onError={() => setFailed(true)}
-            />
-        </div>
+        <img
+            src={betterUrl}
+            alt={name || 'Player'}
+            onLoad={() => setLoaded(true)}
+            onError={() => setFailed(true)}
+            style={{
+                width: size,
+                height: size,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                objectPosition: 'top center',
+                display: loaded ? 'block' : 'none',
+                background: C.gray50,
+                border: `1px solid ${C.gray200}`,
+                flexShrink: 0
+            }}
+        />
     )
 }
+
 
 function AvailabilityBadges({ playerKey, ownership, leagues }) {
     if (!ownership || !ownership[playerKey]) return <span style={{ color: C.gray400, fontSize: 11 }}>Loading...</span>
