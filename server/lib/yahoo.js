@@ -5,11 +5,24 @@ const dns = require('dns');
 const BASE_URL = 'https://fantasysports.yahooapis.com/fantasy/v2';
 const DEFAULT_MLB_GAME_KEY = process.env.YAHOO_MLB_GAME_KEY || '469';
 const RETRYABLE_CODES = new Set(['ECONNABORTED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED']);
+
+function lookupIpv4(hostname, options, callback) {
+    let resolvedOptions = options;
+    let resolvedCallback = callback;
+
+    if (typeof resolvedOptions === 'function') {
+        resolvedCallback = resolvedOptions;
+        resolvedOptions = {};
+    }
+
+    return dns.lookup(hostname, { ...(resolvedOptions || {}), family: 4 }, resolvedCallback);
+}
+
 const yahooHttpsAgent = new https.Agent({
     keepAlive: true,
     maxSockets: 12,
     maxCachedSessions: 0,
-    lookup: (hostname, options, callback) => dns.lookup(hostname, { family: 4 }, callback),
+    lookup: lookupIpv4,
 });
 
 async function yahooGet(session, path) {
