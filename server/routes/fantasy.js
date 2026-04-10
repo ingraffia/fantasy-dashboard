@@ -112,6 +112,47 @@ async function espnGetMulti(views = []) {
     return data;
 }
 
+// ─── Baseball Savant / MLB Stats API Utils ───────────────────────────────────
+
+async function getMlbamIdFromName(name) {
+    try {
+        const searchUrl = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(name)}&active=true`;
+        const { data } = await axios.get(searchUrl);
+        // Find most likely match (usually first active player)
+        return data.people?.[0]?.id || null;
+    } catch (e) {
+        console.warn(`MLBAM ID lookup failed for ${name}:`, e.message);
+        return null;
+    }
+}
+
+async function getSavantPercentiles(mlbamId, year = 2026) {
+    if (!mlbamId) return null;
+    try {
+        // Savant profile JSON endpoint
+        const url = `https://baseballsavant.mlb.com/savant-player/${mlbamId}?stats=statcast&type=batter&season=${year}`;
+        const { data } = await axios.get(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+        });
+        
+        // Extract the percentile data from the script tag or page data if possible, 
+        // but for now we'll use the leaderboard approach or individual player data if available in JSON
+        // Actually, many developers use the percentile-rankings endpoint which is cleaner
+        const leaderboardUrl = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?year=${year}&player_id=${mlbamId}`;
+        const lbRes = await axios.get(leaderboardUrl, {
+            headers: { 'User-Agent': 'Mozilla/5.0' }
+        });
+        
+        if (lbRes.data && lbRes.data.data && lbRes.data.data.length > 0) {
+            return lbRes.data.data[0];
+        }
+        return null;
+    } catch (e) {
+        console.warn(`Savant data fetch failed for ${mlbamId}:`, e.message);
+        return null;
+    }
+}
+
 const ESPN_SLOT_MAP = {
     0: 'C', 1: '1B', 2: '2B', 3: '3B', 4: 'SS', 5: 'OF',
     6: '2B', 7: '1B', 8: 'OF', 9: 'OF', 10: 'OF',
@@ -705,6 +746,11 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
         const statMap = {};
         Object.values(stats).forEach(s => { if (s?.stat) statMap[s.stat.stat_id] = s.stat.value; });
         const percentOwned = percentData.fantasy_content.player[1]?.percent_owned?.[1]?.value || '0';
+        
+        // Statcast integration
+        const mlbamId = await getMlbamIdFromName(meta.name?.full);
+        const savantData = mlbamId ? await getSavantPercentiles(mlbamId) : null;
+
         res.json({
             playerKey, name: meta.name?.full, position: meta.display_position,
             proTeam: meta.editorial_team_full_name, proTeamAbbr: meta.editorial_team_abbr,
@@ -712,6 +758,8 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
             injuryNote: meta.status_full || null, isUndroppable: meta.is_undroppable == 1,
             percentOwned: parseFloat(percentOwned).toFixed(0), stats: statMap,
             imageUrl: meta.headshot?.url || null,
+            mlbamId,
+            savantData
         });
     } catch (err) {
         console.error(err.response?.data || err.message);
@@ -820,6 +868,8 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
             stats: parseEspnStats(player),
             imageUrl: `https://a.espncdn.com/i/headshots/mlb/players/full/${playerId}.png`,
             source: 'espn',
+            mlbamId: playerId, // ESPN IDs usually match MLBAM IDs, or are very close
+            savantData: await getSavantPercentiles(playerId)
         });
     } catch (err) {
         console.error('ESPN player detail error:', err.response?.data || err.message);

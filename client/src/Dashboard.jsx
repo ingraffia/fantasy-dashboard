@@ -644,6 +644,55 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     )
 }
 
+function SavantPercentile({ label, percentile }) {
+    if (percentile == null) return null;
+    const value = Math.round(percentile);
+    const color = value >= 90 ? '#d22d2d' : value >= 75 ? '#e67e22' : value >= 40 ? '#27ae60' : value >= 25 ? '#2980b9' : '#1e3a5f';
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: '90px minmax(0, 1fr) 30px', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: C.gray600, textAlign: 'right', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{label}</div>
+            <div style={{ position: 'relative', height: 14, background: C.gray100, borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${value}%`, background: color, borderRadius: 99, transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
+                <div style={{ position: 'absolute', left: `${value}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 22, height: 22, borderRadius: '50%', background: '#ffffff', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900, color: color, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 2 }}>{value}</div>
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 900, color: C.navy, textAlign: 'left' }}>{value}</div>
+        </div>
+    );
+}
+
+function StatcastSection({ data, position }) {
+    if (!data) return null;
+    const isP = isPitcher(position);
+    const metrics = isP ? [
+        { key: 'velocity', label: 'Fastball Velo' },
+        { key: 'exit_velocity', label: 'Avg Exit Velo' },
+        { key: 'k_percent', label: 'K %' },
+        { key: 'bb_percent', label: 'BB %' },
+        { key: 'whiff_percent', label: 'Whiff %' },
+        { key: 'chase_percent', label: 'Chase %' },
+    ] : [
+        { key: 'xwoba', label: 'xwOBA' },
+        { key: 'xba', label: 'xBA' },
+        { key: 'xslg', label: 'xSLG' },
+        { key: 'exit_velocity', label: 'Avg Exit Velo' },
+        { key: 'barrel_rate', label: 'Barrel %' },
+        { key: 'hard_hit_rate', label: 'Hard-Hit %' },
+        { key: 'k_percent', label: 'K %' },
+        { key: 'bb_percent', label: 'BB %' },
+        { key: 'whiff_percent', label: 'Whiff %' },
+    ];
+    return (
+        <div style={{ marginBottom: 24, padding: '16px', background: '#ffffff', borderRadius: 18, border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                <img src="https://baseballsavant.mlb.com/favicon.ico" width={14} height={14} alt="Savant" />
+                <span style={{ fontSize: 12, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Statcast Percentiles</span>
+            </div>
+            {metrics.map(m => <SavantPercentile key={m.key} label={m.label} percentile={data[m.key]} />)}
+            <div style={{ marginTop: 12, fontSize: 9, color: C.gray400, textAlign: 'center', fontStyle: 'italic' }}>Data provided by Baseball Savant / MLB Statcast</div>
+        </div>
+    );
+}
+
 // ─── Player Detail Panel ─────────────────────────────────────────────────────
 
 function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ownership, fetchOwnership }) {
@@ -791,6 +840,10 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                                 ))}
                             </div>
                         </div>
+
+                        {detail.savantData && (
+                            <StatcastSection data={detail.savantData} position={detail.position} />
+                        )}
 
                         <div style={{ marginBottom: 24 }}>
                             <SectionTitle>Global {isEspn ? 'ESPN' : 'Yahoo'} Ownership</SectionTitle>
