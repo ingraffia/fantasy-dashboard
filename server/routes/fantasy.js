@@ -177,14 +177,15 @@ async function getMlbamIdFromName(name) {
     }
 }
 
-// In-memory cache for parsed Savant leaderboard rows (keyed by type-year).
-const savantLeaderboardCache = {};
-const SAVANT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+// Per-player result cache — keyed by `${mlbamId}-${type}`.
+// Intentionally NOT a shared leaderboard cache: Railway may run multiple instances
+// that don't share memory, so a per-player result cache is safe on any instance.
+const savantPlayerCache = {};
+const SAVANT_PLAYER_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
-// Parse a simple CSV string into an array of objects.
-// Handles double-quoted fields (player names can contain commas).
+// Parse a CSV string into objects.  Strips \r so CRLF line endings work correctly.
 function parseCsvRows(csv) {
-    const lines = csv.trim().split('\n');
+    const lines = csv.replace(/\r/g, '').trim().split('\n');
     if (lines.length < 2) return [];
     const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
     return lines.slice(1).map(line => {
@@ -202,30 +203,8 @@ function parseCsvRows(csv) {
     });
 }
 
-// Fetch the full Savant percentile leaderboard as CSV and cache it.
-// Baseball Savant's csv=true endpoint is far more reliable than HTML parsing.
-async function fetchSavantLeaderboard(type, year) {
-    const key = `${type}-${year}`;
-    const cached = savantLeaderboardCache[key];
-    if (cached && Date.now() - cached.ts < SAVANT_CACHE_TTL_MS) return cached.rows;
-
-    const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&pos=all&team=&min=q&csv=true`;
-    const { data: csv } = await axios.get(url, {
-        headers: {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/csv, text/plain, */*',
-        },
-        timeout: 20000,
-    });
-    const rows = parseCsvRows(String(csv));
-    console.log(`Savant CSV (${type}, ${year}): ${rows.length} rows`);
-    savantLeaderboardCache[key] = { rows, ts: Date.now() };
-    return rows;
-}
-
 function mapSavantFields(row) {
-    // CSV column names from the csv=true endpoint (confirmed from debug output).
-    // These differ from the old HTML-embedded var data field names.
+    // Field names from Baseball Savant's csv=true endpoint (confirmed via debug).
     const n = (v) => (v === '' || v == null) ? null : Number(v);
     return {
         xwoba: n(row.xwoba),
@@ -238,30 +217,56 @@ function mapSavantFields(row) {
         bb_percent: n(row.bb_percent),
         whiff_percent: n(row.whiff_percent),
         chase_percent: n(row.chase_percent),
-        velocity: n(row.fastball_velo),  // present in pitcher-type CSV
+        velocity: n(row.fastball_velo),  // pitcher CSV only
     };
 }
 
 async function getSavantPercentiles(mlbamId, type = 'batter') {
     if (!mlbamId) return null;
+
+    const cacheKey = `${mlbamId}-${type}`;
+    const cached = savantPlayerCache[cacheKey];
+    if (cached && Date.now() - cached.ts < SAVANT_PLAYER_CACHE_TTL_MS) {
+        return cached.result;
+    }
+
     for (const year of [2025, 2024, 2023, 2022]) {
         try {
-            const rows = await fetchSavantLeaderboard(type, year);
-            const row = rows.find(r => String(r.player_id) === String(mlbamId));
+            // Fetch with player_id — if Savant pre-filters the CSV the response is tiny (1–2 rows).
+            // If Savant returns the full leaderboard anyway, we find the row by player_id.
+            const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=q&csv=true`;
+            const { data: csv } = await axios.get(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': 'text/csv, text/plain, */*',
+                },
+                timeout: 15000,
+            });
+            const rows = parseCsvRows(String(csv));
+            if (rows.length === 0) {
+                console.warn(`Savant: empty CSV for ${mlbamId} (${type}, ${year})`);
+                continue;
+            }
+            // Find by player_id; if the CSV was pre-filtered to one row, accept that row
+            const row = rows.find(r => String(r.player_id) === String(mlbamId))
+                ?? (rows.length === 1 ? rows[0] : null);
             if (!row) {
                 console.warn(`Savant: ${mlbamId} not found in ${rows.length} rows (${type}, ${year})`);
                 continue;
             }
             const mapped = mapSavantFields(row);
             if (mapped.xwoba == null) {
-                console.warn(`Savant: ${mlbamId} found but xwoba is null (${type}, ${year})`);
+                console.warn(`Savant: ${mlbamId} row found but xwoba null (${type}, ${year})`);
                 continue;
             }
+            console.log(`Savant OK: ${mlbamId} (${type}, ${year}) xwoba=${mapped.xwoba}`);
+            savantPlayerCache[cacheKey] = { result: mapped, ts: Date.now() };
             return mapped;
         } catch (e) {
-            console.warn(`Savant fetch failed for ${mlbamId} (${type}, ${year}):`, e.message);
+            console.warn(`Savant fetch error for ${mlbamId} (${type}, ${year}):`, e.message);
         }
     }
+    savantPlayerCache[cacheKey] = { result: null, ts: Date.now() };
     return null;
 }
 
@@ -1701,25 +1706,39 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 
 
 
-// Debug endpoint: shows what Savant CSV returns for a given MLBAM ID.
-// Usage: GET /api/savant-debug/660271?type=batter&year=2025
-// No auth required — use this on Railway to diagnose Savant issues.
+// Tests the full getSavantPercentiles pipeline for a given MLBAM ID.
+// GET /api/savant-debug/660271?type=batter
+// No auth required — use on Railway to confirm the pipeline works end-to-end.
 router.get('/savant-debug/:mlbamId', async (req, res) => {
     const { mlbamId } = req.params;
     const type = req.query.type || 'batter';
-    const year = req.query.year || '2025';
     try {
-        const rows = await fetchSavantLeaderboard(type, year);
-        const row = rows.find(r => String(r.player_id) === String(mlbamId));
-        return res.json({
-            found: !!row,
-            totalRows: rows.length,
-            headers: rows.length > 0 ? Object.keys(rows[0]) : [],
-            row: row || null,
-            sampleRow: rows[0] || null,
-        });
+        // Clear player cache for this ID so we always get a fresh fetch
+        delete savantPlayerCache[`${mlbamId}-${type}`];
+        const result = await getSavantPercentiles(mlbamId, type);
+        return res.json({ mlbamId, type, found: result !== null, result });
     } catch (e) {
         return res.json({ error: e.message, code: e.code });
+    }
+});
+
+// Tests name → MLBAM ID → Savant data pipeline.
+// GET /api/player-debug/Shohei%20Ohtani
+// GET /api/player-debug/Jose%20Ramirez
+// GET /api/player-debug/Corbin%20Carroll
+// No auth required — diagnose why a player has no Savant data.
+router.get('/player-debug/:playerName', async (req, res) => {
+    const playerName = decodeURIComponent(req.params.playerName);
+    const normalized = normalizeNameKey(playerName);
+    const inKnownMap = KNOWN_MLBAM_IDS[normalized] != null;
+    try {
+        const mlbamId = await getMlbamIdFromName(playerName);
+        if (!mlbamId) return res.json({ playerName, normalized, inKnownMap, mlbamId: null, error: 'MLBAM ID not found' });
+        const batterData = await getSavantPercentiles(mlbamId, 'batter');
+        const pitcherData = await getSavantPercentiles(mlbamId, 'pitcher');
+        return res.json({ playerName, normalized, inKnownMap, mlbamId, batterData, pitcherData });
+    } catch (e) {
+        return res.json({ playerName, normalized, inKnownMap, error: e.message });
     }
 });
 
