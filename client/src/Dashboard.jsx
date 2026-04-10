@@ -2493,9 +2493,11 @@ export default function Dashboard({ api }) {
 
             {/* Header */}
             <div className="dashboard-topbar dashboard-topbar--hero animate-slide-down" style={{
-                padding: `0 ${px}`,
+                paddingLeft: px,
+                paddingRight: px,
+                paddingTop: 'env(safe-area-inset-top)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                height: isMobile ? 68 : 82,
+                height: `calc(${isMobile ? 68 : 82}px + env(safe-area-inset-top))`,
                 transform: pullOffset ? `translateY(${Math.min(pullOffset, 56)}px)` : 'translateY(0)',
                 transition: pullState.active ? 'none' : 'transform 180ms ease',
                 position: 'relative',
