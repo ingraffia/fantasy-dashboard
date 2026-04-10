@@ -647,15 +647,44 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
 function SavantPercentile({ label, percentile }) {
     if (percentile == null) return null;
     const value = Math.round(percentile);
-    const color = value >= 90 ? '#d22d2d' : value >= 75 ? '#e67e22' : value >= 40 ? '#27ae60' : value >= 25 ? '#2980b9' : '#1e3a5f';
+    
+    // Savant Palette
+    let color = '#dddddd'; // Average
+    if (value >= 91) color = '#d22d2d';      // Elite
+    else if (value >= 61) color = '#ef7676'; // Good
+    else if (value >= 40) color = '#dddddd'; // Neutral
+    else if (value >= 10) color = '#7ba4f4'; // Poor
+    else color = '#2d50d2';                  // Terrible
+
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '90px minmax(0, 1fr) 30px', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, color: C.gray600, textAlign: 'right', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{label}</div>
-            <div style={{ position: 'relative', height: 14, background: C.gray100, borderRadius: 99, overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${value}%`, background: color, borderRadius: 99, transition: 'width 1s cubic-bezier(0.34, 1.56, 0.64, 1)' }} />
-                <div style={{ position: 'absolute', left: `${value}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 22, height: 22, borderRadius: '50%', background: '#ffffff', border: `2px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900, color: color, boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 2 }}>{value}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '100px minmax(0, 1fr)', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 800, color: C.gray600, textAlign: 'right', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.1 }}>{label}</div>
+            <div style={{ position: 'relative', height: 10, display: 'flex', alignItems: 'center' }}>
+                {/* Genuine Savant Track Line */}
+                <div style={{ width: '100%', height: 2, background: '#e5e7eb', borderRadius: 1 }} />
+                
+                {/* The Floating Bubble */}
+                <div style={{ 
+                    position: 'absolute', 
+                    left: `${value}%`, 
+                    top: '50%', 
+                    transform: 'translate(-50%, -50%)', 
+                    width: 24, 
+                    height: 24, 
+                    borderRadius: '50%', 
+                    background: color, 
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 10,
+                    fontWeight: 900,
+                    color: (value >= 40 && value <= 60) ? '#4b5563' : '#fff',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                    border: '2px solid #fff',
+                    zIndex: 2,
+                    transition: 'left 1s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}>{value}</div>
             </div>
-            <div style={{ fontSize: 11, fontWeight: 900, color: C.navy, textAlign: 'left' }}>{value}</div>
         </div>
     );
 }
@@ -669,7 +698,6 @@ function StatcastSection({ data, position }) {
         { key: 'k_percent', label: 'K %' },
         { key: 'bb_percent', label: 'BB %' },
         { key: 'whiff_percent', label: 'Whiff %' },
-        { key: 'chase_percent', label: 'Chase %' },
     ] : [
         { key: 'xwoba', label: 'xwOBA' },
         { key: 'xba', label: 'xBA' },
@@ -680,6 +708,7 @@ function StatcastSection({ data, position }) {
         { key: 'k_percent', label: 'K %' },
         { key: 'bb_percent', label: 'BB %' },
         { key: 'whiff_percent', label: 'Whiff %' },
+        { key: 'chase_percent', label: 'Chase %' },
     ];
     return (
         <div style={{ marginBottom: 24, padding: '16px', background: '#ffffff', borderRadius: 18, border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)' }}>
