@@ -17,21 +17,6 @@ function syncTokenFromResponse(response) {
   setupAxiosAuth(rotated)
 }
 
-/* ── Splash — brand moment only, NO progress bar ────────── */
-function SplashScreen() {
-  return (
-    <div className="splash-screen" aria-hidden="true">
-      <div className="splash-logo">
-        <div className="splash-icon">⚾</div>
-        <div className="splash-wordmark">
-          Dugout<span className="splash-dot" />
-        </div>
-        <div className="splash-tagline">Fantasy Intelligence</div>
-      </div>
-    </div>
-  )
-}
-
 /* ── Login — dark full-bleed hero ───────────────────────── */
 function LoginScreen({ api }) {
   return (
@@ -105,13 +90,6 @@ function LoginScreen({ api }) {
 /* ── Root App ───────────────────────────────────────────── */
 export default function App() {
   const [authed, setAuthed] = useState(null)
-  const [splashDone, setSplashDone] = useState(false)
-
-  // Splash is brand-only, short (1.8s total: fade out at 1.3s, unmount at 1.8s)
-  useEffect(() => {
-    const t = setTimeout(() => setSplashDone(true), 1800)
-    return () => clearTimeout(t)
-  }, [])
 
   useEffect(() => {
     const id = axios.interceptors.response.use(
@@ -159,15 +137,13 @@ export default function App() {
 
   return (
     <>
-      {!splashDone && <SplashScreen />}
-      {/* Simple spinner while auth resolves after splash (rarely visible) */}
-      {authed === null && splashDone && (
+      {authed === null && (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d1f3c' }}>
           <div className="auth-spinner" />
         </div>
       )}
-      {authed === false && splashDone && <LoginScreen api={API} />}
-      {authed === true && splashDone && <Dashboard api={API} onLogout={handleLogout} />}
+      {authed === false && <LoginScreen api={API} />}
+      {authed === true && <Dashboard api={API} onLogout={handleLogout} />}
     </>
   )
 }

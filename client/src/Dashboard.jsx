@@ -751,9 +751,23 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
     // 'idle' | 'loading' | 'done' | 'unavailable'
     const [savantStatus, setSavantStatus] = useState('idle')
     const touchStartRef = useRef(null)
+    const swipeDraggingRef = useRef(false)
+    const [swipeOffset, setSwipeOffset] = useState(0)
 
     const handleTouchStart = useCallback((e) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        swipeDraggingRef.current = false
+    }, [])
+
+    const handleTouchMove = useCallback((e) => {
+        if (!touchStartRef.current) return
+        const dx = e.touches[0].clientX - touchStartRef.current.x
+        const dy = Math.abs(e.touches[0].clientY - touchStartRef.current.y)
+        // Only track horizontal-dominant rightward drags
+        if (dx > 0 && dx > dy) {
+            swipeDraggingRef.current = true
+            setSwipeOffset(dx)
+        }
     }, [])
 
     const handleTouchEnd = useCallback((e) => {
@@ -761,8 +775,14 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
         const dx = e.changedTouches[0].clientX - touchStartRef.current.x
         const dy = Math.abs(e.changedTouches[0].clientY - touchStartRef.current.y)
         touchStartRef.current = null
-        // Swipe right 80px+ with horizontal motion dominant → close panel
-        if (dx >= 80 && dx > dy * 1.5) onClose()
+        swipeDraggingRef.current = false
+        // Swipe right 80px+ with horizontal motion dominant → slide off then close
+        if (dx >= 80 && dx > dy * 1.5) {
+            setSwipeOffset(window.innerWidth)
+            setTimeout(onClose, 280)
+        } else {
+            setSwipeOffset(0)
+        }
     }, [onClose])
 
     useEffect(() => {
@@ -862,7 +882,9 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                 boxShadow: '-8px 0 32px rgba(0,0,0,0.25)',
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
                 borderRadius: 0,
-            }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+                transform: `translateX(${swipeOffset}px)`,
+                transition: swipeDraggingRef.current ? 'none' : 'transform 0.28s cubic-bezier(0.32,0,0.67,0)',
+            }} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
                 {(() => {
                     const isOhtani = detail?.mlbamId === 660271 || detail?.name === 'Shohei Ohtani';
                     const headerBg = isOhtani
