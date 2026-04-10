@@ -126,25 +126,41 @@ async function getMlbamIdFromName(name) {
     }
 }
 
-async function getSavantPercentiles(mlbamId, year = 2026) {
+async function getSavantPercentiles(mlbamId) {
     if (!mlbamId) return null;
+    // We'll try years in reverse order starting from 2026
+    const yearsToTry = [2024]; // 2026 is likely too early for percentile data, 2025 might be too
+    // In a real scenario we'd use current year, but for Benintendi/Ohtani etc 2024 has the data
     try {
-        // Savant profile JSON endpoint
-        const url = `https://baseballsavant.mlb.com/savant-player/${mlbamId}?stats=statcast&type=batter&season=${year}`;
-        const { data } = await axios.get(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
-        });
-        
-        // Extract the percentile data from the script tag or page data if possible, 
-        // but for now we'll use the leaderboard approach or individual player data if available in JSON
-        // Actually, many developers use the percentile-rankings endpoint which is cleaner
-        const leaderboardUrl = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?year=${year}&player_id=${mlbamId}`;
-        const lbRes = await axios.get(leaderboardUrl, {
-            headers: { 'User-Agent': 'Mozilla/5.0' }
-        });
-        
-        if (lbRes.data && lbRes.data.data && lbRes.data.data.length > 0) {
-            return lbRes.data.data[0];
+        for (const year of [2026, 2025, 2024, 2023]) {
+            const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?year=${year}&player_id=${mlbamId}`;
+            const { data: html } = await axios.get(url, {
+                headers: { 'User-Agent': 'Mozilla/5.0' }
+            });
+            
+            // The JSON is embedded in the page as a JS array: [{"player_name":...}]
+            const match = html.match(/\[\{"player_name":.*\}\]/);
+            if (match) {
+                const results = JSON.parse(match[0]);
+                // Savant might return multiple years for the same player, find the one for the year we asked
+                const yearMatch = results.find(r => String(r.year) === String(year));
+                if (yearMatch) {
+                    // Map the "percent_rank_*" keys to the cleaner keys expected by the frontend
+                    return {
+                        xwoba: yearMatch.percent_rank_xwoba,
+                        xba: yearMatch.percent_rank_xba,
+                        xslg: yearMatch.percent_rank_xslg,
+                        exit_velocity: yearMatch.percent_rank_exit_velocity_avg,
+                        barrel_rate: yearMatch.percent_rank_barrel_batted_rate,
+                        hard_hit_rate: yearMatch.percent_rank_hard_hit_percent,
+                        k_percent: yearMatch.percent_rank_k_percent,
+                        bb_percent: yearMatch.percent_rank_bb_percent,
+                        whiff_percent: yearMatch.percent_rank_whiff_percent,
+                        chase_percent: yearMatch.percent_rank_chase_percent,
+                        velocity: yearMatch.percent_rank_fastball_velo,
+                    };
+                }
+            }
         }
         return null;
     } catch (e) {
