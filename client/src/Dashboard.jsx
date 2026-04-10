@@ -479,6 +479,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     
     // Only show the body if we are loading live data, or we actually have roster players to display.
     const showBody = loading || hasRosterPlayers
+    const myExpectedCount = isRosterGame ? rosterPlayers.filter(rp => rp.proTeam === game.awayTeam || rp.proTeam === game.homeTeam).length : 0
 
     return (
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
@@ -495,8 +496,15 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
         }}>
             <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, background: headerBg }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-                    <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(219,231,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
-                        MLB Today
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(219,231,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
+                            MLB Today
+                        </div>
+                        {myExpectedCount > 0 && (
+                            <span style={{ fontSize: 9, fontWeight: 800, color: '#bfdbfe', background: 'rgba(37,99,235,0.15)', padding: '2px 6px', borderRadius: 999, border: '1px solid rgba(37,99,235,0.25)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                {myExpectedCount} Player{myExpectedCount !== 1 ? 's' : ''}
+                            </span>
+                        )}
                     </div>
                     <GameStatusBadge game={game} />
                 </div>
@@ -2383,20 +2391,28 @@ export default function Dashboard({ api }) {
                                         {lg.matchup ? `${matchupTone} this week` : 'Season format'}
                                     </span>
                                 </div>
-                                <div style={{ display: 'grid', gap: 8 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.gray100}` }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, paddingRight: 6 }}>
-                                            <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, minWidth: 0, lineHeight: 1.15, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>My Team</span>
+                                {lg.matchup ? (
+                                    <div style={{ display: 'grid', gap: 8 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.gray100}` }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, paddingRight: 6 }}>
+                                                <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, minWidth: 0, lineHeight: 1.15, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>My Team</span>
+                                            </div>
+                                            <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: (isWinning || !isLosing) ? C.navy : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{myDisplayScore ?? '—'}</span>
                                         </div>
-                                        <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: (isWinning || (!isLosing && lg.matchup) || !lg.matchup) ? C.navy : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{myDisplayScore ?? '—'}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.gray100}` }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, paddingRight: 6 }}>
-                                            <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, minWidth: 0, lineHeight: 1.15, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{matchupLabel}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.gray100}` }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, paddingRight: 6 }}>
+                                                <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, minWidth: 0, lineHeight: 1.15, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{matchupLabel}</span>
+                                            </div>
+                                            <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing ? C.navy : oppDisplayScore == null ? 'transparent' : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{oppDisplayScore ?? '—'}</span>
                                         </div>
-                                        <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing && lg.matchup ? C.navy : oppDisplayScore == null ? 'transparent' : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{oppDisplayScore ?? '—'}</span>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 0', borderTop: `1px solid ${C.gray100}` }}>
+                                        <span style={{ fontSize: Math.min(scoreFontSize + 12, 42), fontWeight: 900, color: C.navy, lineHeight: 0.82, letterSpacing: '-0.04em' }}>
+                                            {myDisplayScore ?? '—'}
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                             <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: 6, background: '#f8fafc', flex: 1, justifyContent: 'center' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#ffffff', borderRadius: 12, border: `1px solid ${C.gray100}` }}>
