@@ -754,6 +754,13 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
     const swipeDraggingRef = useRef(false)
     const [swipeOffset, setSwipeOffset] = useState(0)
 
+    // Prevent the background page from scrolling while the panel is open
+    useEffect(() => {
+        const prev = document.body.style.overflow
+        document.body.style.overflow = 'hidden'
+        return () => { document.body.style.overflow = prev }
+    }, [])
+
     const handleTouchStart = useCallback((e) => {
         touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
         swipeDraggingRef.current = false
@@ -875,13 +882,13 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
     return (
         <>
             <div className="player-panel-backdrop" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(8,15,27,0.45)', zIndex: 40, backdropFilter: 'blur(6px)' }} />
-            <div className="player-panel surface-card surface-card--strong" style={{
+            <div className="player-panel" style={{
                 position: 'fixed', right: 0, top: 0, bottom: 0,
                 width: 'min(400px, 100vw)',
                 background: '#f8fafc', zIndex: 50,
                 boxShadow: '-8px 0 32px rgba(0,0,0,0.25)',
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                borderRadius: 0,
+                borderRadius: 0, border: 'none',
                 transform: `translateX(${swipeOffset}px)`,
                 transition: swipeDraggingRef.current ? 'none' : 'transform 0.28s cubic-bezier(0.32,0,0.67,0)',
             }} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
@@ -962,7 +969,7 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                 ) : !detail ? (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.gray400 }}>Failed to load</div>
                 ) : (
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', WebkitOverflowScrolling: 'touch' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
                         {detail.injuryStatus && (
                             <div style={{ background: C.redLight, border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px', marginBottom: 20 }}>
                                 <div style={{ fontSize: 11, fontWeight: 800, color: C.red, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{detail.injuryStatus}</div>
