@@ -1008,7 +1008,10 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
 router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
     try {
         const { playerId } = req.params;
-        const data = await espnGet({ view: 'kona_playercard', scoringPeriodId: 0, playerId });
+        // Use mRoster — same view as the dashboard, guaranteed to return
+        // teams[].roster.entries structure. kona_playercard returns players[]
+        // which the old lookup code didn't handle, causing silent 404s.
+        const data = await espnGet({ view: 'mRoster', forTeamId: 7 });
         const myTeam = data.teams?.find(t => t.id === 7);
         const entry = myTeam?.roster?.entries?.find(e => String(e.playerId) === String(playerId));
         const player = entry?.playerPoolEntry?.player;
