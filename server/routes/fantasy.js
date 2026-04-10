@@ -868,23 +868,11 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
         Object.values(stats).forEach(s => { if (s?.stat) statMap[s.stat.stat_id] = s.stat.value; });
         const percentOwned = percentData.fantasy_content.player[1]?.percent_owned?.[1]?.value || '0';
         
-        // Statcast integration
+        // MLBAM lookup only — Savant percentiles are fetched separately by the client
+        // via /api/savant/:mlbamId so they don't block this response.
         const mlbamId = await getMlbamIdFromName(meta.name?.full);
-        const isTwoWay = mlbamId && TWO_WAY_MLBAM_IDS.has(Number(mlbamId));
-        let savantData = null, savantDataHitter = null, savantDataPitcher = null;
-        if (mlbamId) {
-            if (isTwoWay) {
-                [savantDataHitter, savantDataPitcher] = await Promise.all([
-                    getSavantPercentiles(mlbamId, 'batter'),
-                    getSavantPercentiles(mlbamId, 'pitcher'),
-                ]);
-                // For backwards compat, default savantData to hitting side for two-way players
-                savantData = savantDataHitter;
-            } else {
-                const posType = isPitcherPosition(meta.display_position) ? 'pitcher' : 'batter';
-                savantData = await getSavantPercentiles(mlbamId, posType);
-            }
-        }
+        const isTwoWay = !!(mlbamId && TWO_WAY_MLBAM_IDS.has(Number(mlbamId)));
+        const isPitcher = isPitcherPosition(meta.display_position);
 
         // MLB CDN headshot — universally available for all active players
         const mlbPhotoUrl = mlbamId ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/${mlbamId}/headshot/67/current` : null;
@@ -896,9 +884,7 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
             injuryNote: meta.status_full || null, isUndroppable: meta.is_undroppable == 1,
             percentOwned: parseFloat(percentOwned).toFixed(0), stats: statMap,
             imageUrl: mlbPhotoUrl || meta.headshot?.url || null,
-            mlbamId,
-            savantData,
-            ...(isTwoWay && { savantDataHitter, savantDataPitcher, isTwoWay: true }),
+            mlbamId, isTwoWay, isPitcher,
         });
     } catch (err) {
         console.error(err.response?.data || err.message);
@@ -994,23 +980,11 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
         const entry = myTeam?.roster?.entries?.find(e => String(e.playerId) === String(playerId));
         const player = entry?.playerPoolEntry?.player;
         if (!player) return res.status(404).json({ error: 'Player not found' });
-        // Resolve the real MLBAM ID from the player's name — ESPN IDs are NOT the same as MLBAM IDs
+        // Resolve MLBAM ID — Savant data is fetched separately by the client
         const mlbamId = await getMlbamIdFromName(player.fullName);
         const position = ESPN_POS_MAP[player.defaultPositionId] || '';
-        const isTwoWay = mlbamId && TWO_WAY_MLBAM_IDS.has(Number(mlbamId));
-        let savantData = null, savantDataHitter = null, savantDataPitcher = null;
-        if (mlbamId) {
-            if (isTwoWay) {
-                [savantDataHitter, savantDataPitcher] = await Promise.all([
-                    getSavantPercentiles(mlbamId, 'batter'),
-                    getSavantPercentiles(mlbamId, 'pitcher'),
-                ]);
-                savantData = savantDataHitter;
-            } else {
-                const posType = isPitcherPosition(position) ? 'pitcher' : 'batter';
-                savantData = await getSavantPercentiles(mlbamId, posType);
-            }
-        }
+        const isTwoWay = !!(mlbamId && TWO_WAY_MLBAM_IDS.has(Number(mlbamId)));
+        const isPitcher = isPitcherPosition(position);
         // ESPN CDN always works for ESPN player IDs — use as primary; send MLB CDN as fallback
         const imageUrl = `https://a.espncdn.com/i/headshots/mlb/players/full/${playerId}.png`;
         const imageUrlFallback = mlbamId
@@ -1027,12 +1001,8 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
             isUndroppable: !entry?.playerPoolEntry?.droppable,
             percentOwned: (player.ownership?.percentOwned ?? 0).toFixed(0),
             stats: parseEspnStats(player),
-            imageUrl,
-            imageUrlFallback,
-            source: 'espn',
-            mlbamId,
-            savantData,
-            ...(isTwoWay && { savantDataHitter, savantDataPitcher, isTwoWay: true }),
+            imageUrl, imageUrlFallback, source: 'espn',
+            mlbamId, isTwoWay, isPitcher,
         });
     } catch (err) {
         console.error('ESPN player detail error:', err.response?.data || err.message);
@@ -1705,6 +1675,20 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 });
 
 
+
+// Standalone Savant percentile endpoint — called by the client after player detail loads.
+// No auth required. Keeps Savant fetch out of the main player route so it never blocks.
+// GET /api/savant/660271?type=batter
+router.get('/savant/:mlbamId', async (req, res) => {
+    const { mlbamId } = req.params;
+    const type = req.query.type || 'batter';
+    try {
+        const result = await getSavantPercentiles(mlbamId, type);
+        return res.json({ mlbamId, type, result });
+    } catch (e) {
+        return res.json({ mlbamId, type, result: null, error: e.message });
+    }
+});
 
 // Tests the full getSavantPercentiles pipeline for a given MLBAM ID.
 // GET /api/savant-debug/660271?type=batter

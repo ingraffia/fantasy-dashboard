@@ -745,6 +745,9 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
     const [imgLoaded, setImgLoaded] = useState(false)
     const [imgFailed, setImgFailed] = useState(false)
     const [imgSrc, setImgSrc] = useState(null)
+    const [savantData, setSavantData] = useState(null)
+    const [savantDataHitter, setSavantDataHitter] = useState(null)
+    const [savantDataPitcher, setSavantDataPitcher] = useState(null)
     const touchStartRef = useRef(null)
 
     const handleTouchStart = useCallback((e) => {
@@ -786,6 +789,28 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
             .then(r => { setDetail(r.data); setImgSrc(r.data.imageUrl || null); setLoading(false) })
             .catch(() => setLoading(false))
     }, [playerKey, api])
+
+    // Fetch Savant percentiles separately so they never block the player detail response.
+    useEffect(() => {
+        setSavantData(null)
+        setSavantDataHitter(null)
+        setSavantDataPitcher(null)
+        if (!detail?.mlbamId) return
+        if (detail.isTwoWay) {
+            Promise.all([
+                axios.get(`${api}/api/savant/${detail.mlbamId}?type=batter`),
+                axios.get(`${api}/api/savant/${detail.mlbamId}?type=pitcher`),
+            ]).then(([b, p]) => {
+                setSavantDataHitter(b.data.result || null)
+                setSavantDataPitcher(p.data.result || null)
+            }).catch(() => {})
+        } else {
+            const type = detail.isPitcher ? 'pitcher' : 'batter'
+            axios.get(`${api}/api/savant/${detail.mlbamId}?type=${type}`)
+                .then(r => setSavantData(r.data.result || null))
+                .catch(() => {})
+        }
+    }, [detail?.mlbamId, detail?.isTwoWay, detail?.isPitcher, api])
 
     const isEspn = playerKey.startsWith('espn.')
     const statDefs = detail ? (isPitcher(detail.position) ? PITCHER_STATS : HITTER_STATS) : []
@@ -949,11 +974,11 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
 
                         {detail.isTwoWay ? (
                             <>
-                                {detail.savantDataHitter && <StatcastSection data={detail.savantDataHitter} position="OF" forceTitle="hitter" />}
-                                {detail.savantDataPitcher && <StatcastSection data={detail.savantDataPitcher} position="SP" forceTitle="pitcher" />}
+                                {savantDataHitter && <StatcastSection data={savantDataHitter} position="OF" forceTitle="hitter" />}
+                                {savantDataPitcher && <StatcastSection data={savantDataPitcher} position="SP" forceTitle="pitcher" />}
                             </>
-                        ) : detail.savantData && (
-                            <StatcastSection data={detail.savantData} position={detail.position} />
+                        ) : savantData && (
+                            <StatcastSection data={savantData} position={detail.position} />
                         )}
 
                         <div style={{ marginBottom: 24 }}>
