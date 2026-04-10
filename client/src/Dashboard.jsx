@@ -787,9 +787,6 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
         if (url.includes('yimg.com')) {
             return url.replace(/w=\d+/g, 'w=140').replace(/h=\d+/g, 'h=180');
         }
-        if (url.includes('espncdn.com')) {
-            return url.replace('/full/', '/600/');
-        }
         return url;
     };
 

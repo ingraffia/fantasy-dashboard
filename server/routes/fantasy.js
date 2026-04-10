@@ -193,40 +193,36 @@ function mapSavantFields(row) {
     };
 }
 
-function parseSavantPercentiles(html, year) {
-    // Baseball Savant embeds percentile data as a JS array in the page.
-    // The array always starts with [{"player_name": and ends with }]
-    // We try two patterns: non-greedy (stops at first }]) then greedy fallback.
-    const patterns = [
-        /\[\s*\{"player_name":[\s\S]*?\}\s*\]/,
-        /\[\s*\{"player_name":[\s\S]*\}\s*\]/,
-    ];
-    for (const re of patterns) {
-        const m = html.match(re);
-        if (!m) continue;
-        try {
-            const results = JSON.parse(m[0]);
-            const arr = Array.isArray(results) ? results : [results];
-            // Prefer exact year match; fall back to whatever row is present
-            const row = arr.find(r => String(r.year) === String(year)) ?? arr[0];
-            if (!row || row.percent_rank_xwoba == null) continue;
-            return mapSavantFields(row);
-        } catch { /* try next pattern */ }
+function parseSavantPercentiles(html, mlbamId) {
+    // Baseball Savant embeds the full leaderboard as "var data = [...]" in the page.
+    // This matches pybaseball's approach for extracting Statcast percentile rankings.
+    // When player_id is passed in the URL, Savant still embeds the full dataset but
+    // we filter client-side by player_id.
+    const m = html.match(/var\s+data\s*=\s*(\[[\s\S]*?\])\s*;/);
+    if (!m) return null;
+    try {
+        const arr = JSON.parse(m[1]);
+        if (!Array.isArray(arr) || arr.length === 0) return null;
+        const row = arr.find(r => String(r.player_id) === String(mlbamId));
+        if (!row || row.percent_rank_xwoba == null) return null;
+        return mapSavantFields(row);
+    } catch {
+        return null;
     }
-    return null;
 }
 
-async function getSavantPercentiles(mlbamId, type = 'hitter') {
+async function getSavantPercentiles(mlbamId, type = 'batter') {
     if (!mlbamId) return null;
-    // Each year is tried independently — a 404/timeout on one year must not abort the rest
+    // Each year is tried independently — a 404/timeout on one year must not abort the rest.
+    // Note: Baseball Savant uses type=batter (not hitter) and type=pitcher.
     for (const year of [2025, 2024, 2023, 2022]) {
         try {
             const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=min`;
             const { data: html } = await axios.get(url, {
                 headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-                timeout: 10000,
+                timeout: 15000,
             });
-            const result = parseSavantPercentiles(html, year);
+            const result = parseSavantPercentiles(html, mlbamId);
             if (result) return result;
         } catch (e) {
             console.warn(`Savant fetch failed for ${mlbamId} (${type}, ${year}):`, e.message);
@@ -841,13 +837,13 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
         if (mlbamId) {
             if (isTwoWay) {
                 [savantDataHitter, savantDataPitcher] = await Promise.all([
-                    getSavantPercentiles(mlbamId, 'hitter'),
+                    getSavantPercentiles(mlbamId, 'batter'),
                     getSavantPercentiles(mlbamId, 'pitcher'),
                 ]);
                 // For backwards compat, default savantData to hitting side for two-way players
                 savantData = savantDataHitter;
             } else {
-                const posType = isPitcherPosition(meta.display_position) ? 'pitcher' : 'hitter';
+                const posType = isPitcherPosition(meta.display_position) ? 'pitcher' : 'batter';
                 savantData = await getSavantPercentiles(mlbamId, posType);
             }
         }
@@ -968,12 +964,12 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
         if (mlbamId) {
             if (isTwoWay) {
                 [savantDataHitter, savantDataPitcher] = await Promise.all([
-                    getSavantPercentiles(mlbamId, 'hitter'),
+                    getSavantPercentiles(mlbamId, 'batter'),
                     getSavantPercentiles(mlbamId, 'pitcher'),
                 ]);
                 savantData = savantDataHitter;
             } else {
-                const posType = isPitcherPosition(position) ? 'pitcher' : 'hitter';
+                const posType = isPitcherPosition(position) ? 'pitcher' : 'batter';
                 savantData = await getSavantPercentiles(mlbamId, posType);
             }
         }
@@ -1671,5 +1667,40 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 });
 
 
+
+// Debug endpoint: exposes what Baseball Savant actually returns for a given MLBAM ID.
+// Usage: GET /api/savant-debug/660271?type=batter&year=2025
+// Does NOT require auth — useful for diagnosing on Railway.
+router.get('/savant-debug/:mlbamId', async (req, res) => {
+    const { mlbamId } = req.params;
+    const type = req.query.type || 'batter';
+    const year = req.query.year || '2025';
+    try {
+        const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=min`;
+        const { data: html } = await axios.get(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+            timeout: 15000,
+        });
+        const m = html.match(/var\s+data\s*=\s*(\[[\s\S]*?\])\s*;/);
+        if (!m) {
+            return res.json({ error: 'var data not found in page', htmlLength: html.length, snippet: html.substring(0, 1000) });
+        }
+        try {
+            const arr = JSON.parse(m[1]);
+            const row = Array.isArray(arr) ? arr.find(r => String(r.player_id) === String(mlbamId)) : null;
+            return res.json({
+                found: !!row,
+                totalRows: Array.isArray(arr) ? arr.length : 0,
+                row: row || null,
+                sampleRow: Array.isArray(arr) ? arr[0] : null,
+                keys: Array.isArray(arr) && arr[0] ? Object.keys(arr[0]) : [],
+            });
+        } catch (e) {
+            return res.json({ error: 'JSON parse failed', message: e.message, rawSlice: m[1].substring(0, 500) });
+        }
+    } catch (e) {
+        return res.json({ error: e.message, code: e.code, stack: e.stack });
+    }
+});
 
 module.exports = router;
