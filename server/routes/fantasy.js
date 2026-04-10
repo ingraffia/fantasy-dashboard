@@ -184,10 +184,11 @@ const savantPlayerCache = {};
 const SAVANT_PLAYER_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 // Parse a CSV string into objects.  Strips \r so CRLF line endings work correctly.
+// Headers are lower-cased so field lookups are case-insensitive.
 function parseCsvRows(csv) {
     const lines = csv.replace(/\r/g, '').trim().split('\n');
     if (lines.length < 2) return [];
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').toLowerCase());
     return lines.slice(1).map(line => {
         const values = [];
         let cur = '', inQ = false;
@@ -232,19 +233,44 @@ async function getSavantPercentiles(mlbamId, type = 'batter') {
 
     const fetchCsv = async (year, min) => {
         const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=${min}&csv=true`;
-        const { data: csv } = await axios.get(url, {
+        const { data: csv, headers: respHeaders } = await axios.get(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/csv, text/plain, */*',
             },
             timeout: 15000,
         });
-        const rows = parseCsvRows(String(csv));
-        if (rows.length === 0) return null;
+        const rawText = String(csv);
+        const contentType = respHeaders['content-type'] || '';
+        // Detect HTML response (rate limit page, CAPTCHA, redirect, etc.)
+        if (rawText.trimStart().startsWith('<') || contentType.includes('text/html')) {
+            console.error(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): Got HTML instead of CSV — likely blocked/rate-limited. Content-Type: ${contentType}. First 120 chars: ${rawText.slice(0, 120)}`);
+            return null;
+        }
+        const rows = parseCsvRows(rawText);
+        if (rows.length === 0) {
+            console.warn(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): CSV empty (0 data rows). First line: ${rawText.split('\n')[0]?.slice(0, 120)}`);
+            return null;
+        }
+        // Log CSV headers once per request (helps spot field-name changes)
+        const firstRow = rows[0];
+        const csvCols = Object.keys(firstRow);
+        if (!csvCols.includes('player_id')) {
+            console.error(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): CSV has no player_id column. Columns: ${csvCols.slice(0, 15).join(', ')}`);
+            return null;
+        }
         const row = rows.find(r => String(r.player_id) === String(mlbamId))
             ?? (rows.length === 1 ? rows[0] : null);
-        if (!row) return null;
+        if (!row) {
+            // Log sample IDs so we can see if our mlbamId is in the right format
+            const sampleIds = rows.slice(0, 5).map(r => r.player_id);
+            console.warn(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): player not found among ${rows.length} rows. Sample player_ids: [${sampleIds.join(', ')}]`);
+            return null;
+        }
         const mapped = mapSavantFields(row);
+        if (mapped.xwoba == null) {
+            console.warn(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): row found but xwoba is null. Row keys: ${Object.keys(row).slice(0, 15).join(', ')}. xwoba raw: "${row.xwoba}"`);
+        }
         return mapped.xwoba != null ? mapped : null;
     };
 
