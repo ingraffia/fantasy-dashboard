@@ -2467,7 +2467,7 @@ export default function Dashboard({ api }) {
             {isMobile && (
                 <div style={{
                     position: 'fixed',
-                    top: 10,
+                    top: 'calc(env(safe-area-inset-top) + 12px)',
                     left: '50%',
                     transform: `translateX(-50%) translateY(${pullState.active || pullState.refreshing ? 0 : -18}px)`,
                     opacity: pullState.active || pullState.refreshing ? 1 : 0,

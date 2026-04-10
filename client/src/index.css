@@ -160,10 +160,17 @@ body {
   box-shadow: 0 6px 28px rgba(15,23,42,0.05);
 }
 
-/* Hero header — layout/safe-area only; visual background lives in .topbar-hero-bg */
+/* Hero header — layout/safe-area only; visual background lives in .topbar-hero-bg.
+   Explicitly clear the base .dashboard-topbar frosted-white styles so they
+   don't bleed through when .topbar-hero-bg fades to transparent on scroll. */
 .dashboard-topbar--hero {
   padding-top: env(safe-area-inset-top);
   overflow: hidden;
+  background: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom: none !important;
+  box-shadow: none !important;
 }
 
 /* Animatable background layer inside the hero header.
