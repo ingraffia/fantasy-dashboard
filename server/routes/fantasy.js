@@ -956,6 +956,25 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
         const entry = myTeam?.roster?.entries?.find(e => String(e.playerId) === String(playerId));
         const player = entry?.playerPoolEntry?.player;
         if (!player) return res.status(404).json({ error: 'Player not found' });
+        // Resolve the real MLBAM ID from the player's name — ESPN IDs are NOT the same as MLBAM IDs
+        const mlbamId = await getMlbamIdFromName(player.fullName);
+        const isTwoWay = mlbamId && TWO_WAY_MLBAM_IDS.has(Number(mlbamId));
+        let savantData = null, savantDataHitter = null, savantDataPitcher = null;
+        if (mlbamId) {
+            if (isTwoWay) {
+                [savantDataHitter, savantDataPitcher] = await Promise.all([
+                    getSavantPercentiles(mlbamId, 'hitter'),
+                    getSavantPercentiles(mlbamId, 'pitcher'),
+                ]);
+                savantData = savantDataHitter;
+            } else {
+                savantData = await getSavantPercentiles(mlbamId);
+            }
+        }
+        // Prefer MLB CDN headshot (using real MLBAM ID); fall back to ESPN CDN
+        const imageUrl = mlbamId
+            ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/${mlbamId}/headshot/67/current`
+            : `https://a.espncdn.com/i/headshots/mlb/players/full/${playerId}.png`;
         res.json({
             playerKey: `espn.p.${playerId}`, name: player.fullName,
             position: ESPN_POS_MAP[player.defaultPositionId] || '—',
@@ -967,10 +986,11 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
             isUndroppable: !entry?.playerPoolEntry?.droppable,
             percentOwned: (player.ownership?.percentOwned ?? 0).toFixed(0),
             stats: parseEspnStats(player),
-            imageUrl: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/${playerId}/headshot/67/current`,
+            imageUrl,
             source: 'espn',
-            mlbamId: playerId, // ESPN IDs usually match MLBAM IDs, or are very close
-            savantData: await getSavantPercentiles(playerId)
+            mlbamId,
+            savantData,
+            ...(isTwoWay && { savantDataHitter, savantDataPitcher, isTwoWay: true }),
         });
     } catch (err) {
         console.error('ESPN player detail error:', err.response?.data || err.message);
