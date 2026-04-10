@@ -765,7 +765,18 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
     }))
     const overallRank = ranksByLeague.find(r => r.overallRank)?.overallRank
 
-    const imageSrc = detail?.imageUrl || (isEspn ? `https://a.espncdn.com/i/headshots/mlb/players/full/${playerKey.replace('espn.p.', '')}.png` : '')
+    const getHighResUrl = (url) => {
+        if (!url) return url;
+        if (url.includes('yimg.com')) {
+            return url.replace(/w=\d+/g, 'w=140').replace(/h=\d+/g, 'h=180');
+        }
+        if (url.includes('espncdn.com')) {
+            return url.replace('/full/', '/600/');
+        }
+        return url;
+    };
+
+    const imageSrc = getHighResUrl(detail?.imageUrl || (isEspn ? `https://a.espncdn.com/i/headshots/mlb/players/full/${playerKey.replace('espn.p.', '')}.png` : ''));
 
     const SectionTitle = ({ children }) => (
         <div style={{ fontSize: 11, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>{children}</div>
