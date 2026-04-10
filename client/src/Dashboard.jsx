@@ -327,26 +327,22 @@ function GameStatusBadge({ game }) {
         const half = game.inningHalf === 'Top' ? '▲' : '▼'
         const inningStr = game.inning ? `${half}${game.inning}` : 'LIVE'
         return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, color: '#14532d', background: '#dcfce7', padding: '5px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, flexShrink: 0, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 9, fontWeight: 800, color: '#f0c434', background: 'rgba(240,196,52,0.12)', border: '1px solid rgba(240,196,52,0.35)', padding: '3px 8px', whiteSpace: 'nowrap', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#f0c434', flexShrink: 0, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
                 {inningStr} · {game.outs ?? 0} out{game.outs === 1 ? '' : 's'}
             </span>
         )
     }
-    if (game.isPostponed) {
-        return (
-            <span style={{ fontSize: 10, fontWeight: 800, color: '#92400e', background: '#fef3c7', padding: '5px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
-                Postponed
-            </span>
-        )
-    }
+    if (game.isPostponed) return (
+        <span style={{ fontSize: 9, fontWeight: 800, color: '#c9971a', background: 'rgba(201,151,26,0.12)', border: '1px solid rgba(201,151,26,0.3)', padding: '3px 8px', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>PPD</span>
+    )
     if (game.isFinal) return (
-        <span style={{ fontSize: 10, fontWeight: 800, color: C.gray600, background: '#e2e8f0', padding: '5px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>Final</span>
+        <span style={{ fontSize: 9, fontWeight: 800, color: '#7faa5c', background: 'rgba(127,170,92,0.1)', border: '1px solid rgba(127,170,92,0.28)', padding: '3px 8px', letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>FINAL</span>
     )
     const timeStr = game.startTime
         ? new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
         : '—'
-    return <span style={{ fontSize: 10, color: '#dbe7ff', fontWeight: 800, whiteSpace: 'nowrap', background: 'rgba(255,255,255,0.08)', padding: '5px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.12)', letterSpacing: '0.02em' }}>{timeStr}</span>
+    return <span style={{ fontSize: 9, fontWeight: 700, color: '#7faa5c', border: '1px solid rgba(127,170,92,0.28)', padding: '3px 8px', letterSpacing: '0.06em', background: 'transparent', whiteSpace: 'nowrap' }}>{timeStr}</span>
 }
 
 function CompactGamePill({ game }) {
@@ -375,28 +371,28 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
     const statLine = isPitcherPos ? formatPitcherLine(bsPlayer.pitching) : formatHitterLine(bsPlayer.batting)
     const isActive = bsPlayer.status === 'batting' || bsPlayer.status === 'pitching'
 
-    let perfColor = C.gray800
+    // Wrigley scoreboard: cream default, chalk-green for good, red for bad
+    let perfColor = '#f0e6c8'
     if (isPitcherPos && bsPlayer.pitching) {
         const er = bsPlayer.pitching.er; const ip = parseFloat(bsPlayer.pitching.ip)
-        if (ip >= 6 && er <= 1) perfColor = C.green
-        else if (er >= 4) perfColor = C.red
+        if (ip >= 6 && er <= 1) perfColor = '#7faa5c'
+        else if (er >= 4) perfColor = '#d04444'
     } else if (bsPlayer.batting) {
         const { h, ab, hr, rbi } = bsPlayer.batting
-        if (hr > 0 || rbi >= 2 || (ab >= 2 && h >= 2)) perfColor = C.green
-        else if (ab >= 3 && h === 0) perfColor = C.red
+        if (hr > 0 || rbi >= 2 || (ab >= 2 && h >= 2)) perfColor = '#7faa5c'
+        else if (ab >= 3 && h === 0) perfColor = '#d04444'
     }
 
     const imgUrl = imageMap[playerIdentityKey(bsPlayer)] || imageMap[normName(bsPlayer.name)] || null
 
     return (
         <div style={{
-            display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px',
-            background: isActive ? 'rgba(240,253,244,0.95)' : '#ffffff',
-            borderRadius: 12,
-            border: `1px solid ${isActive ? 'rgba(22,163,74,0.20)' : 'rgba(226,232,240,0.95)'}`,
-            minHeight: 54,
+            display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+            background: isActive ? 'rgba(240,196,52,0.07)' : 'rgba(255,255,255,0.03)',
+            borderLeft: `2px solid ${isActive ? '#f0c434' : 'transparent'}`,
+            marginBottom: 2,
         }}>
-            <PlayerAvatar imageUrl={imgUrl} name={bsPlayer.name} size={32} />
+            <PlayerAvatar imageUrl={imgUrl} name={bsPlayer.name} size={28} />
             <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button
@@ -405,8 +401,8 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
                         disabled={!rosterPlayer}
                         style={{
                             fontWeight: 700,
-                            fontSize: 13,
-                            color: C.gray800,
+                            fontSize: 12,
+                            color: '#f0e6c8',
                             background: 'transparent',
                             border: 'none',
                             padding: 0,
@@ -421,21 +417,36 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
                         {bsPlayer.name}
                     </button>
                     {isActive && (
-                        <span style={{ fontSize: 8, fontWeight: 800, color: C.green, background: C.greenLight, padding: '2px 5px', borderRadius: 999, flexShrink: 0, letterSpacing: '0.04em' }}>
+                        <span style={{ fontSize: 8, fontWeight: 800, color: '#f0c434', background: 'rgba(240,196,52,0.15)', padding: '1px 4px', flexShrink: 0, letterSpacing: '0.04em' }}>
                             {bsPlayer.status === 'batting' ? 'AB' : 'P'}
                         </span>
                     )}
                 </div>
-                <div style={{ fontSize: 10, color: C.gray400, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ fontSize: 9, color: '#7faa5c', marginTop: 1, display: 'flex', alignItems: 'center', gap: 5 }}>
                     <span>{bsPlayer.position}</span>
                     {rosterPlayer && <SlotPill slot={rosterPlayer.selectedPosition} />}
                 </div>
             </div>
-            <div style={{ fontSize: 12, fontWeight: 800, color: perfColor, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0, maxWidth: '42%', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.02em' }}>
+            <div style={{ fontSize: 11, fontWeight: 800, color: perfColor, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0, maxWidth: '42%', overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.01em', fontFamily: '"Courier New", Courier, monospace' }}>
                 {statLine || '—'}
             </div>
         </div>
     )
+}
+
+// Wrigley Field scoreboard color palette — used by BoxScoreCard and subcomponents
+const WG = {
+    cardBg: '#0a3d0c',
+    headerBg: '#061a07',
+    bodyBg: '#071408',
+    panelBg: '#080808',
+    border: '#1e6b22',
+    cream: '#f0e6c8',
+    chalk: '#7faa5c',
+    chalkDim: 'rgba(127,170,92,0.5)',
+    yellow: '#f0c434',
+    yellowBg: 'rgba(240,196,52,0.10)',
+    yellowBorder: 'rgba(240,196,52,0.3)',
 }
 
 function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, onOpenPlayer, pregameCompact = false, isRosterGame = false }) {
@@ -461,118 +472,133 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     const homeAhead = started && (game.homeScore ?? 0) > (game.awayScore ?? 0)
     const hasOverflow = withRoster.length > 3
     const visibleRoster = expanded ? withRoster : withRoster.slice(0, 3)
-    const compactCard = pregameCompact && !started
     const hasRosterPlayers = withRoster.length > 0
-    const headerPadding = '14px'
-    const scoreFontSize = compactCard ? 34 : 38
-    const bodyPadding = '12px'
-    const bodyMinHeight = 166
-    const cardWidth = 286
-    const cardBorder = game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : isRosterGame ? '#bfdbfe' : '#dbe7ff'
-    const cardShadow = isRosterGame ? '0 16px 36px rgba(37,99,235,0.12)' : '0 12px 28px rgba(15,23,42,0.08)'
-    const headerBg = game.isLive
-        ? 'linear-gradient(180deg, #0f3b2d 0%, #14532d 100%)'
-        : game.isPostponed
-            ? 'linear-gradient(180deg, #5b3b10 0%, #7c4a12 100%)'
-            : game.isFinal
-                ? 'linear-gradient(180deg, #1e293b 0%, #334155 100%)'
-                : 'linear-gradient(180deg, #0f2040 0%, #16324f 100%)'
-    
-    // Only show the body if we are loading live data, or we actually have roster players to display.
     const showBody = loading || hasRosterPlayers
     const myExpectedCount = isRosterGame ? rosterPlayers.filter(rp => rp.proTeam === game.awayTeam || rp.proTeam === game.homeTeam).length : 0
+    const cardWidth = 280
+    const rosterBorder = isRosterGame ? WG.yellow : WG.border
+    const scoreFontSize = (pregameCompact && !started) ? 32 : 36
+
+    const ScorePanel = ({ score, isAhead }) => (
+        <div style={{
+            background: WG.panelBg,
+            border: `1px solid ${WG.border}`,
+            width: 62,
+            padding: '5px 0',
+            textAlign: 'center',
+            flexShrink: 0,
+            boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.8), inset 0 -1px 2px rgba(255,255,255,0.03)',
+        }}>
+            <span style={{
+                fontSize: scoreFontSize,
+                fontWeight: 900,
+                color: isAhead ? WG.cream : 'rgba(240,230,200,0.25)',
+                fontFamily: '"Courier New", Courier, monospace',
+                lineHeight: 1,
+                display: 'block',
+                letterSpacing: '-0.02em',
+            }}>
+                {started ? (score ?? 0) : '–'}
+            </span>
+        </div>
+    )
 
     return (
-        <div className="surface-card surface-card--interactive animate-fade-up" style={{
-            background: C.white,
-            border: `1px solid ${cardBorder}`,
+        <div className="animate-fade-up" style={{
+            background: WG.cardBg,
+            border: `1px solid ${rosterBorder}`,
             borderRadius: 0,
-            overflow: 'hidden',
             width: cardWidth,
             minWidth: cardWidth,
             maxWidth: cardWidth,
             flexShrink: 0,
-            minHeight: showBody ? 312 : undefined,
-            boxShadow: cardShadow,
+            overflow: 'hidden',
+            boxShadow: isRosterGame
+                ? `0 0 0 1px ${WG.yellow}, 0 16px 36px rgba(0,0,0,0.55)`
+                : '0 12px 32px rgba(0,0,0,0.45)',
         }}>
-            <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, background: headerBg }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(219,231,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
-                            MLB Today
-                        </div>
-                        {myExpectedCount > 0 && (
-                            <span style={{ fontSize: 9, fontWeight: 800, color: '#bfdbfe', background: 'rgba(37,99,235,0.15)', padding: '2px 6px', borderRadius: 999, border: '1px solid rgba(37,99,235,0.25)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                {myExpectedCount} Player{myExpectedCount !== 1 ? 's' : ''}
-                            </span>
-                        )}
-                    </div>
-                    <GameStatusBadge game={game} />
+            {/* Narrow header strip — date + status */}
+            <div style={{
+                padding: '7px 12px',
+                background: WG.headerBg,
+                borderBottom: `1px solid ${WG.border}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {/* Vertical chalk stripe — echoes Wrigley's flag pole */}
+                    <div style={{ width: 3, height: 14, background: `linear-gradient(180deg, ${WG.chalk} 0%, rgba(127,170,92,0.3) 100%)`, flexShrink: 0 }} />
+                    <span style={{ fontSize: 9, fontWeight: 900, color: WG.chalk, textTransform: 'uppercase', letterSpacing: '0.14em' }}>MLB</span>
+                    {myExpectedCount > 0 && (
+                        <span style={{ fontSize: 8, fontWeight: 800, color: WG.yellow, background: WG.yellowBg, border: `1px solid ${WG.yellowBorder}`, padding: '2px 6px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                            {myExpectedCount} on roster
+                        </span>
+                    )}
                 </div>
-                <div style={{ display: 'grid', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                            <MlbLogo team={game.awayTeam} size={24} showText={false} badge={true} />
-                            <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.awayTeam}</span>
-                        </div>
-                        <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: awayAhead ? '#ffffff' : 'rgba(255,255,255,0.58)', lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right' }}>{started ? (game.awayScore ?? 0) : '—'}</span>
+                <GameStatusBadge game={game} />
+            </div>
+
+            {/* Score rows — the scoreboard panel */}
+            <div style={{ padding: '12px 12px 14px', background: WG.cardBg, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                        <MlbLogo team={game.awayTeam} size={20} showText={false} />
+                        <span style={{ fontSize: 13, fontWeight: 800, color: WG.cream, textTransform: 'uppercase', letterSpacing: '0.07em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.awayTeam}</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.10)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                            <MlbLogo team={game.homeTeam} size={24} showText={false} badge={true} />
-                            <span style={{ fontSize: 15, fontWeight: 800, color: '#ffffff', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.homeTeam}</span>
-                        </div>
-                        <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: homeAhead ? '#ffffff' : 'rgba(255,255,255,0.58)', lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right' }}>{started ? (game.homeScore ?? 0) : '—'}</span>
+                    <ScorePanel score={game.awayScore} isAhead={awayAhead} />
+                </div>
+
+                {/* Scoreboard horizontal rule */}
+                <div style={{ height: 1, background: WG.border, opacity: 0.7 }} />
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                        <MlbLogo team={game.homeTeam} size={20} showText={false} />
+                        <span style={{ fontSize: 13, fontWeight: 800, color: WG.cream, textTransform: 'uppercase', letterSpacing: '0.07em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.homeTeam}</span>
                     </div>
+                    <ScorePanel score={game.homeScore} isAhead={homeAhead} />
                 </div>
             </div>
+
+            {/* Body — player impact */}
             {showBody && (
-                <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: '#f8fafc', gap: hasRosterPlayers ? 8 : 0 }}>
+                <div style={{ padding: '10px 12px', background: WG.bodyBg, borderTop: `1px solid ${WG.border}` }}>
                     {hasRosterPlayers && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                            <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                                Player impact
-                            </div>
-                            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400 }}>
-                                {withRoster.length} tracked
-                            </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <span style={{ fontSize: 9, fontWeight: 800, color: WG.chalk, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Player Impact</span>
+                            <span style={{ fontSize: 9, color: WG.chalkDim, fontWeight: 700 }}>{withRoster.length} tracked</span>
                         </div>
                     )}
                     {loading ? (
-                        <div style={{ flex: 1, display: 'grid', placeItems: 'center', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading live stats...</div>
+                        <div style={{ display: 'grid', placeItems: 'center', padding: '18px 0', fontSize: 10, color: WG.chalk, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                            Loading live stats...
+                        </div>
                     ) : visibleRoster.map(({ bsPlayer, rosterPlayer }) => (
-                    <MyPlayerStatRow
-                        key={`${bsPlayer.name}-${bsPlayer.proTeam || bsPlayer.position || ''}`}
-                        bsPlayer={bsPlayer}
-                        rosterPlayer={rosterPlayer}
-                        imageMap={imageMap}
-                        onOpenPlayer={onOpenPlayer}
-                    />
-                ))}
-                {!loading && started && hasOverflow && (
-                    <button
-                        type="button"
-                        onClick={() => setExpanded(prev => !prev)}
-                        style={{
-                            marginTop: 6,
-                            padding: '8px 0 4px',
-                            border: 'none',
-                            background: 'transparent',
-                            color: C.gray400,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 6,
-                        }}
-                    >
-                        <span style={{ fontSize: 14, lineHeight: 1 }}>{expanded ? '↑' : '↓'}</span>
-                        <span>{expanded ? 'Show less' : `${withRoster.length - visibleRoster.length} more players`}</span>
-                    </button>
-                )}
-            </div>
+                        <MyPlayerStatRow
+                            key={`${bsPlayer.name}-${bsPlayer.proTeam || bsPlayer.position || ''}`}
+                            bsPlayer={bsPlayer}
+                            rosterPlayer={rosterPlayer}
+                            imageMap={imageMap}
+                            onOpenPlayer={onOpenPlayer}
+                        />
+                    ))}
+                    {!loading && started && hasOverflow && (
+                        <button
+                            type="button"
+                            onClick={() => setExpanded(prev => !prev)}
+                            style={{
+                                marginTop: 6, padding: '6px 0 2px',
+                                border: 'none', background: 'transparent',
+                                color: WG.chalk, fontSize: 10, fontWeight: 700,
+                                cursor: 'pointer', letterSpacing: '0.06em',
+                                display: 'inline-flex', alignItems: 'center',
+                                justifyContent: 'center', gap: 5, width: '100%',
+                            }}
+                        >
+                            <span>{expanded ? '↑' : '↓'}</span>
+                            <span>{expanded ? 'Show less' : `${withRoster.length - visibleRoster.length} more players`}</span>
+                        </button>
+                    )}
+                </div>
             )}
         </div>
     )
@@ -600,25 +626,34 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     })
 
     return (
-        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: 'rgba(255,255,255,0.92)', borderBottom: `1px solid ${C.gray100}`, paddingTop: 14, paddingBottom: 14, borderRadius: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 12 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    {new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
-                </span>
+        <div style={{ background: '#071a08', borderBottom: '2px solid #1e6b22', paddingTop: 10, paddingBottom: 12, borderRadius: 0 }}>
+            {/* Scoreboard header banner */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: px, paddingRight: px, marginBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {/* Wrigley-style vertical stripe accent */}
+                    <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                        <div style={{ width: 3, height: 22, background: 'linear-gradient(180deg, #7faa5c 0%, rgba(127,170,92,0.2) 100%)' }} />
+                        <div style={{ width: 3, height: 22, background: 'linear-gradient(180deg, #f0c434 0%, rgba(240,196,52,0.2) 100%)' }} />
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: '#7faa5c', textTransform: 'uppercase', letterSpacing: '0.16em' }}>
+                        {new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
+                    </span>
+                </div>
                 {liveCount > 0 && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '2px 8px', borderRadius: 99 }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, flexShrink: 0, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 9, fontWeight: 800, color: '#f0c434', background: 'rgba(240,196,52,0.10)', border: '1px solid rgba(240,196,52,0.3)', padding: '3px 9px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#f0c434', flexShrink: 0, animation: 'pulse 1.5s infinite' }} />
                         {liveCount} Live
                     </span>
                 )}
-                <span style={{ fontSize: 10, color: C.gray400, marginLeft: 'auto' }}>
-                    {games.length} games · {myGames.length} with your players
+                <span style={{ fontSize: 9, color: 'rgba(127,170,92,0.55)', marginLeft: 'auto', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    {games.length} games · {myGames.length} yours
                 </span>
             </div>
+            {/* Scrolling scorecards */}
             <div style={{
-                display: 'flex', gap: 10,
+                display: 'flex', gap: 8,
                 overflowX: 'auto', overflowY: 'visible',
-                paddingLeft: px, paddingRight: px, paddingBottom: 2,
+                paddingLeft: px, paddingRight: px, paddingBottom: 4,
                 scrollPaddingLeft: px,
                 scrollbarWidth: 'none', msOverflowStyle: 'none',
                 WebkitOverflowScrolling: 'touch',
@@ -748,6 +783,7 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
     const [savantData, setSavantData] = useState(null)
     const [savantDataHitter, setSavantDataHitter] = useState(null)
     const [savantDataPitcher, setSavantDataPitcher] = useState(null)
+    const [savantLoading, setSavantLoading] = useState(false)
     const touchStartRef = useRef(null)
 
     const handleTouchStart = useCallback((e) => {
@@ -790,12 +826,19 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
             .catch(() => setLoading(false))
     }, [playerKey, api])
 
-    // Fetch Savant percentiles separately so they never block the player detail response.
+    // Reset Savant state immediately when the player changes.
     useEffect(() => {
         setSavantData(null)
         setSavantDataHitter(null)
         setSavantDataPitcher(null)
+        setSavantLoading(false)
+    }, [playerKey])
+
+    // Fetch Savant percentiles separately so they never block the player detail response.
+    // Fires once detail.mlbamId is available (set after the player route responds).
+    useEffect(() => {
         if (!detail?.mlbamId) return
+        setSavantLoading(true)
         if (detail.isTwoWay) {
             Promise.all([
                 axios.get(`${api}/api/savant/${detail.mlbamId}?type=batter`),
@@ -803,12 +846,13 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
             ]).then(([b, p]) => {
                 setSavantDataHitter(b.data.result || null)
                 setSavantDataPitcher(p.data.result || null)
-            }).catch(() => {})
+                setSavantLoading(false)
+            }).catch(() => setSavantLoading(false))
         } else {
             const type = detail.isPitcher ? 'pitcher' : 'batter'
             axios.get(`${api}/api/savant/${detail.mlbamId}?type=${type}`)
-                .then(r => setSavantData(r.data.result || null))
-                .catch(() => {})
+                .then(r => { setSavantData(r.data.result || null); setSavantLoading(false) })
+                .catch(() => setSavantLoading(false))
         }
     }, [detail?.mlbamId, detail?.isTwoWay, detail?.isPitcher, api])
 
@@ -976,10 +1020,21 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                             <>
                                 {savantDataHitter && <StatcastSection data={savantDataHitter} position="OF" forceTitle="hitter" />}
                                 {savantDataPitcher && <StatcastSection data={savantDataPitcher} position="SP" forceTitle="pitcher" />}
+                                {savantLoading && !savantDataHitter && !savantDataPitcher && (
+                                    <div style={{ marginBottom: 16, padding: '16px', background: '#fff', border: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <img src="https://baseballsavant.mlb.com/favicon.ico" width={14} height={14} alt="Savant" style={{ opacity: 0.5 }} />
+                                        <span style={{ fontSize: 11, color: C.gray400 }}>Loading Statcast percentiles…</span>
+                                    </div>
+                                )}
                             </>
-                        ) : savantData && (
+                        ) : savantData ? (
                             <StatcastSection data={savantData} position={detail.position} />
-                        )}
+                        ) : savantLoading ? (
+                            <div style={{ marginBottom: 16, padding: '16px', background: '#fff', border: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <img src="https://baseballsavant.mlb.com/favicon.ico" width={14} height={14} alt="Savant" style={{ opacity: 0.5 }} />
+                                <span style={{ fontSize: 11, color: C.gray400 }}>Loading Statcast percentiles…</span>
+                            </div>
+                        ) : null}
 
                         <div style={{ marginBottom: 24 }}>
                             <SectionTitle>Global {isEspn ? 'ESPN' : 'Yahoo'} Ownership</SectionTitle>

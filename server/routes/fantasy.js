@@ -230,40 +230,40 @@ async function getSavantPercentiles(mlbamId, type = 'batter') {
         return cached.result;
     }
 
+    const fetchCsv = async (year, min) => {
+        const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=${min}&csv=true`;
+        const { data: csv } = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/csv, text/plain, */*',
+            },
+            timeout: 15000,
+        });
+        const rows = parseCsvRows(String(csv));
+        if (rows.length === 0) return null;
+        const row = rows.find(r => String(r.player_id) === String(mlbamId))
+            ?? (rows.length === 1 ? rows[0] : null);
+        if (!row) return null;
+        const mapped = mapSavantFields(row);
+        return mapped.xwoba != null ? mapped : null;
+    };
+
     for (const year of [2025, 2024, 2023, 2022]) {
-        try {
-            // Fetch with player_id — if Savant pre-filters the CSV the response is tiny (1–2 rows).
-            // If Savant returns the full leaderboard anyway, we find the row by player_id.
-            const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=q&csv=true`;
-            const { data: csv } = await axios.get(url, {
-                headers: {
-                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                    'Accept': 'text/csv, text/plain, */*',
-                },
-                timeout: 15000,
-            });
-            const rows = parseCsvRows(String(csv));
-            if (rows.length === 0) {
-                console.warn(`Savant: empty CSV for ${mlbamId} (${type}, ${year})`);
-                continue;
+        // Try qualified leaderboard first (smaller, faster). If player not found
+        // (e.g. hasn't reached 502 PA yet), fall back to min=0 which includes all
+        // players with any plate appearances in that season.
+        for (const min of ['q', '0']) {
+            try {
+                const result = await fetchCsv(year, min);
+                if (result) {
+                    console.log(`Savant OK: ${mlbamId} (${type}, ${year}, min=${min}) xwoba=${result.xwoba}`);
+                    savantPlayerCache[cacheKey] = { result, ts: Date.now() };
+                    return result;
+                }
+                console.warn(`Savant: ${mlbamId} not found (${type}, ${year}, min=${min})`);
+            } catch (e) {
+                console.warn(`Savant fetch error for ${mlbamId} (${type}, ${year}, min=${min}):`, e.message);
             }
-            // Find by player_id; if the CSV was pre-filtered to one row, accept that row
-            const row = rows.find(r => String(r.player_id) === String(mlbamId))
-                ?? (rows.length === 1 ? rows[0] : null);
-            if (!row) {
-                console.warn(`Savant: ${mlbamId} not found in ${rows.length} rows (${type}, ${year})`);
-                continue;
-            }
-            const mapped = mapSavantFields(row);
-            if (mapped.xwoba == null) {
-                console.warn(`Savant: ${mlbamId} row found but xwoba null (${type}, ${year})`);
-                continue;
-            }
-            console.log(`Savant OK: ${mlbamId} (${type}, ${year}) xwoba=${mapped.xwoba}`);
-            savantPlayerCache[cacheKey] = { result: mapped, ts: Date.now() };
-            return mapped;
-        } catch (e) {
-            console.warn(`Savant fetch error for ${mlbamId} (${type}, ${year}):`, e.message);
         }
     }
     savantPlayerCache[cacheKey] = { result: null, ts: Date.now() };
