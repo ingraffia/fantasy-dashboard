@@ -231,8 +231,13 @@ async function getSavantPercentiles(mlbamId, type = 'batter') {
         return cached.result;
     }
 
-    const fetchCsv = async (year, min) => {
-        const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=${min}&csv=true`;
+    // When player_id is in the URL, Savant ignores the year param and returns ALL
+    // years for that player in one response. One request is sufficient — we pick
+    // the most recent year that has usable data.
+    const currentYear = new Date().getFullYear();
+    const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${currentYear}&player_id=${mlbamId}&pos=all&team=&min=0&csv=true`;
+
+    try {
         const { data: csv, headers: respHeaders } = await axios.get(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -240,63 +245,62 @@ async function getSavantPercentiles(mlbamId, type = 'batter') {
             },
             timeout: 15000,
         });
+
         const rawText = String(csv);
         const contentType = respHeaders['content-type'] || '';
-        // Detect HTML response (rate limit page, CAPTCHA, redirect, etc.)
+
         if (rawText.trimStart().startsWith('<') || contentType.includes('text/html')) {
-            console.error(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): Got HTML instead of CSV — likely blocked/rate-limited. Content-Type: ${contentType}. First 120 chars: ${rawText.slice(0, 120)}`);
+            console.error(`[Savant] ${mlbamId} (${type}): Got HTML — likely rate-limited. First 120: ${rawText.slice(0, 120)}`);
+            savantPlayerCache[cacheKey] = { result: null, ts: Date.now() };
             return null;
         }
+
         const rows = parseCsvRows(rawText);
         if (rows.length === 0) {
-            console.warn(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): CSV empty (0 data rows). First line: ${rawText.split('\n')[0]?.slice(0, 120)}`);
+            console.warn(`[Savant] ${mlbamId} (${type}): CSV empty`);
+            savantPlayerCache[cacheKey] = { result: null, ts: Date.now() };
             return null;
         }
-        // Log CSV headers once per request (helps spot field-name changes)
-        const firstRow = rows[0];
-        const csvCols = Object.keys(firstRow);
-        if (!csvCols.includes('player_id')) {
-            console.error(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): CSV has no player_id column. Columns: ${csvCols.slice(0, 15).join(', ')}`);
-            return null;
-        }
-        // When player_id is in the URL, Savant ignores the year param and returns
-        // ALL years for that player. Filter to the specific year we want so we don't
-        // accidentally pick up an older row that has incomplete data (e.g. blank xwoba).
-        const row = rows.find(r => String(r.player_id) === String(mlbamId) && String(r.year) === String(year))
-            ?? (rows.length === 1 ? rows[0] : null);
-        if (!row) {
-            // Log sample IDs so we can see if our mlbamId is in the right format
-            const sampleIds = rows.slice(0, 5).map(r => r.player_id);
-            console.warn(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): player not found among ${rows.length} rows. Sample player_ids: [${sampleIds.join(', ')}]`);
-            return null;
-        }
-        const mapped = mapSavantFields(row);
-        if (mapped.xwoba == null) {
-            console.warn(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): row found but xwoba is null. Row keys: ${Object.keys(row).slice(0, 15).join(', ')}. xwoba raw: "${row.xwoba}"`);
-        }
-        return mapped.xwoba != null ? mapped : null;
-    };
 
-    for (const year of [2026, 2025, 2024, 2023, 2022]) {
-        // Try qualified leaderboard first (smaller, faster). If player not found
-        // (e.g. hasn't reached 502 PA yet), fall back to min=0 which includes all
-        // players with any plate appearances in that season.
-        for (const min of ['q', '0']) {
-            try {
-                const result = await fetchCsv(year, min);
-                if (result) {
-                    console.log(`Savant OK: ${mlbamId} (${type}, ${year}, min=${min}) xwoba=${result.xwoba}`);
-                    savantPlayerCache[cacheKey] = { result, ts: Date.now() };
-                    return result;
-                }
-                console.warn(`Savant: ${mlbamId} not found (${type}, ${year}, min=${min})`);
-            } catch (e) {
-                console.warn(`Savant fetch error for ${mlbamId} (${type}, ${year}, min=${min}):`, e.message);
+        if (!Object.keys(rows[0]).includes('player_id')) {
+            console.error(`[Savant] ${mlbamId} (${type}): no player_id column. Columns: ${Object.keys(rows[0]).slice(0, 15).join(', ')}`);
+            savantPlayerCache[cacheKey] = { result: null, ts: Date.now() };
+            return null;
+        }
+
+        // Collect all rows for this player, newest year first.
+        const playerRows = rows
+            .filter(r => String(r.player_id) === String(mlbamId))
+            .sort((a, b) => Number(b.year || 0) - Number(a.year || 0));
+
+        if (playerRows.length === 0) {
+            const sampleIds = rows.slice(0, 5).map(r => r.player_id);
+            console.warn(`[Savant] ${mlbamId} (${type}): not found among ${rows.length} rows. Sample IDs: [${sampleIds.join(', ')}]`);
+            savantPlayerCache[cacheKey] = { result: null, ts: Date.now() };
+            return null;
+        }
+
+        // Pick the most recent year where at least one stat field is populated.
+        // Check any field, not just xwoba — pitcher CSVs may omit xwoba.
+        for (const row of playerRows) {
+            const mapped = mapSavantFields(row);
+            const hasData = Object.values(mapped).some(v => v != null);
+            if (hasData) {
+                console.log(`[Savant] OK: ${mlbamId} (${type}, ${row.year}) xwoba=${mapped.xwoba}`);
+                savantPlayerCache[cacheKey] = { result: mapped, ts: Date.now() };
+                return mapped;
             }
         }
+
+        console.warn(`[Savant] ${mlbamId} (${type}): ${playerRows.length} rows found but all fields null. Years: [${playerRows.map(r => r.year).join(', ')}]`);
+        savantPlayerCache[cacheKey] = { result: null, ts: Date.now() };
+        return null;
+
+    } catch (e) {
+        console.warn(`[Savant] ${mlbamId} (${type}): fetch error: ${e.message}`);
+        // Don't cache errors — retry on next request
+        return null;
     }
-    savantPlayerCache[cacheKey] = { result: null, ts: Date.now() };
-    return null;
 }
 
 function isPitcherPosition(pos) {
