@@ -969,7 +969,7 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                 ) : !detail ? (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.gray400 }}>Failed to load</div>
                 ) : (
-                    <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
+                    <div className="scrollbar-hidden" style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
                         {detail.injuryStatus && (
                             <div style={{ background: C.redLight, border: '1px solid #fecaca', borderRadius: 8, padding: '10px 12px', marginBottom: 20 }}>
                                 <div style={{ fontSize: 11, fontWeight: 800, color: C.red, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{detail.injuryStatus}</div>
@@ -2143,24 +2143,42 @@ export default function Dashboard({ api }) {
         if (!isMobile) return
 
         let startY = 0
+        let startX = 0
         let pulling = false
+        let directionLocked = false  // true once we've confirmed vertical intent
         const threshold = 84
 
         const onTouchStart = (event) => {
             if (window.scrollY > 0 || pullState.refreshing) return
             startY = event.touches[0]?.clientY || 0
+            startX = event.touches[0]?.clientX || 0
             pulling = true
+            directionLocked = false
         }
 
         const onTouchMove = (event) => {
             if (!pulling) return
             const currentY = event.touches[0]?.clientY || 0
-            const delta = currentY - startY
-            if (delta <= 0 || window.scrollY > 0) {
+            const currentX = event.touches[0]?.clientX || 0
+            const dy = currentY - startY
+            const dx = Math.abs(currentX - startX)
+
+            // Lock direction on first meaningful movement
+            if (!directionLocked) {
+                if (dx > 8 || Math.abs(dy) > 8) directionLocked = true
+                // If horizontal motion is dominant, cancel pull entirely
+                if (dx > Math.abs(dy)) {
+                    pulling = false
+                    setPullState(prev => prev.active ? { ...prev, active: false, distance: 0, ready: false } : prev)
+                    return
+                }
+            }
+
+            if (dy <= 0 || window.scrollY > 0 || dx > dy * 0.6) {
                 setPullState(prev => prev.active ? { ...prev, active: false, distance: 0, ready: false } : prev)
                 return
             }
-            const distance = Math.min(delta * 0.55, 120)
+            const distance = Math.min(dy * 0.55, 120)
             setPullState({ active: true, distance, ready: distance >= threshold, refreshing: false })
         }
 
