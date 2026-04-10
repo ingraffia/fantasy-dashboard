@@ -434,24 +434,23 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
     )
 }
 
-// Wrigley Field scoreboard color palette — used by BoxScoreCard and subcomponents
+// Wrigley Field scoreboard color palette
 const WG = {
-    cardBg: '#0a3d0c',
-    headerBg: '#061a07',
-    bodyBg: '#071408',
-    panelBg: '#080808',
-    border: '#1e6b22',
-    cream: '#f0e6c8',
-    chalk: '#7faa5c',
-    chalkDim: 'rgba(127,170,92,0.5)',
-    yellow: '#f0c434',
-    yellowBg: 'rgba(240,196,52,0.10)',
-    yellowBorder: 'rgba(240,196,52,0.3)',
+    bg: '#0c3d0e',           // Main board green (slightly lighter than before — matches photo)
+    bgDark: '#061a07',       // Darker inset areas
+    border: '#1e6b22',       // Cell/row borders
+    cream: '#f0e6c8',        // Painted number white (slightly warm)
+    chalk: '#7faa5c',        // Chalk-green secondary text
+    chalkDim: 'rgba(127,170,92,0.45)',
+    yellow: '#f0c434',       // W-flag yellow / live indicator
+    yellowDim: 'rgba(240,196,52,0.12)',
+    grid: 'rgba(30,107,34,0.5)',  // Faint grid cell borders
 }
 
-function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, onOpenPlayer, pregameCompact = false, isRosterGame = false }) {
+// ─── Wrigley-style game row: full-width grid like the center-field scoreboard ─
+
+function WrigleyGameRow({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, onOpenPlayer, isRosterGame }) {
     const started = game.isLive || game.isFinal
-    const loading = !boxscore && started
     const [expanded, setExpanded] = useState(false)
 
     const allBsPlayers = [...(boxscore?.away?.players || []), ...(boxscore?.home?.players || [])]
@@ -470,133 +469,131 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
 
     const awayAhead = started && (game.awayScore ?? 0) > (game.homeScore ?? 0)
     const homeAhead = started && (game.homeScore ?? 0) > (game.awayScore ?? 0)
-    const hasOverflow = withRoster.length > 3
-    const visibleRoster = expanded ? withRoster : withRoster.slice(0, 3)
     const hasRosterPlayers = withRoster.length > 0
-    const showBody = loading || hasRosterPlayers
-    const myExpectedCount = isRosterGame ? rosterPlayers.filter(rp => rp.proTeam === game.awayTeam || rp.proTeam === game.homeTeam).length : 0
-    const cardWidth = 280
-    const rosterBorder = isRosterGame ? WG.yellow : WG.border
-    const scoreFontSize = (pregameCompact && !started) ? 32 : 36
+    // Build inning lookup maps from game.innings array
+    const awayByInning = Object.fromEntries((game.innings || []).map(i => [i.num, i.away]))
+    const homeByInning = Object.fromEntries((game.innings || []).map(i => [i.num, i.home]))
+    const maxInning = Math.max(9, game.inning || 0)
+    const totalCols = game.isFinal ? Math.max(9, (game.innings || []).length) : maxInning
 
-    const ScorePanel = ({ score, isAhead }) => (
-        <div style={{
-            background: WG.panelBg,
-            border: `1px solid ${WG.border}`,
-            width: 62,
-            padding: '5px 0',
-            textAlign: 'center',
-            flexShrink: 0,
-            boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.8), inset 0 -1px 2px rgba(255,255,255,0.03)',
-        }}>
-            <span style={{
-                fontSize: scoreFontSize,
-                fontWeight: 900,
-                color: isAhead ? WG.cream : 'rgba(240,230,200,0.25)',
+    // Grid: [4px indicator] [status 26px] [team 1fr] [N×20px innings] [R 30px] [H 22px]
+    const inningCols = totalCols
+    const gridTemplate = `4px 26px 1fr repeat(${inningCols}, 20px) 30px 22px`
+
+    const InningCell = ({ runs, inningNum }) => {
+        const isFuture = !game.isFinal && game.inning != null && inningNum > game.inning
+        const isCurrent = game.isLive && inningNum === game.inning
+        return (
+            <div style={{
+                height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                borderLeft: `1px solid ${WG.grid}`,
+                background: isCurrent ? 'rgba(240,196,52,0.07)' : 'transparent',
+                fontSize: 11, fontWeight: 800,
+                color: (runs == null || isFuture) ? WG.chalkDim : runs > 0 ? WG.cream : 'rgba(240,230,200,0.4)',
                 fontFamily: '"Courier New", Courier, monospace',
-                lineHeight: 1,
-                display: 'block',
-                letterSpacing: '-0.02em',
             }}>
-                {started ? (score ?? 0) : '–'}
-            </span>
+                {isFuture ? '' : runs != null ? runs : ''}
+            </div>
+        )
+    }
+
+    const TeamRow = ({ team, byInning, totalRuns, totalHits, isAhead, isHome }) => (
+        <div style={{
+            display: 'grid', gridTemplateColumns: gridTemplate,
+            height: 30, alignItems: 'stretch',
+            borderBottom: `1px solid ${isHome ? WG.border : WG.grid}`,
+            borderBottomWidth: isHome ? 2 : 1,
+        }}>
+            {/* Roster indicator */}
+            <div style={{ background: isRosterGame ? WG.yellow : 'transparent', opacity: isHome ? 1 : 0.5 }} />
+            {/* Inning/status — only show on away row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 2px' }}>
+                {!isHome && game.isLive && (
+                    <span style={{ fontSize: 7, fontWeight: 900, color: WG.yellow, letterSpacing: '-0.02em', lineHeight: 1 }}>
+                        {game.inningHalf === 'Top' ? '▲' : '▼'}{game.inning}
+                    </span>
+                )}
+                {!isHome && game.isFinal && (
+                    <span style={{ fontSize: 7, fontWeight: 800, color: WG.chalkDim }}>F</span>
+                )}
+                {!isHome && !started && !game.isPostponed && (
+                    <span style={{ fontSize: 7, fontWeight: 700, color: WG.chalkDim }}>
+                        {game.startTime ? new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'}
+                    </span>
+                )}
+            </div>
+            {/* Team abbreviation */}
+            <div style={{
+                display: 'flex', alignItems: 'center', paddingLeft: 8, overflow: 'hidden',
+                fontSize: 13, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase',
+                color: isAhead ? WG.cream : 'rgba(240,230,200,0.52)',
+                fontFamily: 'Arial Narrow, Arial, sans-serif',
+            }}>
+                {team}
+            </div>
+            {/* Inning cells */}
+            {Array.from({ length: inningCols }, (_, i) => {
+                const n = i + 1
+                const runs = isHome ? homeByInning[n] : awayByInning[n]
+                return <InningCell key={n} runs={runs} inningNum={n} />
+            })}
+            {/* R — total runs */}
+            <div style={{
+                borderLeft: `2px solid ${WG.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 15, fontWeight: 900, fontFamily: '"Courier New", Courier, monospace',
+                color: isAhead ? WG.cream : 'rgba(240,230,200,0.38)', letterSpacing: '-0.02em',
+            }}>
+                {started ? (totalRuns ?? 0) : ''}
+            </div>
+            {/* H — hits */}
+            <div style={{
+                borderLeft: `1px solid ${WG.grid}`, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 10, fontWeight: 700, fontFamily: '"Courier New", Courier, monospace',
+                color: 'rgba(127,170,92,0.45)',
+            }}>
+                {started && totalHits != null ? totalHits : ''}
+            </div>
         </div>
     )
 
     return (
-        <div className="animate-fade-up" style={{
-            background: WG.cardBg,
-            border: `1px solid ${rosterBorder}`,
-            borderRadius: 0,
-            width: cardWidth,
-            minWidth: cardWidth,
-            maxWidth: cardWidth,
-            flexShrink: 0,
-            overflow: 'hidden',
-            boxShadow: isRosterGame
-                ? `0 0 0 1px ${WG.yellow}, 0 16px 36px rgba(0,0,0,0.55)`
-                : '0 12px 32px rgba(0,0,0,0.45)',
-        }}>
-            {/* Narrow header strip — date + status */}
-            <div style={{
-                padding: '7px 12px',
-                background: WG.headerBg,
-                borderBottom: `1px solid ${WG.border}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {/* Vertical chalk stripe — echoes Wrigley's flag pole */}
-                    <div style={{ width: 3, height: 14, background: `linear-gradient(180deg, ${WG.chalk} 0%, rgba(127,170,92,0.3) 100%)`, flexShrink: 0 }} />
-                    <span style={{ fontSize: 9, fontWeight: 900, color: WG.chalk, textTransform: 'uppercase', letterSpacing: '0.14em' }}>MLB</span>
-                    {myExpectedCount > 0 && (
-                        <span style={{ fontSize: 8, fontWeight: 800, color: WG.yellow, background: WG.yellowBg, border: `1px solid ${WG.yellowBorder}`, padding: '2px 6px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                            {myExpectedCount} on roster
-                        </span>
-                    )}
-                </div>
-                <GameStatusBadge game={game} />
-            </div>
-
-            {/* Score rows — the scoreboard panel */}
-            <div style={{ padding: '12px 12px 14px', background: WG.cardBg, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-                        <MlbLogo team={game.awayTeam} size={20} showText={false} />
-                        <span style={{ fontSize: 13, fontWeight: 800, color: WG.cream, textTransform: 'uppercase', letterSpacing: '0.07em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.awayTeam}</span>
+        <div style={{ borderLeft: `3px solid ${isRosterGame ? WG.yellow : 'transparent'}`, background: isRosterGame ? 'rgba(240,196,52,0.03)' : 'transparent' }}>
+            {game.isPostponed ? (
+                <div style={{ height: 36, display: 'grid', gridTemplateColumns: '4px 26px 1fr auto', alignItems: 'center', borderBottom: `2px solid ${WG.border}` }}>
+                    <div style={{ background: isRosterGame ? WG.yellow : 'transparent' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: 7, fontWeight: 800, color: '#c9971a' }}>PPD</span>
                     </div>
-                    <ScorePanel score={game.awayScore} isAhead={awayAhead} />
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(240,230,200,0.45)', letterSpacing: '0.06em', paddingLeft: 8 }}>
+                        {game.awayTeam} vs {game.homeTeam}
+                    </span>
                 </div>
-
-                {/* Scoreboard horizontal rule */}
-                <div style={{ height: 1, background: WG.border, opacity: 0.7 }} />
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
-                        <MlbLogo team={game.homeTeam} size={20} showText={false} />
-                        <span style={{ fontSize: 13, fontWeight: 800, color: WG.cream, textTransform: 'uppercase', letterSpacing: '0.07em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{game.homeTeam}</span>
-                    </div>
-                    <ScorePanel score={game.homeScore} isAhead={homeAhead} />
-                </div>
-            </div>
-
-            {/* Body — player impact */}
-            {showBody && (
-                <div style={{ padding: '10px 12px', background: WG.bodyBg, borderTop: `1px solid ${WG.border}` }}>
-                    {hasRosterPlayers && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <span style={{ fontSize: 9, fontWeight: 800, color: WG.chalk, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Player Impact</span>
-                            <span style={{ fontSize: 9, color: WG.chalkDim, fontWeight: 700 }}>{withRoster.length} tracked</span>
+            ) : (
+                <>
+                    <TeamRow team={game.awayTeam} byInning={awayByInning} totalRuns={game.awayScore} totalHits={game.awayHits} isAhead={awayAhead} isHome={false} />
+                    <TeamRow team={game.homeTeam} byInning={homeByInning} totalRuns={game.homeScore} totalHits={game.homeHits} isAhead={homeAhead} isHome={true} />
+                </>
+            )}
+            {/* Expandable player stats — toggled by tap */}
+            {hasRosterPlayers && started && (
+                <div style={{ borderBottom: `1px solid ${WG.grid}` }}>
+                    <button onClick={() => setExpanded(e => !e)} style={{
+                        width: '100%', padding: '6px 8px 6px 12px', background: 'transparent', border: 'none',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+                        color: WG.chalk, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+                    }}>
+                        <span>{expanded ? '▲' : '▼'}</span>
+                        <span>{withRoster.length} player{withRoster.length !== 1 ? 's' : ''} in this game</span>
+                        {isRosterGame && <span style={{ marginLeft: 'auto', color: WG.yellow, fontSize: 8, border: `1px solid ${WG.yellow}`, padding: '1px 5px', opacity: 0.8 }}>YOUR TEAM</span>}
+                    </button>
+                    {expanded && (
+                        <div style={{ padding: '2px 12px 10px' }}>
+                            {withRoster.map(({ bsPlayer, rosterPlayer }) => (
+                                <MyPlayerStatRow key={`${bsPlayer.name}-${bsPlayer.proTeam || ''}`}
+                                    bsPlayer={bsPlayer} rosterPlayer={rosterPlayer}
+                                    imageMap={imageMap} onOpenPlayer={onOpenPlayer} />
+                            ))}
                         </div>
-                    )}
-                    {loading ? (
-                        <div style={{ display: 'grid', placeItems: 'center', padding: '18px 0', fontSize: 10, color: WG.chalk, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                            Loading live stats...
-                        </div>
-                    ) : visibleRoster.map(({ bsPlayer, rosterPlayer }) => (
-                        <MyPlayerStatRow
-                            key={`${bsPlayer.name}-${bsPlayer.proTeam || bsPlayer.position || ''}`}
-                            bsPlayer={bsPlayer}
-                            rosterPlayer={rosterPlayer}
-                            imageMap={imageMap}
-                            onOpenPlayer={onOpenPlayer}
-                        />
-                    ))}
-                    {!loading && started && hasOverflow && (
-                        <button
-                            type="button"
-                            onClick={() => setExpanded(prev => !prev)}
-                            style={{
-                                marginTop: 6, padding: '6px 0 2px',
-                                border: 'none', background: 'transparent',
-                                color: WG.chalk, fontSize: 10, fontWeight: 700,
-                                cursor: 'pointer', letterSpacing: '0.06em',
-                                display: 'inline-flex', alignItems: 'center',
-                                justifyContent: 'center', gap: 5, width: '100%',
-                            }}
-                        >
-                            <span>{expanded ? '↑' : '↓'}</span>
-                            <span>{expanded ? 'Show less' : `${withRoster.length - visibleRoster.length} more players`}</span>
-                        </button>
                     )}
                 </div>
             )}
@@ -608,72 +605,90 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     if (games.length === 0) return null
     const myGames = games.filter(g => myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam))
     const liveCount = games.filter(g => g.isLive).length
-    const hasStartedGames = games.some(g => (g.isLive || g.isFinal) && !g.isPostponed)
-    const statusRank = (game) => {
-        if (myTeams.has(game.awayTeam) || myTeams.has(game.homeTeam)) return 0
-        if (game.isLive) return 1
-        if (game.isFinal) return 2
-        if (game.isPostponed) return 4
+
+    const statusRank = (g) => {
+        if (myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam)) return 0
+        if (g.isLive) return 1
+        if (g.isFinal) return 2
+        if (g.isPostponed) return 4
         return 3
     }
     const sortedGames = [...games].sort((a, b) => {
-        const rankDiff = statusRank(a) - statusRank(b)
-        if (rankDiff !== 0) return rankDiff
-        const aTime = a.startTime ? new Date(a.startTime).getTime() : Number.MAX_SAFE_INTEGER
-        const bTime = b.startTime ? new Date(b.startTime).getTime() : Number.MAX_SAFE_INTEGER
-        if (aTime !== bTime) return aTime - bTime
-        return String(a.gamePk).localeCompare(String(b.gamePk))
+        const d = statusRank(a) - statusRank(b)
+        if (d !== 0) return d
+        const at = a.startTime ? new Date(a.startTime).getTime() : Infinity
+        const bt = b.startTime ? new Date(b.startTime).getTime() : Infinity
+        return at !== bt ? at - bt : String(a.gamePk).localeCompare(String(b.gamePk))
     })
 
+    // How many inning columns to show: at least 9, up to the furthest inning in play
+    const maxInning = Math.max(9, ...games.map(g => g.inning || 0))
+    const inningCols = games.some(g => g.isLive) ? maxInning : Math.max(9, ...games.map(g => (g.innings || []).length))
+
     return (
-        <div style={{ background: '#071a08', borderBottom: '2px solid #1e6b22', paddingTop: 10, paddingBottom: 12, borderRadius: 0 }}>
-            {/* Scoreboard header banner */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingLeft: px, paddingRight: px, marginBottom: 10 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {/* Wrigley-style vertical stripe accent */}
+        <div style={{ background: WG.bg, borderBottom: `3px solid ${WG.border}`, borderRadius: 0 }}>
+
+            {/* ── Header bar ── */}
+            <div style={{ background: WG.bgDark, borderBottom: `2px solid ${WG.border}`, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {/* Flagpole stripe */}
                     <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-                        <div style={{ width: 3, height: 22, background: 'linear-gradient(180deg, #7faa5c 0%, rgba(127,170,92,0.2) 100%)' }} />
-                        <div style={{ width: 3, height: 22, background: 'linear-gradient(180deg, #f0c434 0%, rgba(240,196,52,0.2) 100%)' }} />
+                        <div style={{ width: 3, height: 20, background: `linear-gradient(180deg, ${WG.chalk} 0%, transparent 100%)` }} />
+                        <div style={{ width: 3, height: 20, background: `linear-gradient(180deg, ${WG.yellow} 0%, transparent 100%)` }} />
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: 900, color: '#7faa5c', textTransform: 'uppercase', letterSpacing: '0.16em' }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: WG.chalk, textTransform: 'uppercase', letterSpacing: '0.18em' }}>
                         {new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                     </span>
                 </div>
                 {liveCount > 0 && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 9, fontWeight: 800, color: '#f0c434', background: 'rgba(240,196,52,0.10)', border: '1px solid rgba(240,196,52,0.3)', padding: '3px 9px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#f0c434', flexShrink: 0, animation: 'pulse 1.5s infinite' }} />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 9, fontWeight: 800, color: WG.yellow, background: WG.yellowDim, border: `1px solid rgba(240,196,52,0.3)`, padding: '2px 8px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: WG.yellow, animation: 'pulse 1.5s infinite' }} />
                         {liveCount} Live
                     </span>
                 )}
-                <span style={{ fontSize: 9, color: 'rgba(127,170,92,0.55)', marginLeft: 'auto', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                <span style={{ marginLeft: 'auto', fontSize: 9, color: WG.chalkDim, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                     {games.length} games · {myGames.length} yours
                 </span>
             </div>
-            {/* Scrolling scorecards */}
+
+            {/* ── Column header row — mirrors the Wrigley "1 2 3 4 5 6 7 8 9 R H" header ── */}
             <div style={{
-                display: 'flex', gap: 8,
-                overflowX: 'auto', overflowY: 'visible',
-                paddingLeft: px, paddingRight: px, paddingBottom: 4,
-                scrollPaddingLeft: px,
-                scrollbarWidth: 'none', msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch',
-                scrollSnapType: 'x proximity',
-            }} className="scrollbar-hidden">
-                {sortedGames.map(g => (
-                    <div key={g.gamePk} style={{ scrollSnapAlign: 'start' }}>
-                        <BoxScoreCard
-                            game={g}
-                            boxscore={boxscores[g.gamePk]}
-                            myPlayerNames={myPlayerNames}
-                            rosterPlayers={rosterPlayers}
-                            imageMap={imageMap}
-                            onOpenPlayer={onOpenPlayer}
-                            pregameCompact={!hasStartedGames}
-                            isRosterGame={myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam)}
-                        />
+                display: 'grid',
+                gridTemplateColumns: `4px 26px 1fr repeat(${inningCols}, 20px) 30px 22px`,
+                background: WG.bgDark, borderBottom: `1px solid ${WG.border}`, height: 20,
+            }}>
+                <div />
+                <div />
+                {/* "TEAMS" label */}
+                <div style={{ fontSize: 7, fontWeight: 800, color: WG.chalkDim, textTransform: 'uppercase', letterSpacing: '0.12em', display: 'flex', alignItems: 'center', paddingLeft: 8 }}>
+                    TEAMS
+                </div>
+                {/* Inning numbers */}
+                {Array.from({ length: inningCols }, (_, i) => (
+                    <div key={i + 1} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: `1px solid ${WG.grid}`, fontSize: 8, fontWeight: 900, color: WG.chalkDim, letterSpacing: '0.02em' }}>
+                        {i + 1}
                     </div>
                 ))}
+                {/* R header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: `2px solid ${WG.border}`, fontSize: 8, fontWeight: 900, color: WG.cream }}>R</div>
+                {/* H header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', borderLeft: `1px solid ${WG.grid}`, fontSize: 8, fontWeight: 700, color: WG.chalkDim }}>H</div>
             </div>
+
+            {/* ── Game rows ── */}
+            {sortedGames.map(g => (
+                <WrigleyGameRow
+                    key={g.gamePk}
+                    game={g}
+                    boxscore={boxscores[g.gamePk]}
+                    myPlayerNames={myPlayerNames}
+                    rosterPlayers={rosterPlayers}
+                    imageMap={imageMap}
+                    onOpenPlayer={onOpenPlayer}
+                    isRosterGame={myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam)}
+                />
+            ))}
+
             <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
         </div>
     )
@@ -783,7 +798,8 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
     const [savantData, setSavantData] = useState(null)
     const [savantDataHitter, setSavantDataHitter] = useState(null)
     const [savantDataPitcher, setSavantDataPitcher] = useState(null)
-    const [savantLoading, setSavantLoading] = useState(false)
+    // 'idle' | 'loading' | 'done' | 'unavailable'
+    const [savantStatus, setSavantStatus] = useState('idle')
     const touchStartRef = useRef(null)
 
     const handleTouchStart = useCallback((e) => {
@@ -831,28 +847,33 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
         setSavantData(null)
         setSavantDataHitter(null)
         setSavantDataPitcher(null)
-        setSavantLoading(false)
+        setSavantStatus('idle')
     }, [playerKey])
 
-    // Fetch Savant percentiles separately so they never block the player detail response.
-    // Fires once detail.mlbamId is available (set after the player route responds).
+    // Fetch Savant percentiles separately — fires once detail.mlbamId is available.
     useEffect(() => {
         if (!detail?.mlbamId) return
-        setSavantLoading(true)
+        setSavantStatus('loading')
         if (detail.isTwoWay) {
             Promise.all([
                 axios.get(`${api}/api/savant/${detail.mlbamId}?type=batter`),
                 axios.get(`${api}/api/savant/${detail.mlbamId}?type=pitcher`),
             ]).then(([b, p]) => {
-                setSavantDataHitter(b.data.result || null)
-                setSavantDataPitcher(p.data.result || null)
-                setSavantLoading(false)
-            }).catch(() => setSavantLoading(false))
+                const h = b.data.result || null
+                const pi = p.data.result || null
+                setSavantDataHitter(h)
+                setSavantDataPitcher(pi)
+                setSavantStatus(h || pi ? 'done' : 'unavailable')
+            }).catch(() => setSavantStatus('unavailable'))
         } else {
             const type = detail.isPitcher ? 'pitcher' : 'batter'
             axios.get(`${api}/api/savant/${detail.mlbamId}?type=${type}`)
-                .then(r => { setSavantData(r.data.result || null); setSavantLoading(false) })
-                .catch(() => setSavantLoading(false))
+                .then(r => {
+                    const result = r.data.result || null
+                    setSavantData(result)
+                    setSavantStatus(result ? 'done' : 'unavailable')
+                })
+                .catch(() => setSavantStatus('unavailable'))
         }
     }, [detail?.mlbamId, detail?.isTwoWay, detail?.isPitcher, api])
 
@@ -1020,21 +1041,22 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                             <>
                                 {savantDataHitter && <StatcastSection data={savantDataHitter} position="OF" forceTitle="hitter" />}
                                 {savantDataPitcher && <StatcastSection data={savantDataPitcher} position="SP" forceTitle="pitcher" />}
-                                {savantLoading && !savantDataHitter && !savantDataPitcher && (
-                                    <div style={{ marginBottom: 16, padding: '16px', background: '#fff', border: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <img src="https://baseballsavant.mlb.com/favicon.ico" width={14} height={14} alt="Savant" style={{ opacity: 0.5 }} />
-                                        <span style={{ fontSize: 11, color: C.gray400 }}>Loading Statcast percentiles…</span>
-                                    </div>
-                                )}
                             </>
-                        ) : savantData ? (
+                        ) : savantData && (
                             <StatcastSection data={savantData} position={detail.position} />
-                        ) : savantLoading ? (
-                            <div style={{ marginBottom: 16, padding: '16px', background: '#fff', border: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <img src="https://baseballsavant.mlb.com/favicon.ico" width={14} height={14} alt="Savant" style={{ opacity: 0.5 }} />
+                        )}
+                        {savantStatus === 'loading' && (
+                            <div style={{ marginBottom: 16, padding: '14px 16px', background: '#fff', border: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <img src="https://baseballsavant.mlb.com/favicon.ico" width={13} height={13} alt="Savant" style={{ opacity: 0.45 }} />
                                 <span style={{ fontSize: 11, color: C.gray400 }}>Loading Statcast percentiles…</span>
                             </div>
-                        ) : null}
+                        )}
+                        {savantStatus === 'unavailable' && detail.mlbamId && (
+                            <div style={{ marginBottom: 16, padding: '14px 16px', background: '#fff', border: `1px solid ${C.gray100}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <img src="https://baseballsavant.mlb.com/favicon.ico" width={13} height={13} alt="Savant" style={{ opacity: 0.3 }} />
+                                <span style={{ fontSize: 11, color: C.gray400 }}>Statcast data not available for this player</span>
+                            </div>
+                        )}
 
                         <div style={{ marginBottom: 24 }}>
                             <SectionTitle>Global {isEspn ? 'ESPN' : 'Yahoo'} Ownership</SectionTitle>

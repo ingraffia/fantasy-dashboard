@@ -1021,14 +1021,27 @@ router.get('/scoreboard', async (req, res) => {
             const detailedState = g.status?.detailedState || abstractState || null;
             const normalizedDetailedState = String(detailedState || '').toLowerCase();
             const isPostponed = /postponed|cancelled|canceled|delayed start/.test(normalizedDetailedState);
+            // Per-inning runs — available from hydrate=linescore
+            const innings = (ls.innings || []).map(inn => ({
+                num: inn.num,
+                away: inn.away?.runs ?? null,
+                home: inn.home?.runs ?? null,
+            }));
             return {
                 gamePk: g.gamePk,
                 status: abstractState,
                 detailedStatus: detailedState,
-                startTime: g.gameDate, inning: ls.currentInning || null,
-                inningHalf: ls.inningHalf || null, outs: ls.outs ?? null,
-                awayTeam: away?.team?.abbreviation, awayScore: away?.score ?? null,
-                homeTeam: home?.team?.abbreviation, homeScore: home?.score ?? null,
+                startTime: g.gameDate,
+                inning: ls.currentInning || null,
+                inningHalf: ls.inningHalf || null,
+                outs: ls.outs ?? null,
+                awayTeam: away?.team?.abbreviation,
+                awayScore: away?.score ?? null,
+                homeTeam: home?.team?.abbreviation,
+                homeScore: home?.score ?? null,
+                awayHits: ls.teams?.away?.hits ?? null,
+                homeHits: ls.teams?.home?.hits ?? null,
+                innings,
                 isLive: abstractState === 'Live',
                 isFinal: abstractState === 'Final' && !isPostponed,
                 isPostponed,
