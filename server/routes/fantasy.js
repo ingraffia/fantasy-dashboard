@@ -1703,6 +1703,46 @@ router.get('/savant/:mlbamId', async (req, res) => {
     }
 });
 
+// Returns the raw CSV from Baseball Savant for a given MLBAM ID without any parsing.
+// GET /api/savant-raw/682998?type=batter&year=2025&min=q
+// Lets you verify: (1) the request succeeds, (2) what CSV headers are returned,
+// (3) whether the player appears and what their player_id value looks like.
+router.get('/savant-raw/:mlbamId', async (req, res) => {
+    const { mlbamId } = req.params;
+    const type = req.query.type || 'batter';
+    const year = req.query.year || '2025';
+    const min = req.query.min || 'q';
+    const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=${min}&csv=true`;
+    try {
+        const { data: csv, status, headers: respHeaders } = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/csv, text/plain, */*',
+            },
+            timeout: 15000,
+        });
+        const text = String(csv).replace(/\r/g, '');
+        const lines = text.trim().split('\n');
+        const headers = lines.length > 0 ? lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '')) : [];
+        // Find the player row by scanning all data rows
+        const playerRows = [];
+        for (let i = 1; i < lines.length; i++) {
+            if (lines[i].includes(String(mlbamId))) playerRows.push(lines[i]);
+        }
+        return res.json({
+            url,
+            httpStatus: status,
+            contentType: respHeaders['content-type'],
+            totalLines: lines.length,
+            csvHeaders: headers,
+            playerRowsMatchingId: playerRows,
+            first3DataLines: lines.slice(1, 4),
+        });
+    } catch (e) {
+        return res.json({ url, error: e.message, code: e.code, httpStatus: e.response?.status });
+    }
+});
+
 // Tests the full getSavantPercentiles pipeline for a given MLBAM ID.
 // GET /api/savant-debug/660271?type=batter
 // No auth required — use on Railway to confirm the pipeline works end-to-end.
