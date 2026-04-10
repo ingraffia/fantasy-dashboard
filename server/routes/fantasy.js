@@ -177,107 +177,88 @@ async function getMlbamIdFromName(name) {
     }
 }
 
-// In-memory cache for full Savant leaderboard HTML (keyed by type-year).
-// Avoids re-fetching the entire leaderboard for every player detail request.
+// In-memory cache for parsed Savant leaderboard rows (keyed by type-year).
 const savantLeaderboardCache = {};
 const SAVANT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+// Parse a simple CSV string into an array of objects.
+// Handles double-quoted fields (player names can contain commas).
+function parseCsvRows(csv) {
+    const lines = csv.trim().split('\n');
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    return lines.slice(1).map(line => {
+        const values = [];
+        let cur = '', inQ = false;
+        for (const ch of line) {
+            if (ch === '"') { inQ = !inQ; }
+            else if (ch === ',' && !inQ) { values.push(cur); cur = ''; }
+            else { cur += ch; }
+        }
+        values.push(cur);
+        const obj = {};
+        headers.forEach((h, i) => { obj[h] = values[i] ?? ''; });
+        return obj;
+    });
+}
+
+// Fetch the full Savant percentile leaderboard as CSV and cache it.
+// Baseball Savant's csv=true endpoint is far more reliable than HTML parsing.
 async function fetchSavantLeaderboard(type, year) {
     const key = `${type}-${year}`;
     const cached = savantLeaderboardCache[key];
-    if (cached && Date.now() - cached.ts < SAVANT_CACHE_TTL_MS) return cached.html;
+    if (cached && Date.now() - cached.ts < SAVANT_CACHE_TTL_MS) return cached.rows;
 
-    // Fetch full leaderboard without player_id filter — same approach as pybaseball.
-    // The player_id URL param only drives the UI; var data always contains all players.
-    const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&pos=all&team=&min=1`;
-    const { data: html } = await axios.get(url, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+    const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&pos=all&team=&min=q&csv=true`;
+    const { data: csv } = await axios.get(url, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/csv, text/plain, */*',
+        },
         timeout: 20000,
     });
-    savantLeaderboardCache[key] = { html, ts: Date.now() };
-    return html;
+    const rows = parseCsvRows(String(csv));
+    console.log(`Savant CSV (${type}, ${year}): ${rows.length} rows`);
+    savantLeaderboardCache[key] = { rows, ts: Date.now() };
+    return rows;
 }
 
 function mapSavantFields(row) {
+    // CSV values come in as strings — coerce to numbers, treat empty as null
+    const n = (v) => (v === '' || v == null) ? null : Number(v);
     return {
-        xwoba: row.percent_rank_xwoba,
-        xba: row.percent_rank_xba,
-        xslg: row.percent_rank_xslg,
-        exit_velocity: row.percent_rank_exit_velocity_avg,
-        barrel_rate: row.percent_rank_barrel_batted_rate,
-        hard_hit_rate: row.percent_rank_hard_hit_percent,
-        k_percent: row.percent_rank_k_percent,
-        bb_percent: row.percent_rank_bb_percent,
-        whiff_percent: row.percent_rank_whiff_percent,
-        chase_percent: row.percent_rank_chase_percent,
-        velocity: row.percent_rank_fastball_velo,
+        xwoba: n(row.percent_rank_xwoba),
+        xba: n(row.percent_rank_xba),
+        xslg: n(row.percent_rank_xslg),
+        exit_velocity: n(row.percent_rank_exit_velocity_avg),
+        barrel_rate: n(row.percent_rank_barrel_batted_rate),
+        hard_hit_rate: n(row.percent_rank_hard_hit_percent),
+        k_percent: n(row.percent_rank_k_percent),
+        bb_percent: n(row.percent_rank_bb_percent),
+        whiff_percent: n(row.percent_rank_whiff_percent),
+        chase_percent: n(row.percent_rank_chase_percent),
+        velocity: n(row.percent_rank_fastball_velo),
     };
-}
-
-function parseSavantPercentiles(html, mlbamId) {
-    // Baseball Savant embeds the full leaderboard as "var data = [...]" in the page.
-    // Use bracket+string tracking (not regex) to extract the array correctly,
-    // since JSON values may contain nested arrays/objects that fool non-greedy regex.
-    const marker = 'var data = [';
-    const markerIdx = html.indexOf(marker);
-    if (markerIdx === -1) {
-        console.warn(`Savant parse: 'var data = [' not found (htmlLen=${html.length})`);
-        return null;
-    }
-
-    const arrStart = markerIdx + marker.length - 1; // position of opening '['
-    let depth = 0, inStr = false, esc = false, endIdx = -1;
-    for (let i = arrStart; i < html.length; i++) {
-        const ch = html[i];
-        if (esc) { esc = false; continue; }
-        if (ch === '\\' && inStr) { esc = true; continue; }
-        if (ch === '"') { inStr = !inStr; continue; }
-        if (inStr) continue;
-        if (ch === '[' || ch === '{') depth++;
-        else if (ch === ']' || ch === '}') {
-            depth--;
-            if (depth === 0) { endIdx = i; break; }
-        }
-    }
-    if (endIdx === -1) {
-        console.warn(`Savant parse: could not find end of var data array`);
-        return null;
-    }
-
-    try {
-        const arr = JSON.parse(html.slice(arrStart, endIdx + 1));
-        if (!Array.isArray(arr) || arr.length === 0) {
-            console.warn(`Savant parse: empty or non-array var data for ${mlbamId}`);
-            return null;
-        }
-        const row = arr.find(r => String(r.player_id) === String(mlbamId));
-        if (!row) {
-            console.warn(`Savant parse: player_id ${mlbamId} not found in ${arr.length} rows`);
-            return null;
-        }
-        if (row.percent_rank_xwoba == null) {
-            console.warn(`Savant parse: found row for ${mlbamId} but xwoba percentile is null`);
-            return null;
-        }
-        return mapSavantFields(row);
-    } catch (e) {
-        console.warn(`Savant parse: JSON.parse failed for ${mlbamId}:`, e.message);
-        return null;
-    }
 }
 
 async function getSavantPercentiles(mlbamId, type = 'batter') {
     if (!mlbamId) return null;
-    // Fetch the full leaderboard (no player_id filter) — same as pybaseball.
-    // Responses are cached per type+year to avoid re-fetching for every player.
     for (const year of [2025, 2024, 2023, 2022]) {
         try {
-            const html = await fetchSavantLeaderboard(type, year);
-            const result = parseSavantPercentiles(html, mlbamId);
-            if (result) return result;
+            const rows = await fetchSavantLeaderboard(type, year);
+            const row = rows.find(r => String(r.player_id) === String(mlbamId));
+            if (!row) {
+                console.warn(`Savant: ${mlbamId} not found in ${rows.length} rows (${type}, ${year})`);
+                continue;
+            }
+            const mapped = mapSavantFields(row);
+            if (mapped.xwoba == null) {
+                console.warn(`Savant: ${mlbamId} found but xwoba is null (${type}, ${year})`);
+                continue;
+            }
+            return mapped;
         } catch (e) {
             console.warn(`Savant fetch failed for ${mlbamId} (${type}, ${year}):`, e.message);
-            // Continue to next year
         }
     }
     return null;
@@ -1719,45 +1700,23 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
 
 
 
-// Debug endpoint: exposes what Baseball Savant actually returns for a given MLBAM ID.
+// Debug endpoint: shows what Savant CSV returns for a given MLBAM ID.
 // Usage: GET /api/savant-debug/660271?type=batter&year=2025
-// Does NOT require auth — useful for diagnosing on Railway.
+// No auth required — use this on Railway to diagnose Savant issues.
 router.get('/savant-debug/:mlbamId', async (req, res) => {
     const { mlbamId } = req.params;
     const type = req.query.type || 'batter';
     const year = req.query.year || '2025';
     try {
-        const html = await fetchSavantLeaderboard(type, year);
-        const marker = 'var data = [';
-        const markerIdx = html.indexOf(marker);
-        if (markerIdx === -1) {
-            return res.json({ error: 'var data not found in page', htmlLength: html.length, snippet: html.substring(0, 1000) });
-        }
-        const arrStart = markerIdx + marker.length - 1;
-        let depth = 0, inStr = false, esc = false, endIdx = -1;
-        for (let i = arrStart; i < html.length; i++) {
-            const ch = html[i];
-            if (esc) { esc = false; continue; }
-            if (ch === '\\' && inStr) { esc = true; continue; }
-            if (ch === '"') { inStr = !inStr; continue; }
-            if (inStr) continue;
-            if (ch === '[' || ch === '{') depth++;
-            else if (ch === ']' || ch === '}') { depth--; if (depth === 0) { endIdx = i; break; } }
-        }
-        if (endIdx === -1) return res.json({ error: 'could not find end of var data array' });
-        try {
-            const arr = JSON.parse(html.slice(arrStart, endIdx + 1));
-            const row = Array.isArray(arr) ? arr.find(r => String(r.player_id) === String(mlbamId)) : null;
-            return res.json({
-                found: !!row,
-                totalRows: Array.isArray(arr) ? arr.length : 0,
-                row: row || null,
-                sampleRow: Array.isArray(arr) ? arr[0] : null,
-                keys: Array.isArray(arr) && arr[0] ? Object.keys(arr[0]) : [],
-            });
-        } catch (e) {
-            return res.json({ error: 'JSON parse failed', message: e.message });
-        }
+        const rows = await fetchSavantLeaderboard(type, year);
+        const row = rows.find(r => String(r.player_id) === String(mlbamId));
+        return res.json({
+            found: !!row,
+            totalRows: rows.length,
+            headers: rows.length > 0 ? Object.keys(rows[0]) : [],
+            row: row || null,
+            sampleRow: rows[0] || null,
+        });
     } catch (e) {
         return res.json({ error: e.message, code: e.code });
     }
