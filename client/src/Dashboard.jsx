@@ -486,7 +486,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
             background: C.white,
             border: `1px solid ${cardBorder}`,
-            borderRadius: 18,
+            borderRadius: 0,
             overflow: 'hidden',
             width: cardWidth,
             minWidth: cardWidth,
@@ -724,7 +724,7 @@ function StatcastSection({ data, position, forceTitle = null }) {
         : forceTitle === 'hitter' ? 'Statcast Percentiles — Hitting'
         : 'Statcast Percentiles';
     return (
-        <div style={{ marginBottom: 16, padding: '16px', background: '#ffffff', borderRadius: 18, border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)' }}>
+        <div style={{ marginBottom: 16, padding: '16px', background: '#ffffff', borderRadius: 0, border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <img src="https://baseballsavant.mlb.com/favicon.ico" width={14} height={14} alt="Savant" />
                 <span style={{ fontSize: 12, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</span>
@@ -745,6 +745,20 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
     const [imgLoaded, setImgLoaded] = useState(false)
     const [imgFailed, setImgFailed] = useState(false)
     const [imgSrc, setImgSrc] = useState(null)
+    const touchStartRef = useRef(null)
+
+    const handleTouchStart = useCallback((e) => {
+        touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    }, [])
+
+    const handleTouchEnd = useCallback((e) => {
+        if (!touchStartRef.current) return
+        const dx = e.changedTouches[0].clientX - touchStartRef.current.x
+        const dy = Math.abs(e.changedTouches[0].clientY - touchStartRef.current.y)
+        touchStartRef.current = null
+        // Swipe right 80px+ with horizontal motion dominant → close panel
+        if (dx >= 80 && dx > dy * 1.5) onClose()
+    }, [onClose])
 
     useEffect(() => {
         setImgLoaded(false)
@@ -807,8 +821,8 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                 background: '#f8fafc', zIndex: 50,
                 boxShadow: '-8px 0 32px rgba(0,0,0,0.25)',
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                borderRadius: '24px 0 0 24px',
-            }}>
+                borderRadius: 0,
+            }} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
                 {(() => {
                     const isOhtani = detail?.mlbamId === 660271 || detail?.name === 'Shohei Ohtani';
                     const headerBg = isOhtani
@@ -827,7 +841,7 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                                     background: 'radial-gradient(ellipse at 30% 50%, rgba(245,158,11,0.12) 0%, transparent 65%), radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.10) 0%, transparent 60%)',
                                 }} />
                             )}
-                            <button onClick={onClose} className="control-button" style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: C.white, cursor: 'pointer', borderRadius: 999, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, backdropFilter: 'blur(4px)', zIndex: 2 }}>✕</button>
+                            <button onClick={onClose} className="control-button" style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: C.white, cursor: 'pointer', borderRadius: 999, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, backdropFilter: 'blur(4px)', zIndex: 2 }}>✕</button>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative', zIndex: 1 }}>
                                 <div style={{ position: 'relative', width: 68, height: 68, flexShrink: 0 }}>
                                     <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', ...ringStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 24, fontWeight: 800 }}>

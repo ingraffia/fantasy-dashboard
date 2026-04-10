@@ -177,6 +177,27 @@ async function getMlbamIdFromName(name) {
     }
 }
 
+// In-memory cache for full Savant leaderboard HTML (keyed by type-year).
+// Avoids re-fetching the entire leaderboard for every player detail request.
+const savantLeaderboardCache = {};
+const SAVANT_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+async function fetchSavantLeaderboard(type, year) {
+    const key = `${type}-${year}`;
+    const cached = savantLeaderboardCache[key];
+    if (cached && Date.now() - cached.ts < SAVANT_CACHE_TTL_MS) return cached.html;
+
+    // Fetch full leaderboard without player_id filter — same approach as pybaseball.
+    // The player_id URL param only drives the UI; var data always contains all players.
+    const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&pos=all&team=&min=1`;
+    const { data: html } = await axios.get(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+        timeout: 20000,
+    });
+    savantLeaderboardCache[key] = { html, ts: Date.now() };
+    return html;
+}
+
 function mapSavantFields(row) {
     return {
         xwoba: row.percent_rank_xwoba,
@@ -195,33 +216,63 @@ function mapSavantFields(row) {
 
 function parseSavantPercentiles(html, mlbamId) {
     // Baseball Savant embeds the full leaderboard as "var data = [...]" in the page.
-    // This matches pybaseball's approach for extracting Statcast percentile rankings.
-    // When player_id is passed in the URL, Savant still embeds the full dataset but
-    // we filter client-side by player_id.
-    const m = html.match(/var\s+data\s*=\s*(\[[\s\S]*?\])\s*;/);
-    if (!m) return null;
+    // Use bracket+string tracking (not regex) to extract the array correctly,
+    // since JSON values may contain nested arrays/objects that fool non-greedy regex.
+    const marker = 'var data = [';
+    const markerIdx = html.indexOf(marker);
+    if (markerIdx === -1) {
+        console.warn(`Savant parse: 'var data = [' not found (htmlLen=${html.length})`);
+        return null;
+    }
+
+    const arrStart = markerIdx + marker.length - 1; // position of opening '['
+    let depth = 0, inStr = false, esc = false, endIdx = -1;
+    for (let i = arrStart; i < html.length; i++) {
+        const ch = html[i];
+        if (esc) { esc = false; continue; }
+        if (ch === '\\' && inStr) { esc = true; continue; }
+        if (ch === '"') { inStr = !inStr; continue; }
+        if (inStr) continue;
+        if (ch === '[' || ch === '{') depth++;
+        else if (ch === ']' || ch === '}') {
+            depth--;
+            if (depth === 0) { endIdx = i; break; }
+        }
+    }
+    if (endIdx === -1) {
+        console.warn(`Savant parse: could not find end of var data array`);
+        return null;
+    }
+
     try {
-        const arr = JSON.parse(m[1]);
-        if (!Array.isArray(arr) || arr.length === 0) return null;
+        const arr = JSON.parse(html.slice(arrStart, endIdx + 1));
+        if (!Array.isArray(arr) || arr.length === 0) {
+            console.warn(`Savant parse: empty or non-array var data for ${mlbamId}`);
+            return null;
+        }
         const row = arr.find(r => String(r.player_id) === String(mlbamId));
-        if (!row || row.percent_rank_xwoba == null) return null;
+        if (!row) {
+            console.warn(`Savant parse: player_id ${mlbamId} not found in ${arr.length} rows`);
+            return null;
+        }
+        if (row.percent_rank_xwoba == null) {
+            console.warn(`Savant parse: found row for ${mlbamId} but xwoba percentile is null`);
+            return null;
+        }
         return mapSavantFields(row);
-    } catch {
+    } catch (e) {
+        console.warn(`Savant parse: JSON.parse failed for ${mlbamId}:`, e.message);
         return null;
     }
 }
 
 async function getSavantPercentiles(mlbamId, type = 'batter') {
     if (!mlbamId) return null;
-    // Each year is tried independently — a 404/timeout on one year must not abort the rest.
-    // Note: Baseball Savant uses type=batter (not hitter) and type=pitcher.
+    // Fetch the full leaderboard (no player_id filter) — same as pybaseball.
+    // Responses are cached per type+year to avoid re-fetching for every player.
     for (const year of [2025, 2024, 2023, 2022]) {
         try {
-            const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=min`;
-            const { data: html } = await axios.get(url, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-                timeout: 15000,
-            });
+            const html = await fetchSavantLeaderboard(type, year);
             const result = parseSavantPercentiles(html, mlbamId);
             if (result) return result;
         } catch (e) {
@@ -1676,17 +1727,26 @@ router.get('/savant-debug/:mlbamId', async (req, res) => {
     const type = req.query.type || 'batter';
     const year = req.query.year || '2025';
     try {
-        const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=min`;
-        const { data: html } = await axios.get(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
-            timeout: 15000,
-        });
-        const m = html.match(/var\s+data\s*=\s*(\[[\s\S]*?\])\s*;/);
-        if (!m) {
+        const html = await fetchSavantLeaderboard(type, year);
+        const marker = 'var data = [';
+        const markerIdx = html.indexOf(marker);
+        if (markerIdx === -1) {
             return res.json({ error: 'var data not found in page', htmlLength: html.length, snippet: html.substring(0, 1000) });
         }
+        const arrStart = markerIdx + marker.length - 1;
+        let depth = 0, inStr = false, esc = false, endIdx = -1;
+        for (let i = arrStart; i < html.length; i++) {
+            const ch = html[i];
+            if (esc) { esc = false; continue; }
+            if (ch === '\\' && inStr) { esc = true; continue; }
+            if (ch === '"') { inStr = !inStr; continue; }
+            if (inStr) continue;
+            if (ch === '[' || ch === '{') depth++;
+            else if (ch === ']' || ch === '}') { depth--; if (depth === 0) { endIdx = i; break; } }
+        }
+        if (endIdx === -1) return res.json({ error: 'could not find end of var data array' });
         try {
-            const arr = JSON.parse(m[1]);
+            const arr = JSON.parse(html.slice(arrStart, endIdx + 1));
             const row = Array.isArray(arr) ? arr.find(r => String(r.player_id) === String(mlbamId)) : null;
             return res.json({
                 found: !!row,
@@ -1696,10 +1756,10 @@ router.get('/savant-debug/:mlbamId', async (req, res) => {
                 keys: Array.isArray(arr) && arr[0] ? Object.keys(arr[0]) : [],
             });
         } catch (e) {
-            return res.json({ error: 'JSON parse failed', message: e.message, rawSlice: m[1].substring(0, 500) });
+            return res.json({ error: 'JSON parse failed', message: e.message });
         }
     } catch (e) {
-        return res.json({ error: e.message, code: e.code, stack: e.stack });
+        return res.json({ error: e.message, code: e.code });
     }
 });
 
