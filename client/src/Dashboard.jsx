@@ -1920,8 +1920,15 @@ export default function Dashboard({ api }) {
     const [playerSort, setPlayerSort] = useState('rank')
     const [loadWarnings, setLoadWarnings] = useState([])
     const [pullState, setPullState] = useState({ active: false, distance: 0, ready: false, refreshing: false })
+    const [isScrolled, setIsScrolled] = useState(false)
 
     const tabSentinelRef = useRef(null)
+
+    useEffect(() => {
+        const handleScroll = () => setIsScrolled(window.scrollY > 8)
+        window.addEventListener('scroll', handleScroll, { passive: true })
+        return () => window.removeEventListener('scroll', handleScroll)
+    }, [])
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -2457,9 +2464,6 @@ export default function Dashboard({ api }) {
     return (
         <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Manrope", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 13, color: C.gray800 }}>
 
-            {/* Safe-area fill: CSS class uses env() natively and scales gradient to match header */}
-            <div className="safe-area-fill" aria-hidden="true" />
-
             {isMobile && (
                 <div style={{
                     position: 'fixed',
@@ -2504,8 +2508,11 @@ export default function Dashboard({ api }) {
                 transform: pullOffset ? `translateY(${Math.min(pullOffset, 56)}px)` : 'translateY(0)',
                 transition: pullState.active ? 'none' : 'transform 180ms ease',
                 position: 'relative',
+                background: 'none',
             }}>
-                <div className="dashboard-brand">
+                {/* Animatable background — fades to transparent when user scrolls */}
+                <div className="topbar-hero-bg" style={{ opacity: isScrolled ? 0 : 1 }} />
+                <div className="dashboard-brand" style={{ position: 'relative', zIndex: 1 }}>
                     <div className="dashboard-brand-mark">
                         <span style={{ fontSize: 18 }}>⚾</span>
                     </div>
