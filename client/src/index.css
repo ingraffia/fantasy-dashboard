@@ -141,8 +141,6 @@ body {
   border-color: var(--border-strong);
 }
 
-.surface-table { overflow: hidden; }
-
 .surface-card-header {
   padding: 15px 17px;
   border-bottom: 1px solid var(--border);
@@ -277,7 +275,7 @@ body {
 }
 
 /* ── Controls ───────────────────────────────────────────── */
-.control-input, .control-select, .control-button {
+.control-input, .control-button {
   border-radius: var(--radius-sm);
   border: 1px solid rgba(148,163,184,0.22);
   background: rgba(255,255,255,0.90);
@@ -331,7 +329,6 @@ input:focus, select:focus {
 
 /* ── Layout ─────────────────────────────────────────────── */
 .section-stack { display: flex; flex-direction: column; gap: 14px; }
-.panel-shell { animation: fadeUp 380ms var(--ease-out) both; }
 
 /* ── Matchup card ───────────────────────────────────────── */
 .matchup-card {
@@ -358,15 +355,7 @@ input:focus, select:focus {
 /* ── Misc utils ─────────────────────────────────────────── */
 .scrollbar-hidden { scrollbar-width: none; -ms-overflow-style: none; }
 .scrollbar-hidden::-webkit-scrollbar { display: none; }
-.soft-divider { border-top: 1px solid var(--border); }
 .premium-badge { box-shadow: inset 0 1px 0 rgba(255,255,255,0.45); }
-.section-eyebrow {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.11em;
-  text-transform: uppercase;
-  color: var(--gray-400);
-}
 
 /* ── Auth spinner ───────────────────────────────────────── */
 .auth-spinner {

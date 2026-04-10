@@ -13,6 +13,12 @@ const C = {
 
 const STATUS_COLOR = { DTD: C.amber, IL: C.red, IL10: C.red, IL60: C.red, IL15: C.red, NA: C.gray400 }
 
+function getHighResUrl(url) {
+    if (!url) return url
+    if (url.includes('yimg.com')) return url.replace(/w=\d+/g, 'w=140').replace(/h=\d+/g, 'h=180')
+    return url
+}
+
 const HITTER_STATS = [
     { id: '60', label: 'AB' }, { id: '7', label: 'R' }, { id: '8', label: 'H' },
     { id: '12', label: 'HR' }, { id: '13', label: 'RBI' }, { id: '16', label: 'SB' },
@@ -242,13 +248,6 @@ function PlayerAvatar({ imageUrl, name, size = 36 }) {
         setFailed(false)
     }, [imageUrl])
 
-    const getHighResUrl = (url) => {
-        if (!url) return url;
-        if (url.includes('yimg.com')) {
-            return url.replace(/w=\d+/g, 'w=140').replace(/h=\d+/g, 'h=180');
-        }
-        return url;
-    }
     const betterUrl = getHighResUrl(imageUrl);
 
     const initials = name?.trim()?.charAt(0)?.toUpperCase() || '?'
@@ -322,31 +321,29 @@ function AvailabilityBadges({ playerKey, ownership, leagues }) {
 
 // ─── Live Box Score Components ───────────────────────────────────────────────
 
+const BADGE_SX = { fontSize: 10, fontWeight: 800, padding: '5px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }
+
 function GameStatusBadge({ game }) {
     if (game.isLive) {
         const half = game.inningHalf === 'Top' ? '▲' : '▼'
         const inningStr = game.inning ? `${half}${game.inning}` : 'LIVE'
         return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 10, fontWeight: 800, color: '#14532d', background: '#dcfce7', padding: '5px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+            <span style={{ ...BADGE_SX, display: 'inline-flex', alignItems: 'center', gap: 6, color: '#14532d', background: '#dcfce7' }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, flexShrink: 0, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
                 {inningStr} · {game.outs ?? 0} out{game.outs === 1 ? '' : 's'}
             </span>
         )
     }
-    if (game.isPostponed) {
-        return (
-            <span style={{ fontSize: 10, fontWeight: 800, color: '#92400e', background: '#fef3c7', padding: '5px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
-                Postponed
-            </span>
-        )
-    }
+    if (game.isPostponed) return (
+        <span style={{ ...BADGE_SX, color: '#92400e', background: '#fef3c7' }}>Postponed</span>
+    )
     if (game.isFinal) return (
-        <span style={{ fontSize: 10, fontWeight: 800, color: C.gray600, background: '#e2e8f0', padding: '5px 9px', borderRadius: 999, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>Final</span>
+        <span style={{ ...BADGE_SX, color: C.gray600, background: '#e2e8f0' }}>Final</span>
     )
     const timeStr = game.startTime
         ? new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
         : '—'
-    return <span style={{ fontSize: 10, color: '#dbe7ff', fontWeight: 800, whiteSpace: 'nowrap', background: 'rgba(255,255,255,0.08)', padding: '5px 9px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.12)', letterSpacing: '0.02em' }}>{timeStr}</span>
+    return <span style={{ ...BADGE_SX, color: '#dbe7ff', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>{timeStr}</span>
 }
 
 function CompactGamePill({ game }) {
@@ -862,14 +859,6 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
         leagueRank: rankMap[lg.leagueKey]?.[playerKey]?.leagueRank,
     }))
     const overallRank = ranksByLeague.find(r => r.overallRank)?.overallRank
-
-    const getHighResUrl = (url) => {
-        if (!url) return url;
-        if (url.includes('yimg.com')) {
-            return url.replace(/w=\d+/g, 'w=140').replace(/h=\d+/g, 'h=180');
-        }
-        return url;
-    };
 
     const espnFallbackUrl = isEspn ? `https://a.espncdn.com/i/headshots/mlb/players/full/${playerKey.replace('espn.p.', '')}.png` : null
     const resolvedImgSrc = getHighResUrl(imgSrc || espnFallbackUrl || '')

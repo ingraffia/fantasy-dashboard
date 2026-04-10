@@ -19,7 +19,6 @@ async function requireAuth(req, res, next) {
 
     if (Date.now() > yahooTokens.expires_at - 5 * 60 * 1000) {
         try {
-            console.log('Auto-refreshing expired token...');
             yahooTokens = await refreshYahooTokens(yahooTokens);
             attachAuthToken(res, signAuthToken(yahooTokens));
         } catch (e) {
@@ -286,7 +285,6 @@ async function getSavantPercentiles(mlbamId, type = 'batter') {
             const mapped = mapSavantFields(row);
             const hasData = Object.values(mapped).some(v => v != null);
             if (hasData) {
-                console.log(`[Savant] OK: ${mlbamId} (${type}, ${row.year}) xwoba=${mapped.xwoba}`);
                 savantPlayerCache[cacheKey] = { result: mapped, ts: Date.now() };
                 return mapped;
             }
