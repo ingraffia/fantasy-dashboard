@@ -896,14 +896,14 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                         ? { border: '2.5px solid', borderImage: 'linear-gradient(135deg, #f59e0b, #fde68a, #f59e0b) 1', borderRadius: '50%' }
                         : { border: '2px solid rgba(255,255,255,0.15)' };
                     return (
-                        <div style={{ background: headerBg, padding: '24px 20px', position: 'relative', overflow: 'hidden' }}>
+                        <div style={{ background: headerBg, padding: `calc(env(safe-area-inset-top) + 24px) 20px 24px`, position: 'relative', overflow: 'hidden' }}>
                             {isOhtani && (
                                 <div style={{
                                     position: 'absolute', inset: 0, pointerEvents: 'none',
                                     background: 'radial-gradient(ellipse at 30% 50%, rgba(245,158,11,0.12) 0%, transparent 65%), radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.10) 0%, transparent 60%)',
                                 }} />
                             )}
-                            <button onClick={onClose} className="control-button" style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: C.white, cursor: 'pointer', borderRadius: 999, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, backdropFilter: 'blur(4px)', zIndex: 2 }}>✕</button>
+                            <button onClick={onClose} className="control-button" style={{ position: 'absolute', top: 'calc(env(safe-area-inset-top) + 14px)', right: 14, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: C.white, cursor: 'pointer', borderRadius: 999, width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, backdropFilter: 'blur(4px)', zIndex: 2 }}>✕</button>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative', zIndex: 1 }}>
                                 <div style={{ position: 'relative', width: 68, height: 68, flexShrink: 0 }}>
                                     <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', ...ringStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 24, fontWeight: 800 }}>
