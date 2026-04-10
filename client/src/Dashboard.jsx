@@ -465,7 +465,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     const scoreFontSize = compactCard ? 34 : 38
     const bodyPadding = '12px'
     const bodyMinHeight = 166
-    const cardWidth = 286
+    const cardWidth = 270
     const cardBorder = game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : isRosterGame ? '#bfdbfe' : '#dbe7ff'
     const cardShadow = isRosterGame ? '0 16px 36px rgba(37,99,235,0.12)' : '0 12px 28px rgba(15,23,42,0.08)'
     const headerBg = game.isLive
@@ -577,7 +577,10 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
 
 function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers, imageMap, px, onOpenPlayer }) {
     if (games.length === 0) return null
-    const myGames = games.filter(g => myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam))
+
+    const scrollRef = useRef(null)
+    const [activeIdx, setActiveIdx] = useState(0)
+
     const liveCount = games.filter(g => g.isLive).length
     const hasStartedGames = games.some(g => (g.isLive || g.isFinal) && !g.isPostponed)
     const statusRank = (game) => {
@@ -596,8 +599,28 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
         return String(a.gamePk).localeCompare(String(b.gamePk))
     })
 
+    const CARD_STEP = 270 + 10 // cardWidth + gap
+
+    useEffect(() => {
+        const el = scrollRef.current
+        if (!el) return
+        const onScroll = () => {
+            const idx = Math.round(el.scrollLeft / CARD_STEP)
+            setActiveIdx(Math.max(0, Math.min(idx, sortedGames.length - 1)))
+        }
+        el.addEventListener('scroll', onScroll, { passive: true })
+        return () => el.removeEventListener('scroll', onScroll)
+    }, [sortedGames.length])
+
+    const scrollTo = (idx) => {
+        scrollRef.current?.scrollTo({ left: idx * CARD_STEP, behavior: 'smooth' })
+        setActiveIdx(idx)
+    }
+
+    const isLast = activeIdx >= sortedGames.length - 1
+
     return (
-        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: 'rgba(255,255,255,0.92)', borderBottom: `1px solid ${C.gray100}`, paddingTop: 14, paddingBottom: 14, borderRadius: 0 }}>
+        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: 'rgba(255,255,255,0.92)', borderBottom: `1px solid ${C.gray100}`, paddingTop: 14, paddingBottom: 16, borderRadius: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 12 }}>
                 <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -609,33 +632,65 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                     </span>
                 )}
                 <span style={{ fontSize: 10, color: C.gray400, marginLeft: 'auto' }}>
-                    {games.length} games · {myGames.length} with your players
+                    {activeIdx + 1} of {sortedGames.length}
                 </span>
             </div>
-            <div style={{
-                display: 'flex', gap: 10,
-                overflowX: 'auto', overflowY: 'visible',
-                paddingLeft: px, paddingRight: px, paddingBottom: 10,
-                scrollPaddingLeft: px,
-                scrollbarWidth: 'none', msOverflowStyle: 'none',
-                WebkitOverflowScrolling: 'touch',
-                scrollSnapType: 'x proximity',
-            }} className="scrollbar-hidden">
-                {sortedGames.map(g => (
-                    <div key={g.gamePk} style={{ scrollSnapAlign: 'start' }}>
-                        <BoxScoreCard
-                            game={g}
-                            boxscore={boxscores[g.gamePk]}
-                            myPlayerNames={myPlayerNames}
-                            rosterPlayers={rosterPlayers}
-                            imageMap={imageMap}
-                            onOpenPlayer={onOpenPlayer}
-                            pregameCompact={!hasStartedGames}
-                            isRosterGame={myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam)}
-                        />
-                    </div>
-                ))}
+
+            <div style={{ position: 'relative' }}>
+                <div ref={scrollRef} style={{
+                    display: 'flex', gap: 10,
+                    overflowX: 'auto', overflowY: 'visible',
+                    paddingLeft: px, paddingRight: px, paddingBottom: 12,
+                    scrollPaddingLeft: px,
+                    scrollbarWidth: 'none', msOverflowStyle: 'none',
+                    WebkitOverflowScrolling: 'touch',
+                    scrollSnapType: 'x mandatory',
+                }} className="scrollbar-hidden">
+                    {sortedGames.map(g => (
+                        <div key={g.gamePk} style={{ scrollSnapAlign: 'start' }}>
+                            <BoxScoreCard
+                                game={g}
+                                boxscore={boxscores[g.gamePk]}
+                                myPlayerNames={myPlayerNames}
+                                rosterPlayers={rosterPlayers}
+                                imageMap={imageMap}
+                                onOpenPlayer={onOpenPlayer}
+                                pregameCompact={!hasStartedGames}
+                                isRosterGame={myTeams.has(g.awayTeam) || myTeams.has(g.homeTeam)}
+                            />
+                        </div>
+                    ))}
+                </div>
+                {!isLast && (
+                    <div style={{
+                        position: 'absolute', right: 0, top: 0, bottom: 12,
+                        width: 56, pointerEvents: 'none',
+                        background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.95) 80%)',
+                    }} />
+                )}
             </div>
+
+            {sortedGames.length > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 5, paddingTop: 4 }}>
+                    {sortedGames.map((g, i) => (
+                        <button
+                            key={g.gamePk}
+                            type="button"
+                            onClick={() => scrollTo(i)}
+                            style={{
+                                width: i === activeIdx ? 18 : 6,
+                                height: 6,
+                                borderRadius: 3,
+                                background: i === activeIdx ? C.accent : C.gray200,
+                                border: 'none', padding: 0, cursor: 'pointer',
+                                transition: 'width 200ms ease, background 200ms ease',
+                                flexShrink: 0,
+                            }}
+                        />
+                    ))}
+                </div>
+            )}
+
             <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
         </div>
     )
