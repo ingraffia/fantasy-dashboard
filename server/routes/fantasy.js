@@ -216,25 +216,28 @@ function parseSavantPercentiles(html, year) {
     return null;
 }
 
-async function getSavantPercentiles(mlbamId, type = null) {
+async function getSavantPercentiles(mlbamId, type = 'hitter') {
     if (!mlbamId) return null;
-    // Baseball Savant type values are 'hitter' and 'pitcher' (not 'batter')
-    const typeParam = type ? `&type=${type}` : '';
-    try {
-        for (const year of [2025, 2024, 2023, 2022]) {
-            const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?year=${year}&player_id=${mlbamId}${typeParam}`;
+    // Each year is tried independently — a 404/timeout on one year must not abort the rest
+    for (const year of [2025, 2024, 2023, 2022]) {
+        try {
+            const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?type=${type}&year=${year}&player_id=${mlbamId}&pos=all&team=&min=min`;
             const { data: html } = await axios.get(url, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' },
+                headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
                 timeout: 10000,
             });
             const result = parseSavantPercentiles(html, year);
             if (result) return result;
+        } catch (e) {
+            console.warn(`Savant fetch failed for ${mlbamId} (${type}, ${year}):`, e.message);
+            // Continue to next year
         }
-        return null;
-    } catch (e) {
-        console.warn(`Savant data fetch failed for ${mlbamId}:`, e.message);
-        return null;
     }
+    return null;
+}
+
+function isPitcherPosition(pos) {
+    return /\bSP\b|\bRP\b|\bP\b/.test(pos || '');
 }
 
 const ESPN_SLOT_MAP = {
@@ -844,7 +847,8 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
                 // For backwards compat, default savantData to hitting side for two-way players
                 savantData = savantDataHitter;
             } else {
-                savantData = await getSavantPercentiles(mlbamId);
+                const posType = isPitcherPosition(meta.display_position) ? 'pitcher' : 'hitter';
+                savantData = await getSavantPercentiles(mlbamId, posType);
             }
         }
 
@@ -958,6 +962,7 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
         if (!player) return res.status(404).json({ error: 'Player not found' });
         // Resolve the real MLBAM ID from the player's name — ESPN IDs are NOT the same as MLBAM IDs
         const mlbamId = await getMlbamIdFromName(player.fullName);
+        const position = ESPN_POS_MAP[player.defaultPositionId] || '';
         const isTwoWay = mlbamId && TWO_WAY_MLBAM_IDS.has(Number(mlbamId));
         let savantData = null, savantDataHitter = null, savantDataPitcher = null;
         if (mlbamId) {
@@ -968,13 +973,15 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
                 ]);
                 savantData = savantDataHitter;
             } else {
-                savantData = await getSavantPercentiles(mlbamId);
+                const posType = isPitcherPosition(position) ? 'pitcher' : 'hitter';
+                savantData = await getSavantPercentiles(mlbamId, posType);
             }
         }
-        // Prefer MLB CDN headshot (using real MLBAM ID); fall back to ESPN CDN
-        const imageUrl = mlbamId
+        // ESPN CDN always works for ESPN player IDs — use as primary; send MLB CDN as fallback
+        const imageUrl = `https://a.espncdn.com/i/headshots/mlb/players/full/${playerId}.png`;
+        const imageUrlFallback = mlbamId
             ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/${mlbamId}/headshot/67/current`
-            : `https://a.espncdn.com/i/headshots/mlb/players/full/${playerId}.png`;
+            : null;
         res.json({
             playerKey: `espn.p.${playerId}`, name: player.fullName,
             position: ESPN_POS_MAP[player.defaultPositionId] || '—',
@@ -987,6 +994,7 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
             percentOwned: (player.ownership?.percentOwned ?? 0).toFixed(0),
             stats: parseEspnStats(player),
             imageUrl,
+            imageUrlFallback,
             source: 'espn',
             mlbamId,
             savantData,

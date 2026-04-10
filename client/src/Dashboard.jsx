@@ -644,45 +644,45 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     )
 }
 
-function SavantPercentile({ label, percentile }) {
+function SavantPercentile({ label, percentile, animate, delay = 0 }) {
     if (percentile == null) return null;
     const value = Math.round(percentile);
-    
-    // Savant Palette
-    let color = '#dddddd'; // Average
-    if (value >= 91) color = '#d22d2d';      // Elite
-    else if (value >= 61) color = '#ef7676'; // Good
-    else if (value >= 40) color = '#dddddd'; // Neutral
-    else if (value >= 10) color = '#7ba4f4'; // Poor
-    else color = '#2d50d2';                  // Terrible
+
+    let color = '#dddddd';
+    if (value >= 91) color = '#d22d2d';
+    else if (value >= 61) color = '#ef7676';
+    else if (value >= 40) color = '#dddddd';
+    else if (value >= 10) color = '#7ba4f4';
+    else color = '#2d50d2';
+
+    const displayLeft = animate ? `${value}%` : '0%';
+    const displayOpacity = animate ? 1 : 0;
 
     return (
         <div style={{ display: 'grid', gridTemplateColumns: '100px minmax(0, 1fr)', alignItems: 'center', gap: 14, marginBottom: 14 }}>
             <div style={{ fontSize: 10, fontWeight: 800, color: C.gray600, textAlign: 'right', textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1.1 }}>{label}</div>
             <div style={{ position: 'relative', height: 10, display: 'flex', alignItems: 'center' }}>
-                {/* Genuine Savant Track Line */}
                 <div style={{ width: '100%', height: 2, background: '#e5e7eb', borderRadius: 1 }} />
-                
-                {/* The Floating Bubble */}
-                <div style={{ 
-                    position: 'absolute', 
-                    left: `${value}%`, 
-                    top: '50%', 
-                    transform: 'translate(-50%, -50%)', 
-                    width: 24, 
-                    height: 24, 
-                    borderRadius: '50%', 
-                    background: color, 
+                <div style={{
+                    position: 'absolute',
+                    left: displayLeft,
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: 26,
+                    height: 26,
+                    borderRadius: '50%',
+                    background: color,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: 10,
                     fontWeight: 900,
                     color: (value >= 40 && value <= 60) ? '#4b5563' : '#fff',
-                    boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                    boxShadow: animate ? `0 3px 10px ${color}88` : 'none',
                     border: '2px solid #fff',
                     zIndex: 2,
-                    transition: 'left 1s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    opacity: displayOpacity,
+                    transition: `left ${0.6 + delay * 0.05}s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay * 60}ms, opacity 0.25s ease ${delay * 60}ms, box-shadow 0.4s ease`,
                 }}>{value}</div>
             </div>
         </div>
@@ -710,6 +710,13 @@ const PITCHER_METRICS = [
 ];
 
 function StatcastSection({ data, position, forceTitle = null }) {
+    const [animate, setAnimate] = useState(false)
+    useEffect(() => {
+        // Short delay so the card finishes its enter transition before bubbles fire
+        const t = setTimeout(() => setAnimate(true), 120)
+        return () => clearTimeout(t)
+    }, [])
+
     if (!data) return null;
     const isP = forceTitle ? forceTitle === 'pitcher' : isPitcher(position);
     const metrics = isP ? PITCHER_METRICS : HITTER_METRICS;
@@ -722,7 +729,9 @@ function StatcastSection({ data, position, forceTitle = null }) {
                 <img src="https://baseballsavant.mlb.com/favicon.ico" width={14} height={14} alt="Savant" />
                 <span style={{ fontSize: 12, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</span>
             </div>
-            {metrics.map(m => <SavantPercentile key={m.key} label={m.label} percentile={data[m.key]} />)}
+            {metrics.map((m, i) => (
+                <SavantPercentile key={m.key} label={m.label} percentile={data[m.key]} animate={animate} delay={i} />
+            ))}
             <div style={{ marginTop: 12, fontSize: 9, color: C.gray400, textAlign: 'center', fontStyle: 'italic' }}>Data provided by Baseball Savant / MLB Statcast</div>
         </div>
     );
@@ -735,10 +744,12 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
     const [loading, setLoading] = useState(true)
     const [imgLoaded, setImgLoaded] = useState(false)
     const [imgFailed, setImgFailed] = useState(false)
+    const [imgSrc, setImgSrc] = useState(null)
 
     useEffect(() => {
         setImgLoaded(false)
         setImgFailed(false)
+        setImgSrc(null)
         if (!playerKey) return
 
         if (!playerKey.startsWith('espn.') && fetchOwnership && (!ownership || !ownership[playerKey])) {
@@ -748,7 +759,7 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
         if (playerKey.startsWith('espn.')) {
             const espnId = playerKey.replace('espn.p.', '')
             axios.get(`${api}/api/espn-player/${espnId}`, { withCredentials: true })
-                .then(r => { setDetail(r.data); setLoading(false) })
+                .then(r => { setDetail(r.data); setImgSrc(r.data.imageUrl || null); setLoading(false) })
                 .catch(() => {
                     const espnLeague = leagues.find(l => l.leagueKey?.startsWith('espn'))
                     const rosterPlayer = espnLeague?.players?.find(p => p.playerKey === playerKey)
@@ -758,7 +769,7 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
             return
         }
         axios.get(`${api}/api/player/${playerKey}`, { withCredentials: true })
-            .then(r => { setDetail(r.data); setLoading(false) })
+            .then(r => { setDetail(r.data); setImgSrc(r.data.imageUrl || null); setLoading(false) })
             .catch(() => setLoading(false))
     }, [playerKey, api])
 
@@ -782,7 +793,9 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
         return url;
     };
 
-    const imageSrc = getHighResUrl(detail?.imageUrl || (isEspn ? `https://a.espncdn.com/i/headshots/mlb/players/full/${playerKey.replace('espn.p.', '')}.png` : ''));
+    const espnFallbackUrl = isEspn ? `https://a.espncdn.com/i/headshots/mlb/players/full/${playerKey.replace('espn.p.', '')}.png` : null
+    const resolvedImgSrc = getHighResUrl(imgSrc || espnFallbackUrl || '')
+    const imgFallbackSrc = detail?.imageUrlFallback || (isEspn ? espnFallbackUrl : null)
 
     const SectionTitle = ({ children }) => (
         <div style={{ fontSize: 11, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 10 }}>{children}</div>
@@ -826,11 +839,18 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                                     {isOhtani && (
                                         <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', background: 'linear-gradient(135deg, #f59e0b, #fde68a, #c084fc, #f59e0b)', zIndex: 0, opacity: 0.85 }} />
                                     )}
-                                    {(!imgFailed && imageSrc) && (
-                                        <img src={imageSrc} alt={playerName}
+                                    {(!imgFailed && resolvedImgSrc) && (
+                                        <img src={resolvedImgSrc} alt={playerName}
                                             style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: imgLoaded ? 'block' : 'none', position: 'relative', zIndex: 2 }}
                                             onLoad={() => setImgLoaded(true)}
-                                            onError={() => setImgFailed(true)}
+                                            onError={() => {
+                                                if (imgFallbackSrc && resolvedImgSrc !== imgFallbackSrc) {
+                                                    setImgSrc(imgFallbackSrc)
+                                                    setImgLoaded(false)
+                                                } else {
+                                                    setImgFailed(true)
+                                                }
+                                            }}
                                         />
                                     )}
                                     {isOhtani && imgLoaded && (
