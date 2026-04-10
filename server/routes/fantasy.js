@@ -259,7 +259,10 @@ async function getSavantPercentiles(mlbamId, type = 'batter') {
             console.error(`[Savant] ${mlbamId} (${type}, ${year}, min=${min}): CSV has no player_id column. Columns: ${csvCols.slice(0, 15).join(', ')}`);
             return null;
         }
-        const row = rows.find(r => String(r.player_id) === String(mlbamId))
+        // When player_id is in the URL, Savant ignores the year param and returns
+        // ALL years for that player. Filter to the specific year we want so we don't
+        // accidentally pick up an older row that has incomplete data (e.g. blank xwoba).
+        const row = rows.find(r => String(r.player_id) === String(mlbamId) && String(r.year) === String(year))
             ?? (rows.length === 1 ? rows[0] : null);
         if (!row) {
             // Log sample IDs so we can see if our mlbamId is in the right format
@@ -274,7 +277,7 @@ async function getSavantPercentiles(mlbamId, type = 'batter') {
         return mapped.xwoba != null ? mapped : null;
     };
 
-    for (const year of [2025, 2024, 2023, 2022]) {
+    for (const year of [2026, 2025, 2024, 2023, 2022]) {
         // Try qualified leaderboard first (smaller, faster). If player not found
         // (e.g. hasn't reached 502 PA yet), fall back to min=0 which includes all
         // players with any plate appearances in that season.
