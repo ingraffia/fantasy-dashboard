@@ -486,7 +486,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
             background: C.white,
             border: `1px solid ${cardBorder}`,
-            borderRadius: 0,
+            borderRadius: 18,
             overflow: 'hidden',
             width: cardWidth,
             minWidth: cardWidth,
@@ -618,7 +618,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
             <div style={{
                 display: 'flex', gap: 10,
                 overflowX: 'auto', overflowY: 'visible',
-                paddingLeft: px, paddingRight: px, paddingBottom: 2,
+                paddingLeft: px, paddingRight: px, paddingBottom: 10,
                 scrollPaddingLeft: px,
                 scrollbarWidth: 'none', msOverflowStyle: 'none',
                 WebkitOverflowScrolling: 'touch',
