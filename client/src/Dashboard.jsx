@@ -813,7 +813,10 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                                     const slot = lg.players?.find(p => p.playerKey === playerKey)?.selectedPosition
                                     
                                     let statusNode = <span style={{ fontSize: 11, color: C.gray400 }}>Checking...</span>
+                                    let rowBg = 'transparent'
+                                    
                                     if (onRoster) {
+                                        rowBg = 'rgba(37, 99, 235, 0.05)'
                                         statusNode = <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><SlotPill slot={slot} /></div>
                                     } else if (lg.leagueKey.startsWith('espn')) {
                                         statusNode = <span style={{ fontSize: 12, color: C.gray400 }}>Not on roster</span>
@@ -822,12 +825,19 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                                         if (stat.available === true) {
                                             statusNode = <Tag text="Available" bg={C.greenLight} color={C.green} />
                                         } else {
-                                            statusNode = <Tag text={stat.ownerTeamName || 'Taken'} bg={C.gray100} color={C.gray600} />
+                                            statusNode = <Tag text={stat.ownerTeamName || 'Taken'} bg="#fef2f2" color="#dc2626" />
                                         }
                                     }
 
                                     return (
-                                        <div key={lg.leagueKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderBottom: i < leagues.length - 1 ? `1px solid ${C.gray100}` : 'none' }}>
+                                        <div key={lg.leagueKey} style={{ 
+                                            display: 'flex', 
+                                            justifyContent: 'space-between', 
+                                            alignItems: 'center', 
+                                            padding: '12px 14px', 
+                                            background: rowBg,
+                                            borderBottom: i < leagues.length - 1 ? `1px solid ${C.gray100}` : 'none' 
+                                        }}>
                                             <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{lg.leagueName}</span>
                                             {statusNode}
                                         </div>
