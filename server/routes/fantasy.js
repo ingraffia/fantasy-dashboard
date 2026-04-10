@@ -766,6 +766,9 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
         // Statcast integration
         const mlbamId = await getMlbamIdFromName(meta.name?.full);
         const savantData = mlbamId ? await getSavantPercentiles(mlbamId) : null;
+        
+        // High-res action/portrait shot from MLB (crisper than headshots)
+        const mlbPhotoUrl = mlbamId ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/${mlbamId}/action/hero/current` : null;
 
         res.json({
             playerKey, name: meta.name?.full, position: meta.display_position,
@@ -773,7 +776,7 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
             uniformNumber: meta.uniform_number, injuryStatus: meta.status || null,
             injuryNote: meta.status_full || null, isUndroppable: meta.is_undroppable == 1,
             percentOwned: parseFloat(percentOwned).toFixed(0), stats: statMap,
-            imageUrl: meta.headshot?.url || null,
+            imageUrl: mlbPhotoUrl || meta.headshot?.url || null,
             mlbamId,
             savantData
         });
@@ -882,7 +885,7 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
             isUndroppable: !entry?.playerPoolEntry?.droppable,
             percentOwned: (player.ownership?.percentOwned ?? 0).toFixed(0),
             stats: parseEspnStats(player),
-            imageUrl: `https://a.espncdn.com/i/headshots/mlb/players/full/${playerId}.png`,
+            imageUrl: `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/${playerId}/headshot/67/current`,
             source: 'espn',
             mlbamId: playerId, // ESPN IDs usually match MLBAM IDs, or are very close
             savantData: await getSavantPercentiles(playerId)
