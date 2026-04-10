@@ -224,20 +224,21 @@ async function fetchSavantLeaderboard(type, year) {
 }
 
 function mapSavantFields(row) {
-    // CSV values come in as strings — coerce to numbers, treat empty as null
+    // CSV column names from the csv=true endpoint (confirmed from debug output).
+    // These differ from the old HTML-embedded var data field names.
     const n = (v) => (v === '' || v == null) ? null : Number(v);
     return {
-        xwoba: n(row.percent_rank_xwoba),
-        xba: n(row.percent_rank_xba),
-        xslg: n(row.percent_rank_xslg),
-        exit_velocity: n(row.percent_rank_exit_velocity_avg),
-        barrel_rate: n(row.percent_rank_barrel_batted_rate),
-        hard_hit_rate: n(row.percent_rank_hard_hit_percent),
-        k_percent: n(row.percent_rank_k_percent),
-        bb_percent: n(row.percent_rank_bb_percent),
-        whiff_percent: n(row.percent_rank_whiff_percent),
-        chase_percent: n(row.percent_rank_chase_percent),
-        velocity: n(row.percent_rank_fastball_velo),
+        xwoba: n(row.xwoba),
+        xba: n(row.xba),
+        xslg: n(row.xslg),
+        exit_velocity: n(row.exit_velocity),
+        barrel_rate: n(row.brl_percent),
+        hard_hit_rate: n(row.hard_hit_percent),
+        k_percent: n(row.k_percent),
+        bb_percent: n(row.bb_percent),
+        whiff_percent: n(row.whiff_percent),
+        chase_percent: n(row.chase_percent),
+        velocity: n(row.fastball_velo),  // present in pitcher-type CSV
     };
 }
 
