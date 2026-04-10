@@ -302,8 +302,9 @@ function AvailabilityBadges({ playerKey, ownership, leagues }) {
         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
             {leagues.map(lg => {
                 const status = ownership[playerKey]?.[lg.leagueKey]
-                const available = status?.available !== false
-                const label = available ? 'FA' : (status?.ownerTeamName || 'Taken')
+                if (!status) return null;
+                const available = status.available === true
+                const label = available ? 'FA' : (status.ownerTeamName || 'Taken')
                 return (
                     <span key={lg.leagueKey} title={lg.leagueName} style={{
                         display: 'inline-flex', alignItems: 'center', gap: 3, padding: '1px 6px',
@@ -645,7 +646,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
 
 // ─── Player Detail Panel ─────────────────────────────────────────────────────
 
-function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) {
+function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ownership, fetchOwnership }) {
     const [detail, setDetail] = useState(null)
     const [loading, setLoading] = useState(true)
     const [imgLoaded, setImgLoaded] = useState(false)
@@ -655,6 +656,10 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
         setImgLoaded(false)
         setImgFailed(false)
         if (!playerKey) return
+
+        if (!playerKey.startsWith('espn.') && fetchOwnership && (!ownership || !ownership[playerKey])) {
+            fetchOwnership([playerKey])
+        }
         setLoading(true)
         if (playerKey.startsWith('espn.')) {
             const espnId = playerKey.replace('espn.p.', '')
@@ -806,12 +811,25 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api }) 
                                 {leagues.map((lg, i) => {
                                     const onRoster = lg.players?.some(p => p.playerKey === playerKey)
                                     const slot = lg.players?.find(p => p.playerKey === playerKey)?.selectedPosition
+                                    
+                                    let statusNode = <span style={{ fontSize: 11, color: C.gray400 }}>Checking...</span>
+                                    if (onRoster) {
+                                        statusNode = <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><SlotPill slot={slot} /></div>
+                                    } else if (lg.leagueKey.startsWith('espn')) {
+                                        statusNode = <span style={{ fontSize: 12, color: C.gray400 }}>Not on roster</span>
+                                    } else if (ownership && ownership[playerKey] && ownership[playerKey][lg.leagueKey]) {
+                                        const stat = ownership[playerKey][lg.leagueKey]
+                                        if (stat.available === true) {
+                                            statusNode = <Tag text="Available" bg={C.greenLight} color={C.green} />
+                                        } else {
+                                            statusNode = <Tag text={stat.ownerTeamName || 'Taken'} bg={C.gray100} color={C.gray600} />
+                                        }
+                                    }
+
                                     return (
                                         <div key={lg.leagueKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px', borderBottom: i < leagues.length - 1 ? `1px solid ${C.gray100}` : 'none' }}>
                                             <span style={{ fontSize: 13, fontWeight: 700, color: C.navy }}>{lg.leagueName}</span>
-                                            {onRoster
-                                                ? <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><SlotPill slot={slot} /></div>
-                                                : <Tag text="Available" bg={C.gray100} color={C.gray400} />}
+                                            {statusNode}
                                         </div>
                                     )
                                 })}
@@ -1920,7 +1938,7 @@ export default function Dashboard({ api }) {
     const fetchOwnership = (playerKeys) => {
         setOwnershipLoading(true)
         axios.post(`${api}/api/player-ownership`, { playerKeys }, { withCredentials: true })
-            .then(r => { setOwnership(r.data); setOwnershipLoading(false) })
+            .then(r => { setOwnership(prev => ({ ...prev, ...r.data })); setOwnershipLoading(false) })
             .catch(() => setOwnershipLoading(false))
     }
 
@@ -2222,7 +2240,7 @@ export default function Dashboard({ api }) {
 
             {selectedPlayer && (
                 <PlayerPanel playerKey={selectedPlayer.playerKey} playerName={selectedPlayer.name}
-                    leagues={leagueSummary} rankMap={rankMap} onClose={() => setSelectedPlayer(null)} api={api} />
+                    leagues={leagueSummary} rankMap={rankMap} onClose={() => setSelectedPlayer(null)} api={api} ownership={ownership} fetchOwnership={fetchOwnership} />
             )}
 
             {/* Header */}
