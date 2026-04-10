@@ -2457,6 +2457,19 @@ export default function Dashboard({ api }) {
     return (
         <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Manrope", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 13, color: C.gray800 }}>
 
+            {/* Safe-area overlay: covers the dynamic island gap with the exact header gradient */}
+            <div aria-hidden="true" style={{
+                position: 'fixed', top: 0, left: 0, right: 0,
+                height: 'env(safe-area-inset-top)',
+                background: [
+                    'radial-gradient(ellipse 130% 120% at -5% -20%, rgba(59,130,246,0.45), transparent 52%)',
+                    'radial-gradient(ellipse 80% 100% at 110% -10%, rgba(5,150,105,0.22), transparent 50%)',
+                    'linear-gradient(148deg, #060e1e 0%, #0f2040 38%, #16324f 65%, #1e4275 100%)',
+                ].join(', '),
+                zIndex: 999,
+                pointerEvents: 'none',
+            }} />
+
             {isMobile && (
                 <div style={{
                     position: 'fixed',
