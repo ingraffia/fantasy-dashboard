@@ -2293,11 +2293,13 @@ export default function Dashboard({ api }) {
                 className="stagger-container scrollbar-hidden"
                 style={{
                     padding: `16px ${px} 10px`,
-                    display: 'flex',
+                    display: isMobile ? 'flex' : 'grid',
+                    gridTemplateColumns: isMobile ? undefined : 'repeat(auto-fit, minmax(320px, 1fr))',
                     gap: 14,
-                    overflowX: 'auto',
+                    overflowX: isMobile ? 'auto' : 'visible',
                     overflowY: 'visible',
-                    flexWrap: 'nowrap',
+                    flexWrap: isMobile ? 'nowrap' : undefined,
+                    scrollSnapType: isMobile ? 'x mandatory' : 'none',
                     WebkitOverflowScrolling: 'touch',
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
@@ -2306,7 +2308,7 @@ export default function Dashboard({ api }) {
                 {data.map(lg => {
                     const isWinning = lg.matchup?.isWinning
                     const isLosing = lg.matchup && !isWinning && parseFloat(lg.matchup.oppScore || 0) > parseFloat(lg.matchup.myScore || 0)
-                    const cardWidth = isMobile ? 'calc(100vw - 24px)' : 286
+                    const cardWidth = isMobile ? 'calc(100vw - 32px)' : '100%'
                     const borderColor = isWinning ? '#86efac' : isLosing ? '#fca5a5' : '#bfdbfe'
                     const headerBg = '#ffffff'
                     const myColor = C.navy
@@ -2349,19 +2351,19 @@ export default function Dashboard({ api }) {
                         <a className="surface-card surface-card--interactive matchup-card animate-fade-up" href={href} target="_blank" rel="noopener noreferrer" key={lg.leagueKey} style={{
                             textDecoration: 'none',
                             color: 'inherit',
-                            display: 'block',
+                            display: 'flex',
+                            flexDirection: 'column',
                             background: '#ffffff',
                             borderRadius: 18,
                             border: `1px solid ${borderColor}`,
                             boxShadow: isWinning || isLosing ? '0 18px 40px rgba(15,23,42,0.10)' : '0 14px 32px rgba(15,23,42,0.08)',
-                            minWidth: cardWidth,
+                            width: cardWidth,
+                            minWidth: isMobile ? cardWidth : undefined,
                             maxWidth: cardWidth,
-                            flex: '0 0 auto',
-                            display: 'flex',
-                            flexDirection: 'column',
+                            flex: isMobile ? '0 0 auto' : undefined,
                             minHeight: 312,
                             overflow: 'hidden',
-                            scrollSnapAlign: 'start',
+                            scrollSnapAlign: isMobile ? 'center' : 'none',
                         }}>
                             <div style={{ padding: '14px', background: headerBg, borderBottom: `1px solid ${C.gray100}` }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 }}>
