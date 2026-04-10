@@ -689,32 +689,38 @@ function SavantPercentile({ label, percentile }) {
     );
 }
 
-function StatcastSection({ data, position }) {
+const HITTER_METRICS = [
+    { key: 'xwoba', label: 'xwOBA' },
+    { key: 'xba', label: 'xBA' },
+    { key: 'xslg', label: 'xSLG' },
+    { key: 'exit_velocity', label: 'Avg Exit Velo' },
+    { key: 'barrel_rate', label: 'Barrel %' },
+    { key: 'hard_hit_rate', label: 'Hard-Hit %' },
+    { key: 'k_percent', label: 'K %' },
+    { key: 'bb_percent', label: 'BB %' },
+    { key: 'whiff_percent', label: 'Whiff %' },
+    { key: 'chase_percent', label: 'Chase %' },
+];
+const PITCHER_METRICS = [
+    { key: 'velocity', label: 'Fastball Velo' },
+    { key: 'exit_velocity', label: 'Avg Exit Velo' },
+    { key: 'k_percent', label: 'K %' },
+    { key: 'bb_percent', label: 'BB %' },
+    { key: 'whiff_percent', label: 'Whiff %' },
+];
+
+function StatcastSection({ data, position, forceTitle = null }) {
     if (!data) return null;
-    const isP = isPitcher(position);
-    const metrics = isP ? [
-        { key: 'velocity', label: 'Fastball Velo' },
-        { key: 'exit_velocity', label: 'Avg Exit Velo' },
-        { key: 'k_percent', label: 'K %' },
-        { key: 'bb_percent', label: 'BB %' },
-        { key: 'whiff_percent', label: 'Whiff %' },
-    ] : [
-        { key: 'xwoba', label: 'xwOBA' },
-        { key: 'xba', label: 'xBA' },
-        { key: 'xslg', label: 'xSLG' },
-        { key: 'exit_velocity', label: 'Avg Exit Velo' },
-        { key: 'barrel_rate', label: 'Barrel %' },
-        { key: 'hard_hit_rate', label: 'Hard-Hit %' },
-        { key: 'k_percent', label: 'K %' },
-        { key: 'bb_percent', label: 'BB %' },
-        { key: 'whiff_percent', label: 'Whiff %' },
-        { key: 'chase_percent', label: 'Chase %' },
-    ];
+    const isP = forceTitle ? forceTitle === 'pitcher' : isPitcher(position);
+    const metrics = isP ? PITCHER_METRICS : HITTER_METRICS;
+    const title = forceTitle === 'pitcher' ? 'Statcast Percentiles — Pitching'
+        : forceTitle === 'hitter' ? 'Statcast Percentiles — Hitting'
+        : 'Statcast Percentiles';
     return (
-        <div style={{ marginBottom: 24, padding: '16px', background: '#ffffff', borderRadius: 18, border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)' }}>
+        <div style={{ marginBottom: 16, padding: '16px', background: '#ffffff', borderRadius: 18, border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <img src="https://baseballsavant.mlb.com/favicon.ico" width={14} height={14} alt="Savant" />
-                <span style={{ fontSize: 12, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Statcast Percentiles</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{title}</span>
             </div>
             {metrics.map(m => <SavantPercentile key={m.key} label={m.label} percentile={data[m.key]} />)}
             <div style={{ marginTop: 12, fontSize: 9, color: C.gray400, textAlign: 'center', fontStyle: 'italic' }}>Data provided by Baseball Savant / MLB Statcast</div>
@@ -793,41 +799,70 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                 display: 'flex', flexDirection: 'column', overflow: 'hidden',
                 borderRadius: '24px 0 0 24px',
             }}>
-                <div style={{ background: isEspn ? 'linear-gradient(145deg, #1f1118 0%, #1a1a2e 100%)' : 'linear-gradient(145deg, #0e192a 0%, #172c47 100%)', padding: '24px 20px', position: 'relative' }}>
-                    <button onClick={onClose} className="control-button" style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: C.white, cursor: 'pointer', borderRadius: 999, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, backdropFilter: 'blur(4px)' }}>✕</button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                        <div style={{ position: 'relative', width: 68, height: 68, flexShrink: 0 }}>
-                            <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '2px solid rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 24, fontWeight: 800 }}>
-                                {playerName.trim().charAt(0).toUpperCase()}
-                            </div>
-                            {(!imgFailed && imageSrc) && (
-                                <img src={imageSrc} alt={playerName}
-                                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: imgLoaded ? 'block' : 'none', position: 'relative', zIndex: 2 }}
-                                    onLoad={() => setImgLoaded(true)}
-                                    onError={() => setImgFailed(true)}
-                                />
+                {(() => {
+                    const isOhtani = detail?.mlbamId === 660271 || detail?.name === 'Shohei Ohtani';
+                    const headerBg = isOhtani
+                        ? 'linear-gradient(145deg, #1a0a00 0%, #3d1a00 35%, #1a0a2e 100%)'
+                        : isEspn
+                            ? 'linear-gradient(145deg, #1f1118 0%, #1a1a2e 100%)'
+                            : 'linear-gradient(145deg, #0e192a 0%, #172c47 100%)';
+                    const ringStyle = isOhtani
+                        ? { border: '2.5px solid', borderImage: 'linear-gradient(135deg, #f59e0b, #fde68a, #f59e0b) 1', borderRadius: '50%' }
+                        : { border: '2px solid rgba(255,255,255,0.15)' };
+                    return (
+                        <div style={{ background: headerBg, padding: '24px 20px', position: 'relative', overflow: 'hidden' }}>
+                            {isOhtani && (
+                                <div style={{
+                                    position: 'absolute', inset: 0, pointerEvents: 'none',
+                                    background: 'radial-gradient(ellipse at 30% 50%, rgba(245,158,11,0.12) 0%, transparent 65%), radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.10) 0%, transparent 60%)',
+                                }} />
                             )}
-                        </div>
-                        <div style={{ paddingRight: 24 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <span style={{ color: C.white, fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{playerName}</span>
-                                {isEspn && <Tag text="ESPN" bg="rgba(240,72,62,0.2)" color="#ff8e86" />}
-                            </div>
-                            {detail && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 500 }}>
-                                    <span>{detail.position}</span>
-                                    {detail.proTeamAbbr && (
-                                        <>
-                                            <span style={{ opacity: 0.3 }}>•</span>
-                                            <MlbLogo team={detail.proTeamAbbr} size={18} showText={true} whiteText={true} />
-                                        </>
+                            <button onClick={onClose} className="control-button" style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: C.white, cursor: 'pointer', borderRadius: 999, width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, backdropFilter: 'blur(4px)', zIndex: 2 }}>✕</button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16, position: 'relative', zIndex: 1 }}>
+                                <div style={{ position: 'relative', width: 68, height: 68, flexShrink: 0 }}>
+                                    <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', ...ringStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 24, fontWeight: 800 }}>
+                                        {playerName.trim().charAt(0).toUpperCase()}
+                                    </div>
+                                    {isOhtani && (
+                                        <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', background: 'linear-gradient(135deg, #f59e0b, #fde68a, #c084fc, #f59e0b)', zIndex: 0, opacity: 0.85 }} />
+                                    )}
+                                    {(!imgFailed && imageSrc) && (
+                                        <img src={imageSrc} alt={playerName}
+                                            style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: imgLoaded ? 'block' : 'none', position: 'relative', zIndex: 2 }}
+                                            onLoad={() => setImgLoaded(true)}
+                                            onError={() => setImgFailed(true)}
+                                        />
+                                    )}
+                                    {isOhtani && imgLoaded && (
+                                        <div style={{ position: 'absolute', bottom: -4, right: -4, zIndex: 3, fontSize: 16, filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.5))' }}>👑</div>
                                     )}
                                 </div>
-                            )}
-                            {overallRank && <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, marginTop: 6, fontWeight: 500 }}>Global Rank #{overallRank}</div>}
+                                <div style={{ paddingRight: 24 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                        <span style={{ color: C.white, fontWeight: 800, fontSize: 20, letterSpacing: '-0.02em', lineHeight: 1.1 }}>{playerName}</span>
+                                        {isEspn && <Tag text="ESPN" bg="rgba(240,72,62,0.2)" color="#ff8e86" />}
+                                        {isOhtani && (
+                                            <span style={{ fontSize: 9, fontWeight: 900, color: '#f59e0b', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: 999, padding: '2px 7px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>GOAT</span>
+                                        )}
+                                    </div>
+                                    {detail && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 500 }}>
+                                            <span>{detail.position}</span>
+                                            {isOhtani && <span style={{ color: 'rgba(245,158,11,0.8)', fontSize: 11, fontWeight: 700 }}>Two-Way</span>}
+                                            {detail.proTeamAbbr && (
+                                                <>
+                                                    <span style={{ opacity: 0.3 }}>•</span>
+                                                    <MlbLogo team={detail.proTeamAbbr} size={18} showText={true} whiteText={true} />
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+                                    {overallRank && <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, marginTop: 6, fontWeight: 500 }}>Global Rank #{overallRank}</div>}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    );
+                })()}
 
                 {loading ? (
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: C.gray400 }}>Loading...</div>
@@ -881,7 +916,12 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                             </div>
                         </div>
 
-                        {detail.savantData && (
+                        {detail.isTwoWay ? (
+                            <>
+                                {detail.savantDataHitter && <StatcastSection data={detail.savantDataHitter} position="OF" forceTitle="hitter" />}
+                                {detail.savantDataPitcher && <StatcastSection data={detail.savantDataPitcher} position="SP" forceTitle="pitcher" />}
+                            </>
+                        ) : detail.savantData && (
                             <StatcastSection data={detail.savantData} position={detail.position} />
                         )}
 

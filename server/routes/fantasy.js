@@ -114,11 +114,29 @@ async function espnGetMulti(views = []) {
 
 // ─── Baseball Savant / MLB Stats API Utils ───────────────────────────────────
 
+// Hardcoded MLBAM IDs for players whose names are frequently mis-looked-up.
+// Always checked first before hitting the MLB Stats API search.
+const KNOWN_MLBAM_IDS = {
+    'shohei ohtani': 660271,
+    'yoshinobu yamamoto': 808982,
+    'seiya suzuki': 673548,
+    'kodai senga': 808987,
+    'julio rodriguez': 677594,
+    'corbin carroll': 682998,
+    'adley rutschman': 668939,
+    'jose abreu': 547989,
+    'luis arraez': 650333,
+};
+
+// Two-way players: we fetch BOTH hitting and pitching Savant percentiles for these
+const TWO_WAY_MLBAM_IDS = new Set([660271]); // Shohei Ohtani
+
 async function getMlbamIdFromName(name) {
+    const normalized = (name || '').toLowerCase().trim();
+    if (KNOWN_MLBAM_IDS[normalized]) return KNOWN_MLBAM_IDS[normalized];
     try {
         const searchUrl = `https://statsapi.mlb.com/api/v1/people/search?names=${encodeURIComponent(name)}&active=true`;
         const { data } = await axios.get(searchUrl);
-        // Find most likely match (usually first active player)
         return data.people?.[0]?.id || null;
     } catch (e) {
         console.warn(`MLBAM ID lookup failed for ${name}:`, e.message);
@@ -126,41 +144,44 @@ async function getMlbamIdFromName(name) {
     }
 }
 
-async function getSavantPercentiles(mlbamId) {
+function parseSavantPercentiles(html, year) {
+    // The JSON is embedded in the page as a JS array: [{"player_name":...}]
+    // Use [\s\S]* (dotAll equivalent) to handle multiline JSON
+    const match = html.match(/\[\{"player_name":[\s\S]*?\}\]/);
+    if (!match) return null;
+    try {
+        const results = JSON.parse(match[0]);
+        const yearMatch = results.find(r => String(r.year) === String(year));
+        if (!yearMatch) return null;
+        return {
+            xwoba: yearMatch.percent_rank_xwoba,
+            xba: yearMatch.percent_rank_xba,
+            xslg: yearMatch.percent_rank_xslg,
+            exit_velocity: yearMatch.percent_rank_exit_velocity_avg,
+            barrel_rate: yearMatch.percent_rank_barrel_batted_rate,
+            hard_hit_rate: yearMatch.percent_rank_hard_hit_percent,
+            k_percent: yearMatch.percent_rank_k_percent,
+            bb_percent: yearMatch.percent_rank_bb_percent,
+            whiff_percent: yearMatch.percent_rank_whiff_percent,
+            chase_percent: yearMatch.percent_rank_chase_percent,
+            velocity: yearMatch.percent_rank_fastball_velo,
+        };
+    } catch (e) {
+        return null;
+    }
+}
+
+async function getSavantPercentiles(mlbamId, type = null) {
     if (!mlbamId) return null;
-    // We'll try years in reverse order starting from 2026
-    const yearsToTry = [2024]; // 2026 is likely too early for percentile data, 2025 might be too
-    // In a real scenario we'd use current year, but for Benintendi/Ohtani etc 2024 has the data
+    const typeParam = type ? `&type=${type}` : '';
     try {
         for (const year of [2026, 2025, 2024, 2023]) {
-            const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?year=${year}&player_id=${mlbamId}`;
+            const url = `https://baseballsavant.mlb.com/leaderboard/percentile-rankings?year=${year}&player_id=${mlbamId}${typeParam}`;
             const { data: html } = await axios.get(url, {
-                headers: { 'User-Agent': 'Mozilla/5.0' }
+                headers: { 'User-Agent': 'Mozilla/5.0 (compatible; fantasy-dashboard/1.0)' }
             });
-            
-            // The JSON is embedded in the page as a JS array: [{"player_name":...}]
-            const match = html.match(/\[\{"player_name":.*\}\]/);
-            if (match) {
-                const results = JSON.parse(match[0]);
-                // Savant might return multiple years for the same player, find the one for the year we asked
-                const yearMatch = results.find(r => String(r.year) === String(year));
-                if (yearMatch) {
-                    // Map the "percent_rank_*" keys to the cleaner keys expected by the frontend
-                    return {
-                        xwoba: yearMatch.percent_rank_xwoba,
-                        xba: yearMatch.percent_rank_xba,
-                        xslg: yearMatch.percent_rank_xslg,
-                        exit_velocity: yearMatch.percent_rank_exit_velocity_avg,
-                        barrel_rate: yearMatch.percent_rank_barrel_batted_rate,
-                        hard_hit_rate: yearMatch.percent_rank_hard_hit_percent,
-                        k_percent: yearMatch.percent_rank_k_percent,
-                        bb_percent: yearMatch.percent_rank_bb_percent,
-                        whiff_percent: yearMatch.percent_rank_whiff_percent,
-                        chase_percent: yearMatch.percent_rank_chase_percent,
-                        velocity: yearMatch.percent_rank_fastball_velo,
-                    };
-                }
-            }
+            const result = parseSavantPercentiles(html, year);
+            if (result) return result;
         }
         return null;
     } catch (e) {
@@ -765,8 +786,21 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
         
         // Statcast integration
         const mlbamId = await getMlbamIdFromName(meta.name?.full);
-        const savantData = mlbamId ? await getSavantPercentiles(mlbamId) : null;
-        
+        const isTwoWay = mlbamId && TWO_WAY_MLBAM_IDS.has(Number(mlbamId));
+        let savantData = null, savantDataHitter = null, savantDataPitcher = null;
+        if (mlbamId) {
+            if (isTwoWay) {
+                [savantDataHitter, savantDataPitcher] = await Promise.all([
+                    getSavantPercentiles(mlbamId, 'batter'),
+                    getSavantPercentiles(mlbamId, 'pitcher'),
+                ]);
+                // For backwards compat, default savantData to hitting side for two-way players
+                savantData = savantDataHitter;
+            } else {
+                savantData = await getSavantPercentiles(mlbamId);
+            }
+        }
+
         // High-res action/portrait shot from MLB (crisper than headshots)
         const mlbPhotoUrl = mlbamId ? `https://img.mlbstatic.com/mlb-photos/image/upload/d_people:generic:headshot:67:current.png/w_426,q_auto:best/v1/people/${mlbamId}/action/hero/current` : null;
 
@@ -778,7 +812,8 @@ router.get('/player/:playerKey', requireAuth, async (req, res) => {
             percentOwned: parseFloat(percentOwned).toFixed(0), stats: statMap,
             imageUrl: mlbPhotoUrl || meta.headshot?.url || null,
             mlbamId,
-            savantData
+            savantData,
+            ...(isTwoWay && { savantDataHitter, savantDataPitcher, isTwoWay: true }),
         });
     } catch (err) {
         console.error(err.response?.data || err.message);
