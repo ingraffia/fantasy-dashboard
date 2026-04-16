@@ -2824,16 +2824,25 @@ export default function Dashboard({ api }) {
                                                                 {closeness.wins}W · {closeness.losses}L{closeness.ties ? ` · ${closeness.ties}T` : ''}
                                                             </span>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                                                             {cats ? cats.map((cat, i) => {
-                                                                // Color intensity encodes closeness: pale = tight battle, solid = comfortable
-                                                                let bg;
-                                                                if (cat.result === 'tie') bg = C.gray200;
-                                                                else if (cat.result === 'win') bg = cat.closeness < 0.08 ? '#bbf7d0' : cat.closeness < 0.25 ? '#4ade80' : C.green;
-                                                                else bg = cat.closeness < 0.08 ? '#fecaca' : cat.closeness < 0.25 ? '#f87171' : C.red;
-                                                                return <div key={i} style={{ width: 11, height: 11, borderRadius: '50%', background: bg, border: cat.result === 'tie' ? `1.5px solid ${C.gray400}` : 'none' }} />;
+                                                                let bg, color;
+                                                                if (cat.result === 'tie') { bg = C.gray200; color = C.gray600; }
+                                                                else if (cat.result === 'win') {
+                                                                    if (cat.closeness < 0.08) { bg = '#bbf7d0'; color = '#15803d'; }
+                                                                    else if (cat.closeness < 0.25) { bg = '#4ade80'; color = '#14532d'; }
+                                                                    else { bg = C.green; color = '#fff'; }
+                                                                } else {
+                                                                    if (cat.closeness < 0.08) { bg = '#fecaca'; color = '#b91c1c'; }
+                                                                    else if (cat.closeness < 0.25) { bg = '#f87171'; color = '#7f1d1d'; }
+                                                                    else { bg = C.red; color = '#fff'; }
+                                                                }
+                                                                return (
+                                                                    <div key={i} style={{ padding: '2px 4px', borderRadius: 3, background: bg, border: cat.result === 'tie' ? `1px solid ${C.gray400}` : 'none' }}>
+                                                                        <span style={{ fontSize: 8, fontWeight: 800, color, lineHeight: 1, letterSpacing: '0.02em' }}>{cat.label || '?'}</span>
+                                                                    </div>
+                                                                );
                                                             }) : (
-                                                                // Fallback: flat colors when per-category data unavailable
                                                                 <>
                                                                     {Array(closeness.wins).fill(0).map((_, i) => <div key={`w${i}`} style={{ width: 11, height: 11, borderRadius: '50%', background: C.green }} />)}
                                                                     {Array(closeness.ties).fill(0).map((_, i) => <div key={`t${i}`} style={{ width: 11, height: 11, borderRadius: '50%', background: C.gray200, border: `1.5px solid ${C.gray400}` }} />)}
