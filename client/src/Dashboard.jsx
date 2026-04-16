@@ -2682,13 +2682,12 @@ export default function Dashboard({ api }) {
                 className="stagger-container scrollbar-hidden"
                 style={{
                     padding: `16px ${px} 10px`,
-                    display: isMobile ? 'flex' : 'grid',
-                    gridTemplateColumns: isMobile ? undefined : 'repeat(auto-fit, minmax(320px, 1fr))',
+                    display: 'flex',
+                    flexWrap: 'nowrap',
                     gap: 14,
-                    overflowX: isMobile ? 'auto' : 'visible',
+                    overflowX: 'auto',
                     overflowY: 'visible',
-                    flexWrap: isMobile ? 'nowrap' : undefined,
-                    scrollSnapType: isMobile ? 'x mandatory' : 'none',
+                    scrollSnapType: 'x mandatory',
                     WebkitOverflowScrolling: 'touch',
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
@@ -2697,7 +2696,7 @@ export default function Dashboard({ api }) {
                 {data.map(lg => {
                     const isWinning = lg.matchup?.isWinning
                     const isLosing = lg.matchup && !isWinning && parseFloat(lg.matchup.oppScore || 0) > parseFloat(lg.matchup.myScore || 0)
-                    const cardWidth = isMobile ? 'calc(100vw - 32px)' : '100%'
+                    const cardWidth = isMobile ? 'calc(100vw - 32px)' : '300px'
                     const borderColor = isWinning ? '#86efac' : isLosing ? '#fca5a5' : '#bfdbfe'
                     const headerBg = '#ffffff'
                     const myColor = C.navy
@@ -2748,12 +2747,12 @@ export default function Dashboard({ api }) {
                             border: `1px solid ${borderColor}`,
                             boxShadow: isWinning || isLosing ? '0 18px 40px rgba(15,23,42,0.10)' : '0 14px 32px rgba(15,23,42,0.08)',
                             width: cardWidth,
-                            minWidth: isMobile ? cardWidth : undefined,
+                            minWidth: cardWidth,
                             maxWidth: cardWidth,
-                            flex: isMobile ? '0 0 auto' : undefined,
+                            flex: '0 0 auto',
                             minHeight: 312,
                             overflow: 'hidden',
-                            scrollSnapAlign: isMobile ? 'center' : 'none',
+                            scrollSnapAlign: 'start',
                         }}>
                             <div style={{ padding: '14px', background: headerBg, borderBottom: `1px solid ${C.gray100}` }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 }}>
@@ -2820,10 +2819,10 @@ export default function Dashboard({ api }) {
                                                     <>
                                                         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 }}>
                                                             <span style={{ fontSize: 11, fontWeight: 800, color: closeness.catColor, letterSpacing: '-0.01em' }}>
-                                                                {closeness.wins}W&nbsp;·&nbsp;{closeness.losses}L{closeness.ties ? `&nbsp;·&nbsp;${closeness.ties}T` : ''}
+                                                                {closeness.wins}W · {closeness.losses}L{closeness.ties ? ` · ${closeness.ties}T` : ''}
                                                             </span>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                                             {cats ? cats.map((cat, i) => {
                                                                 let bg, textColor, border;
                                                                 if (cat.result === 'tie') {
