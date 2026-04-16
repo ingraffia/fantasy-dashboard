@@ -2810,45 +2810,58 @@ export default function Dashboard({ api }) {
                                                             })}
                                                         </div>
                                                     </div>
-                                                    <span style={{ fontSize: 9, fontWeight: 700, color: C.gray400, marginLeft: 8 }}>
-                                                        {daysLeft === 0 ? 'Final day' : `${daysLeft}d left`}
-                                                    </span>
+                                                    <div style={{ textAlign: 'right' }}>
+                                                        {closeness.type === 'categories' && (
+                                                            <div style={{ fontSize: 11, fontWeight: 800, color: closeness.catColor, letterSpacing: '-0.01em', lineHeight: 1, marginBottom: 2 }}>
+                                                                {closeness.wins}W · {closeness.losses}L{closeness.ties ? ` · ${closeness.ties}T` : ''}
+                                                            </div>
+                                                        )}
+                                                        <div style={{ fontSize: 9, fontWeight: 600, color: C.gray400 }}>
+                                                            {daysLeft === 0 ? 'Final day' : `${daysLeft}d left`}
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 {closeness.type === 'categories' ? (
                                                     <>
-                                                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 }}>
-                                                            <span style={{ fontSize: 11, fontWeight: 800, color: closeness.catColor, letterSpacing: '-0.01em' }}>
-                                                                {closeness.wins}W · {closeness.losses}L{closeness.ties ? ` · ${closeness.ties}T` : ''}
-                                                            </span>
-                                                        </div>
-                                                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                                                            {cats ? cats.map((cat, i) => {
-                                                                let bg, textColor, border;
-                                                                if (cat.result === 'tie') {
-                                                                    bg = C.gray100; textColor = C.gray600; border = `1px solid ${C.gray200}`;
-                                                                } else if (cat.result === 'win') {
-                                                                    if (cat.closeness < 0.1) { bg = '#f0fdf4'; textColor = '#15803d'; border = '1px solid #bbf7d0'; }
-                                                                    else if (cat.closeness < 0.3) { bg = '#dcfce7'; textColor = '#166534'; border = '1px solid #86efac'; }
-                                                                    else { bg = '#16a34a'; textColor = '#fff'; border = 'none'; }
-                                                                } else {
-                                                                    if (cat.closeness < 0.1) { bg = '#fef2f2'; textColor = '#b91c1c'; border = '1px solid #fecaca'; }
-                                                                    else if (cat.closeness < 0.3) { bg = '#fee2e2'; textColor = '#991b1b'; border = '1px solid #fca5a5'; }
-                                                                    else { bg = '#dc2626'; textColor = '#fff'; border = 'none'; }
-                                                                }
-                                                                return (
-                                                                    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', height: 18, padding: '0 5px', borderRadius: 9, background: bg, border, flexShrink: 0 }}>
-                                                                        <span style={{ fontSize: 8, fontWeight: 700, color: textColor, letterSpacing: '0.04em', lineHeight: 1, whiteSpace: 'nowrap' }}>{cat.label || '?'}</span>
+                                                        {/* ESPN-style per-category comparison rows */}
+                                                        {cats ? cats.map((cat, i) => {
+                                                            const isWin = cat.result === 'win';
+                                                            const isLoss = cat.result === 'loss';
+                                                            const fmtVal = v => {
+                                                                if (v == null || v === '' || isNaN(Number(v))) return '—';
+                                                                const n = Number(v);
+                                                                if (['AVG','OBP','OPS','SLG'].includes(cat.label)) return n.toFixed(3).replace(/^0/, '');
+                                                                if (['ERA','WHIP'].includes(cat.label)) return n.toFixed(2);
+                                                                if (['IP'].includes(cat.label)) return n.toFixed(1);
+                                                                return Number.isInteger(n) ? n : n.toFixed(1);
+                                                            };
+                                                            const myVal = fmtVal(cat.myValue);
+                                                            const oppVal = fmtVal(cat.oppValue);
+                                                            const barPct = Math.round(Math.min(1, (cat.closeness || 0)) * 100);
+                                                            return (
+                                                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 32px 1fr', alignItems: 'center', gap: 4, marginBottom: i < cats.length - 1 ? 4 : 0 }}>
+                                                                    {/* My value */}
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
+                                                                        <span style={{ fontSize: 11, fontWeight: isWin ? 800 : 400, color: isWin ? C.green : C.gray400, lineHeight: 1, letterSpacing: isWin ? '-0.02em' : 0 }}>{myVal}</span>
+                                                                        {isWin && <div style={{ width: Math.max(3, barPct * 0.28), height: 3, borderRadius: 2, background: barPct > 30 ? C.green : '#86efac', flexShrink: 0 }} />}
                                                                     </div>
-                                                                );
-                                                            }) : (
-                                                                <>
-                                                                    {Array(closeness.wins).fill(0).map((_, i) => <div key={`w${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 18, padding: '0 5px', borderRadius: 9, background: '#16a34a' }}><span style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>W</span></div>)}
-                                                                    {Array(closeness.ties).fill(0).map((_, i) => <div key={`t${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 18, padding: '0 5px', borderRadius: 9, background: C.gray100, border: `1px solid ${C.gray200}` }}><span style={{ fontSize: 8, fontWeight: 700, color: C.gray600 }}>T</span></div>)}
-                                                                    {Array(closeness.losses).fill(0).map((_, i) => <div key={`l${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 18, padding: '0 5px', borderRadius: 9, background: '#dc2626' }}><span style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>L</span></div>)}
-                                                                </>
-                                                            )}
-                                                        </div>
+                                                                    {/* Category label */}
+                                                                    <span style={{ textAlign: 'center', fontSize: 8, fontWeight: 700, color: C.gray400, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{cat.label}</span>
+                                                                    {/* Opp value */}
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-start' }}>
+                                                                        {isLoss && <div style={{ width: Math.max(3, barPct * 0.28), height: 3, borderRadius: 2, background: barPct > 30 ? C.red : '#fca5a5', flexShrink: 0 }} />}
+                                                                        <span style={{ fontSize: 11, fontWeight: isLoss ? 800 : 400, color: isLoss ? C.red : C.gray400, lineHeight: 1, letterSpacing: isLoss ? '-0.02em' : 0 }}>{oppVal}</span>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }) : (
+                                                            <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                                                                <span style={{ fontSize: 13, fontWeight: 800, color: C.green }}>{closeness.wins}W</span>
+                                                                {closeness.ties > 0 && <span style={{ fontSize: 13, fontWeight: 800, color: C.gray400 }}>{closeness.ties}T</span>}
+                                                                <span style={{ fontSize: 13, fontWeight: 800, color: C.red }}>{closeness.losses}L</span>
+                                                            </div>
+                                                        )}
                                                     </>
                                                 ) : (
                                                     /* Yahoo points: current margin + projected side by side */

@@ -746,7 +746,7 @@ function deriveEspnCategoryDetails(mySide, oppSide, settingsData) {
         }
 
         const label = ESPN_LINEUP_STAT_DEFS[statId]?.label;
-        categories.push({ result, closeness, label: label || `#${statId}` });
+        categories.push({ result, closeness, label: label || `#${statId}`, myValue, oppValue });
     });
 
     return categories.length > 0 ? { wins, losses, ties, categories } : null;
@@ -851,7 +851,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                                                 : (isReverse ? myVal < oppVal : myVal > oppVal) ? 'win' : 'loss';
                                             const closeness = myVal === oppVal ? 0
                                                 : Math.min(1, Math.abs(myVal - oppVal) / Math.max(Math.abs(myVal), Math.abs(oppVal), 1));
-                                            return { result, closeness, label: cat.label };
+                                            return { result, closeness, label: cat.label, myValue: myVal, oppValue: oppVal };
                                         }).filter(Boolean);
 
                                         if (categories.length === 0) categories = null;
