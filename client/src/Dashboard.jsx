@@ -2822,7 +2822,7 @@ export default function Dashboard({ api }) {
                                                                 {closeness.wins}W · {closeness.losses}L{closeness.ties ? ` · ${closeness.ties}T` : ''}
                                                             </span>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                                                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                                                             {cats ? cats.map((cat, i) => {
                                                                 let bg, textColor, border;
                                                                 if (cat.result === 'tie') {
@@ -2837,15 +2837,15 @@ export default function Dashboard({ api }) {
                                                                     else { bg = '#dc2626'; textColor = '#fff'; border = 'none'; }
                                                                 }
                                                                 return (
-                                                                    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 7px', borderRadius: 10, background: bg, border }}>
-                                                                        <span style={{ fontSize: 9, fontWeight: 700, color: textColor, letterSpacing: '0.03em', lineHeight: 1 }}>{cat.label || '?'}</span>
+                                                                    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', height: 18, padding: '0 5px', borderRadius: 9, background: bg, border, flexShrink: 0 }}>
+                                                                        <span style={{ fontSize: 8, fontWeight: 700, color: textColor, letterSpacing: '0.04em', lineHeight: 1, whiteSpace: 'nowrap' }}>{cat.label || '?'}</span>
                                                                     </div>
                                                                 );
                                                             }) : (
                                                                 <>
-                                                                    {Array(closeness.wins).fill(0).map((_, i) => <div key={`w${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 7px', borderRadius: 10, background: '#16a34a' }}><span style={{ fontSize: 9, fontWeight: 700, color: '#fff', letterSpacing: '0.03em' }}>W</span></div>)}
-                                                                    {Array(closeness.ties).fill(0).map((_, i) => <div key={`t${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 7px', borderRadius: 10, background: C.gray100, border: `1px solid ${C.gray200}` }}><span style={{ fontSize: 9, fontWeight: 700, color: C.gray600, letterSpacing: '0.03em' }}>T</span></div>)}
-                                                                    {Array(closeness.losses).fill(0).map((_, i) => <div key={`l${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 7px', borderRadius: 10, background: '#dc2626' }}><span style={{ fontSize: 9, fontWeight: 700, color: '#fff', letterSpacing: '0.03em' }}>L</span></div>)}
+                                                                    {Array(closeness.wins).fill(0).map((_, i) => <div key={`w${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 18, padding: '0 5px', borderRadius: 9, background: '#16a34a' }}><span style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>W</span></div>)}
+                                                                    {Array(closeness.ties).fill(0).map((_, i) => <div key={`t${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 18, padding: '0 5px', borderRadius: 9, background: C.gray100, border: `1px solid ${C.gray200}` }}><span style={{ fontSize: 8, fontWeight: 700, color: C.gray600 }}>T</span></div>)}
+                                                                    {Array(closeness.losses).fill(0).map((_, i) => <div key={`l${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 18, padding: '0 5px', borderRadius: 9, background: '#dc2626' }}><span style={{ fontSize: 8, fontWeight: 700, color: '#fff' }}>L</span></div>)}
                                                                 </>
                                                             )}
                                                         </div>
