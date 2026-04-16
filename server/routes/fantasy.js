@@ -795,50 +795,65 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                         const scoreboard = scoreData.fantasy_content.league[1].scoreboard;
                         const matchups = scoreboard?.['0']?.matchups;
                         if (matchups) {
-                            Object.values(matchups).forEach(m => {
-                                if (typeof m !== 'object' || !m.matchup) return;
+                            for (const m of Object.values(matchups)) {
+                                if (typeof m !== 'object' || !m.matchup) continue;
                                 const matchupTeams = m.matchup['0']?.teams;
-                                if (!matchupTeams) return;
+                                if (!matchupTeams) continue;
                                 const myTeamInMatchup = Object.values(matchupTeams).find(t =>
                                     typeof t === 'object' && t.team && flattenMeta(t.team[0]).team_key === myTeamKey);
-                                if (!myTeamInMatchup) return;
+                                if (!myTeamInMatchup) continue;
                                 const oppTeamData = Object.values(matchupTeams).find(t =>
                                     typeof t === 'object' && t.team && flattenMeta(t.team[0]).team_key !== myTeamKey);
-                                if (!oppTeamData) return;
+                                if (!oppTeamData) continue;
                                 const oppFlat = flattenMeta(oppTeamData.team[0]);
+                                const oppTeamKey = oppFlat.team_key;
 
-                                // Detect H2H category leagues via stat_winners
-                                const rawStatWinners = m.matchup['0']?.stat_winners;
-                                const statWinnersArr = Array.isArray(rawStatWinners)
-                                    ? rawStatWinners
-                                    : rawStatWinners && typeof rawStatWinners === 'object'
-                                        ? Object.values(rawStatWinners).filter(v => v?.stat_winner)
-                                        : [];
+                                // For H2H leagues fetch per-team weekly stats and build category dots
+                                let categories = null;
+                                if (leagueData.scoring_type === 'head') {
+                                    try {
+                                        const [myStatsRes, oppStatsRes] = await Promise.all([
+                                            yahooGet(req.session, `/team/${myTeamKey}/stats;type=week;week=${currentWeek}`),
+                                            yahooGet(req.session, `/team/${oppTeamKey}/stats;type=week;week=${currentWeek}`),
+                                        ]);
+                                        const toMap = res => {
+                                            const arr = res?.fantasy_content?.team?.[1]?.team_stats?.stats || [];
+                                            const map = {};
+                                            arr.forEach(s => { if (s?.stat?.stat_id != null) map[String(s.stat.stat_id)] = parseFloat(s.stat.value) || 0; });
+                                            return map;
+                                        };
+                                        const myStats = toMap(myStatsRes);
+                                        const oppStats = toMap(oppStatsRes);
+                                        const allCats = [
+                                            ...(lineupCategories.hitterSeason || []),
+                                            ...(lineupCategories.pitcherSeason || []),
+                                        ];
+                                        // Stats where lower value is better (ERA, WHIP)
+                                        const reverseIds = new Set(
+                                            allCats.filter(c => c.label === 'ERA' || c.label === 'WHIP').map(c => c.id)
+                                        );
+                                        reverseIds.add('27'); reverseIds.add('29');
 
-                                if (statWinnersArr.length > 0) {
-                                    // H2H categories — build per-category dots with closeness
-                                    const myStatsRaw = myTeamInMatchup.team[1]?.team_stats?.stats || [];
-                                    const oppStatsRaw = oppTeamData.team[1]?.team_stats?.stats || [];
-                                    const myStatMap = {};
-                                    const oppStatMap = {};
-                                    myStatsRaw.forEach(s => { if (s?.stat?.stat_id != null) myStatMap[String(s.stat.stat_id)] = parseFloat(s.stat.value) || 0; });
-                                    oppStatsRaw.forEach(s => { if (s?.stat?.stat_id != null) oppStatMap[String(s.stat.stat_id)] = parseFloat(s.stat.value) || 0; });
+                                        categories = allCats.map(cat => {
+                                            const myVal = myStats[cat.id] ?? null;
+                                            const oppVal = oppStats[cat.id] ?? null;
+                                            if (myVal == null || oppVal == null) return null;
+                                            const isReverse = reverseIds.has(cat.id);
+                                            const result = myVal === oppVal ? 'tie'
+                                                : (isReverse ? myVal < oppVal : myVal > oppVal) ? 'win' : 'loss';
+                                            const closeness = myVal === oppVal ? 0
+                                                : Math.min(1, Math.abs(myVal - oppVal) / Math.max(Math.abs(myVal), Math.abs(oppVal), 1));
+                                            return { result, closeness };
+                                        }).filter(Boolean);
 
-                                    const categories = statWinnersArr.map(sw => {
-                                        const w = sw.stat_winner || sw;
-                                        if (!w?.stat_id) return null;
-                                        const isTied = w.is_tied == 1 || w.is_tied === '1';
-                                        const result = isTied ? 'tie' : w.winner_team_key === myTeamKey ? 'win' : 'loss';
-                                        const sid = String(w.stat_id);
-                                        const myVal = myStatMap[sid] ?? null;
-                                        const oppVal = oppStatMap[sid] ?? null;
-                                        let closeness = 0;
-                                        if (myVal != null && oppVal != null && myVal !== oppVal) {
-                                            closeness = Math.min(1, Math.abs(myVal - oppVal) / Math.max(Math.abs(myVal), Math.abs(oppVal), 1));
-                                        }
-                                        return { result, closeness };
-                                    }).filter(Boolean);
+                                        if (categories.length === 0) categories = null;
+                                    } catch (statsErr) {
+                                        console.warn('Yahoo H2H weekly stats fetch failed:', statsErr.message);
+                                        categories = null;
+                                    }
+                                }
 
+                                if (categories) {
                                     const wins = categories.filter(c => c.result === 'win').length;
                                     const losses = categories.filter(c => c.result === 'loss').length;
                                     const ties = categories.filter(c => c.result === 'tie').length;
@@ -852,7 +867,6 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                                         categories,
                                     };
                                 } else {
-                                    // H2H points or roto — total points display
                                     matchup = {
                                         week: currentWeek,
                                         myScore: parseFloat(myTeamInMatchup.team[1]?.team_points?.total || 0).toFixed(2),
@@ -863,7 +877,8 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                                         isWinning: parseFloat(myTeamInMatchup.team[1]?.team_points?.total || 0) >= parseFloat(oppTeamData.team[1]?.team_points?.total || 0),
                                     };
                                 }
-                            });
+                                break;
+                            }
                         }
                     }
                 } catch (e) { console.warn('Matchup fetch failed for', leagueData.name, e.message); }
