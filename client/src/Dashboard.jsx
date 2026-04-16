@@ -13,11 +13,9 @@ const C = {
 
 const STATUS_COLOR = { DTD: C.amber, IL: C.red, IL10: C.red, IL60: C.red, IL15: C.red, NA: C.gray400 }
 
-// Computes weekly matchup battle data for the tug-of-war bar and
-// projected outcome text shown on each league card.
-// For Yahoo (points): bar fill = current margin / projected scale.
-//   Projected outcome text shows where you're headed, not just where you are.
-// For ESPN (categories W-L-T): bar fill = net cats / total cats.
+// Computes weekly matchup display data.
+// ESPN: per-category dot colors from W-L-T string.
+// Yahoo: current margin + projected final margin as large colored numbers.
 function computeMatchupCloseness(lg) {
     if (!lg.matchup) return null;
     const { myScore, oppScore, myProjected, oppProjected } = lg.matchup;
@@ -33,14 +31,8 @@ function computeMatchupCloseness(lg) {
         const totalCats = wins + losses + ties;
         if (totalCats === 0) return null;
         const net = wins - losses;
-        const direction = net > 0 ? 'winning' : net < 0 ? 'losing' : 'tied';
-        // fillPct: how far the bar fill extends from center (0–45% of total bar)
-        const fillPct = Math.min(Math.abs(net) / totalCats * 45, 45);
-        const outcomeText = net > 0 ? `+${net} of ${totalCats} cats`
-            : net < 0 ? `${net} of ${totalCats} cats`
-            : ties > 0 ? `All tied (${ties})` : 'Tied';
-        const outcomeColor = direction === 'winning' ? C.green : direction === 'losing' ? C.red : C.gray600;
-        return { type: 'categories', direction, fillPct, wins, losses, ties, totalCats, net, outcomeText, outcomeColor };
+        const catColor = net > 0 ? C.green : net < 0 ? C.red : C.gray600;
+        return { type: 'categories', wins, losses, ties, totalCats, net, catColor };
     } else {
         // Yahoo / points
         const my = parseFloat(myScore) || 0;
@@ -49,18 +41,9 @@ function computeMatchupCloseness(lg) {
         const oppProj = parseFloat(oppProjected) || 0;
         const diff = my - opp;
         const projDiff = myProj - oppProj;
-        // Bar fill uses current margin relative to the week's projected scale
-        const refScale = Math.max(myProj, oppProj, my, opp, 1);
-        const fillPct = Math.min(Math.abs(diff) / refScale * 45, 45);
-        // If the week hasn't started yet, fall back to projected direction
-        const effectiveDiff = (my === 0 && opp === 0) ? projDiff : diff;
-        const direction = effectiveDiff > 0.01 ? 'winning' : effectiveDiff < -0.01 ? 'losing' : 'tied';
-        // Outcome text: projected final margin is the most forward-looking number
-        const outcomeText = Math.abs(projDiff) < 0.5 ? 'Even (proj)'
-            : projDiff > 0 ? `+${projDiff.toFixed(1)} pts proj`
-            : `${projDiff.toFixed(1)} pts proj`;
-        const outcomeColor = projDiff > 0.5 ? C.green : projDiff < -0.5 ? C.red : C.gray600;
-        return { type: 'points', direction, fillPct, diff, projDiff, outcomeText, outcomeColor };
+        const diffColor = diff > 0.01 ? C.green : diff < -0.01 ? C.red : C.gray600;
+        const projColor = projDiff > 0.5 ? C.green : projDiff < -0.5 ? C.red : C.gray600;
+        return { type: 'points', diff, projDiff, diffColor, projColor };
     }
 }
 
@@ -2805,40 +2788,78 @@ export default function Dashboard({ api }) {
                                             <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing ? C.navy : oppDisplayScore == null ? 'transparent' : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{oppDisplayScore ?? '—'}</span>
                                         </div>
                                         {closeness && (() => {
-                                            const dow = new Date().getDay();
-                                            const daysIntoWeek = dow === 0 ? 7 : dow;
-                                            const weekPct = Math.round(daysIntoWeek / 7 * 100);
+                                            const dow = new Date().getDay(); // 0=Sun…6=Sat
+                                            const daysIntoWeek = dow === 0 ? 7 : dow; // Mon=1…Sun=7
                                             const daysLeft = 7 - daysIntoWeek;
-                                            const fillColor = closeness.direction === 'winning' ? C.green : closeness.direction === 'losing' ? C.red : C.gray400;
+                                            const DAY_LABELS = ['M','T','W','T','F','S','S'];
                                             return (
                                             <div style={{ paddingTop: 10, borderTop: `1px solid ${C.gray100}` }}>
-                                                {/* Projected outcome label */}
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-                                                    <span style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Weekly Battle</span>
-                                                    <span style={{ fontSize: 10, fontWeight: 800, color: closeness.outcomeColor }}>{closeness.outcomeText}</span>
+                                                {closeness.type === 'categories' ? (
+                                                    <>
+                                                        {/* Category dot grid */}
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                                            <span style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Categories</span>
+                                                            <span style={{ fontSize: 10, fontWeight: 800, color: closeness.catColor }}>
+                                                                {closeness.net > 0 ? `+${closeness.net}` : closeness.net === 0 ? 'Even' : closeness.net} of {closeness.totalCats}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
+                                                            {Array(closeness.wins).fill('w').map((_, i) =>
+                                                                <div key={`w${i}`} style={{ width: 10, height: 10, borderRadius: '50%', background: C.green }} />
+                                                            )}
+                                                            {Array(closeness.ties).fill('t').map((_, i) =>
+                                                                <div key={`t${i}`} style={{ width: 10, height: 10, borderRadius: '50%', background: C.gray200, border: `1.5px solid ${C.gray400}` }} />
+                                                            )}
+                                                            {Array(closeness.losses).fill('l').map((_, i) =>
+                                                                <div key={`l${i}`} style={{ width: 10, height: 10, borderRadius: '50%', background: '#fca5a5' }} />
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        {/* Points: current margin + projected final, side by side */}
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 }}>
+                                                            <div>
+                                                                <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Now</div>
+                                                                <div style={{ fontSize: 20, fontWeight: 900, color: closeness.diffColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
+                                                                    {closeness.diff >= 0 ? '+' : ''}{closeness.diff.toFixed(2)}
+                                                                    <span style={{ fontSize: 10, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
+                                                                </div>
+                                                            </div>
+                                                            {Math.abs(closeness.projDiff) >= 0.5 && (
+                                                                <div style={{ textAlign: 'right' }}>
+                                                                    <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Projected</div>
+                                                                    <div style={{ fontSize: 20, fontWeight: 900, color: closeness.projColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
+                                                                        {closeness.projDiff >= 0 ? '+' : ''}{closeness.projDiff.toFixed(1)}
+                                                                        <span style={{ fontSize: 10, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                )}
+                                                {/* Weekly calendar: 7 day circles, filled = played, bright = today */}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    {DAY_LABELS.map((d, i) => {
+                                                        const isPlayed = i < daysIntoWeek - 1;
+                                                        const isToday = i === daysIntoWeek - 1;
+                                                        return (
+                                                            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                                                                <div style={{
+                                                                    width: 22, height: 22, borderRadius: '50%',
+                                                                    background: isToday ? C.accent : isPlayed ? C.navy : C.gray100,
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                    border: isToday ? `2px solid ${C.accent}` : 'none',
+                                                                }}>
+                                                                    <span style={{ fontSize: 8, fontWeight: 800, color: (isPlayed || isToday) ? '#fff' : C.gray400 }}>{d}</span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
                                                 </div>
-                                                {/* Tug-of-war bar: fill extends right (winning) or left (losing) from center */}
-                                                <div style={{ height: 6, background: C.gray100, borderRadius: 999, position: 'relative', overflow: 'hidden', marginBottom: 8 }}>
-                                                    <div style={{ position: 'absolute', left: '50%', top: 0, width: 2, height: '100%', background: C.gray200, transform: 'translateX(-50%)', zIndex: 1 }} />
-                                                    {closeness.direction !== 'tied' && (
-                                                        <div style={{
-                                                            position: 'absolute', height: '100%',
-                                                            width: `${closeness.fillPct}%`,
-                                                            background: fillColor,
-                                                            ...(closeness.direction === 'winning'
-                                                                ? { left: '50%', borderRadius: '0 999px 999px 0' }
-                                                                : { right: '50%', borderRadius: '999px 0 0 999px' }),
-                                                        }} />
-                                                    )}
-                                                </div>
-                                                {/* Week progress */}
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                                                    <span style={{ fontSize: 9, color: C.gray400, fontWeight: 600 }}>Week progress</span>
-                                                    <span style={{ fontSize: 9, fontWeight: 700, color: C.gray600 }}>{daysLeft === 0 ? 'Final day' : `${daysLeft}d left`}</span>
-                                                </div>
-                                                <div style={{ height: 3, background: C.gray100, borderRadius: 999, overflow: 'hidden' }}>
-                                                    <div style={{ height: '100%', width: `${weekPct}%`, background: C.accent, borderRadius: 999 }} />
-                                                </div>
+                                                {daysLeft > 0 && (
+                                                    <div style={{ fontSize: 9, color: C.gray400, fontWeight: 600, textAlign: 'right', marginTop: 4 }}>{daysLeft}d left</div>
+                                                )}
                                             </div>
                                             );
                                         })()}
