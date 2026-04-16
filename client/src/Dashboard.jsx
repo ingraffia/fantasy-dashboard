@@ -13,6 +13,50 @@ const C = {
 
 const STATUS_COLOR = { DTD: C.amber, IL: C.red, IL10: C.red, IL60: C.red, IL15: C.red, NA: C.gray400 }
 
+// Returns a 0–100 closeness score for a weekly matchup.
+// For Yahoo (points): margin vs projected high score as the scale.
+// For ESPN (categories W-L-T): net-category margin vs total categories.
+function computeMatchupCloseness(lg) {
+    if (!lg.matchup) return null;
+    const { myScore, oppScore, myProjected, oppProjected } = lg.matchup;
+
+    let score;
+    // ESPN stores scores as "W-L-T" strings (e.g. "6-2-2")
+    const isCategories = typeof myScore === 'string' && myScore.includes('-') && !myScore.match(/^-?\d+\.\d+$/);
+    if (isCategories) {
+        const parts = myScore.split('-').map(Number);
+        const wins = isNaN(parts[0]) ? 0 : parts[0];
+        const losses = isNaN(parts[1]) ? 0 : parts[1];
+        const ties = isNaN(parts[2]) ? 0 : (parts[2] || 0);
+        const totalCats = wins + losses + ties;
+        if (totalCats === 0) return null;
+        const netMargin = Math.abs(wins - losses);
+        score = Math.max(0, Math.round(100 - (netMargin / totalCats * 100)));
+    } else {
+        // Yahoo / points
+        const my = parseFloat(myScore) || 0;
+        const opp = parseFloat(oppScore) || 0;
+        const myProj = parseFloat(myProjected) || 0;
+        const oppProj = parseFloat(oppProjected) || 0;
+        // Higher projected score anchors the scale so early-week leads look smaller
+        const refScore = Math.max(myProj, oppProj, my, opp);
+        if (refScore === 0) return null;
+        score = Math.max(0, Math.round(100 - (Math.abs(my - opp) / refScore * 100)));
+    }
+
+    let label, color, bgColor, barColor;
+    if (score >= 80) {
+        label = 'Tight race'; color = '#166534'; bgColor = '#dcfce7'; barColor = C.green;
+    } else if (score >= 55) {
+        label = 'Close'; color = '#92400e'; bgColor = '#fef3c7'; barColor = C.amber;
+    } else if (score >= 30) {
+        label = 'In reach'; color = '#1e40af'; bgColor = '#dbeafe'; barColor = C.accent;
+    } else {
+        label = 'Lopsided'; color = C.gray600; bgColor = C.gray100; barColor = C.gray400;
+    }
+    return { score, label, color, bgColor, barColor };
+}
+
 function getHighResUrl(url) {
     if (!url) return url
     if (url.includes('yimg.com')) return url.replace(/w=\d+/g, 'w=140').replace(/h=\d+/g, 'h=180')
@@ -2683,6 +2727,7 @@ export default function Dashboard({ api }) {
                             ? (typeof lg.matchup.oppScore === 'string' && lg.matchup.oppScore.includes('-') ? lg.matchup.oppScore : Math.round(lg.matchup.oppScore))
                             : lg.matchup.oppScore)
                         : null
+                    const closeness = computeMatchupCloseness(lg)
                     const recordText = lg.standing ? `${lg.standing.wins}W-${lg.standing.losses}L${lg.standing.ties ? `-${lg.standing.ties}T` : ''}` : 'No standings'
                     const rankText = lg.standing?.rank ? `#${lg.standing.rank}` : '—'
                     const matchupLabel = lg.matchup?.oppName || (lg.matchup ? 'Opponent' : 'Season total')
@@ -2752,6 +2797,17 @@ export default function Dashboard({ api }) {
                                             </div>
                                             <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing ? C.navy : oppDisplayScore == null ? 'transparent' : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{oppDisplayScore ?? '—'}</span>
                                         </div>
+                                        {closeness && (
+                                            <div style={{ paddingTop: 10, borderTop: `1px solid ${C.gray100}` }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                                    <span style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Matchup Closeness</span>
+                                                    <span style={{ fontSize: 10, fontWeight: 800, color: closeness.color, background: closeness.bgColor, padding: '3px 7px', borderRadius: 999 }}>{closeness.label}</span>
+                                                </div>
+                                                <div style={{ height: 4, background: C.gray100, borderRadius: 999, overflow: 'hidden' }}>
+                                                    <div style={{ height: '100%', width: `${closeness.score}%`, background: closeness.barColor, borderRadius: 999 }} />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 0', borderTop: `1px solid ${C.gray100}` }}>
