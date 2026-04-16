@@ -2787,14 +2787,37 @@ export default function Dashboard({ api }) {
                                             <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing ? C.navy : oppDisplayScore == null ? 'transparent' : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', minWidth: 28, textAlign: 'right', flexShrink: 0, whiteSpace: 'nowrap' }}>{oppDisplayScore ?? '—'}</span>
                                         </div>
                                         {closeness && (() => {
-                                            const dow = new Date().getDay(); // 0=Sun…6=Sat
-                                            const daysIntoWeek = dow === 0 ? 7 : dow; // Mon=1…Sun=7
+                                            const dow = new Date().getDay();
+                                            const daysIntoWeek = dow === 0 ? 7 : dow;
                                             const daysLeft = 7 - daysIntoWeek;
+                                            const weekProgress = daysIntoWeek / 7;
                                             const DAY_LABELS = ['M','T','W','T','F','S','S'];
                                             const cats = lg.matchup?.categories;
+
+                                            // Win probability: per-category expected value → sigmoid
+                                            let winProb = null;
+                                            if (cats && cats.length > 0 && closeness.type === 'categories') {
+                                                let expWins = 0;
+                                                cats.forEach(cat => {
+                                                    const cl = cat.closeness || 0;
+                                                    if (cat.result === 'win') {
+                                                        // High closeness = dominant lead = hard to lose; low closeness = close win = risky
+                                                        expWins += Math.min(0.97, 0.5 + 0.5 * (cl + (1 - cl) * weekProgress));
+                                                    } else if (cat.result === 'loss') {
+                                                        // Low closeness = close deficit = still catchable; high = out of reach
+                                                        expWins += Math.max(0.03, 0.5 * (1 - cl) * (1 - weekProgress));
+                                                    } else {
+                                                        expWins += 0.5;
+                                                    }
+                                                });
+                                                const frac = expWins / cats.length;
+                                                winProb = Math.round(100 / (1 + Math.exp(-9 * (frac - 0.5))));
+                                            }
+                                            const probColor = winProb == null ? C.gray400 : winProb >= 60 ? C.green : winProb <= 40 ? C.red : C.amber;
+
                                             return (
                                             <div style={{ paddingTop: 10, borderTop: `1px solid ${C.gray100}` }}>
-                                                {/* Compact weekly calendar */}
+                                                {/* Calendar row + record + probability */}
                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                                                         <div style={{ display: 'flex', gap: 4 }}>
@@ -2821,6 +2844,19 @@ export default function Dashboard({ api }) {
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                {/* Win probability bar */}
+                                                {winProb != null && (
+                                                    <div style={{ marginBottom: 10 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                                                            <span style={{ fontSize: 8, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Win probability</span>
+                                                            <span style={{ fontSize: 16, fontWeight: 900, color: probColor, lineHeight: 1, letterSpacing: '-0.03em' }}>{winProb}%</span>
+                                                        </div>
+                                                        <div style={{ height: 5, borderRadius: 3, background: C.gray100, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${winProb}%`, borderRadius: 3, background: winProb >= 60 ? C.green : winProb <= 40 ? C.red : C.amber, transition: 'width 0.4s ease' }} />
+                                                        </div>
+                                                    </div>
+                                                )}
 
                                                 {closeness.type === 'categories' ? (
                                                     cats ? (() => {
