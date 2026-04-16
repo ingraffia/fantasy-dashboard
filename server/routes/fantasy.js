@@ -687,6 +687,63 @@ function getEspnScoreSourceName(side) {
     return 'unknown';
 }
 
+// Returns per-category detail for the closeness dot visualization.
+// Each entry: { result: 'win'|'loss'|'tie', closeness: 0–1 }
+// closeness 0 = exactly tied, 1 = complete blowout.
+function deriveEspnCategoryDetails(mySide, oppSide, settingsData) {
+    const myScoreSource = mySide?.cumulativeScoreLive || mySide?.cumulativeScore;
+    const oppScoreSource = oppSide?.cumulativeScoreLive || oppSide?.cumulativeScore;
+    const myStats = myScoreSource?.scoreByStat;
+    const oppStats = oppScoreSource?.scoreByStat;
+    if (!myStats || !oppStats || typeof myStats !== 'object' || typeof oppStats !== 'object') return null;
+
+    const scoringMeta = extractEspnScoringItemMeta(settingsData);
+    const configuredStatIds = Object.keys(scoringMeta).filter(id => myStats[id] && oppStats[id]);
+    const statIds = configuredStatIds.length > 0
+        ? configuredStatIds
+        : Object.keys(myStats).filter(id => oppStats[id]);
+
+    let wins = 0, losses = 0, ties = 0;
+    const categories = [];
+
+    statIds.forEach(statId => {
+        const myEntry = myStats[statId];
+        const oppEntry = oppStats[statId];
+        if (!oppEntry) return;
+
+        const myValue = extractFirstNumericValue(myEntry);
+        const oppValue = extractFirstNumericValue(oppEntry);
+        const myResult = String(myEntry?.result || '').toUpperCase();
+        const oppResult = String(oppEntry?.result || '').toUpperCase();
+
+        let result;
+        if (myResult && oppResult) {
+            result = myResult === 'WIN' ? 'win' : myResult === 'LOSS' ? 'loss' : 'tie';
+        } else if (myValue != null && oppValue != null) {
+            const isReverse = scoringMeta[statId]?.isReverse === true || ESPN_REVERSE_CATEGORY_IDS.has(String(statId));
+            if (myValue === oppValue) result = 'tie';
+            else if (isReverse ? myValue < oppValue : myValue > oppValue) result = 'win';
+            else result = 'loss';
+        } else {
+            return;
+        }
+
+        if (result === 'win') wins++;
+        else if (result === 'loss') losses++;
+        else ties++;
+
+        // Normalized margin: 0 = tied, 1 = one side has everything
+        let closeness = 0;
+        if (myValue != null && oppValue != null && myValue !== oppValue) {
+            closeness = Math.min(1, Math.abs(myValue - oppValue) / Math.max(Math.abs(myValue), Math.abs(oppValue), 1));
+        }
+
+        categories.push({ result, closeness });
+    });
+
+    return categories.length > 0 ? { wins, losses, ties, categories } : null;
+}
+
 router.get('/leagues', requireAuth, async (req, res) => {
     try { res.json(await getUserLeagues(req.session)); }
     catch (err) { res.status(500).json({ error: err.message }); }
@@ -972,7 +1029,8 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
                 const mySide = isHome ? currentMatchup.home : currentMatchup.away;
                 const oppSide = isHome ? currentMatchup.away : currentMatchup.home;
                 const oppTeamInfo = teamData.teams.find(t => t.id === oppSide?.teamId);
-                const derivedRecord = deriveEspnCategoryRecordFromScores(mySide, oppSide, settingsData);
+                const derivedDetail = deriveEspnCategoryDetails(mySide, oppSide, settingsData);
+                const derivedRecord = derivedDetail || deriveEspnCategoryRecordFromScores(mySide, oppSide, settingsData);
                 const myRecord = derivedRecord || deriveEspnCategoryRecord(mySide);
                 const oppRecord = derivedRecord
                     ? { wins: derivedRecord.losses, losses: derivedRecord.wins, ties: derivedRecord.ties }
@@ -986,6 +1044,7 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
                     oppProjected: '',
                     isWinning: myRecord.wins > oppRecord.wins || (myRecord.wins === oppRecord.wins && myRecord.ties > oppRecord.ties),
                     debugSource: scoreSource,
+                    categories: derivedDetail?.categories || null,
                 };
             }
         } catch (e) { console.warn('ESPN matchup parse failed:', e.message); }

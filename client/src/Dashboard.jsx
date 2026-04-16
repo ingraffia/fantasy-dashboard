@@ -2792,73 +2792,76 @@ export default function Dashboard({ api }) {
                                             const daysIntoWeek = dow === 0 ? 7 : dow; // Mon=1…Sun=7
                                             const daysLeft = 7 - daysIntoWeek;
                                             const DAY_LABELS = ['M','T','W','T','F','S','S'];
+                                            const cats = lg.matchup?.categories;
                                             return (
                                             <div style={{ paddingTop: 10, borderTop: `1px solid ${C.gray100}` }}>
+                                                {/* Compact weekly calendar */}
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                        <div style={{ display: 'flex', gap: 4 }}>
+                                                            {DAY_LABELS.map((d, i) => (
+                                                                <span key={i} style={{ width: 14, fontSize: 7, fontWeight: 700, color: i === daysIntoWeek - 1 ? C.accent : C.gray400, textAlign: 'center', display: 'block' }}>{d}</span>
+                                                            ))}
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 4 }}>
+                                                            {DAY_LABELS.map((_, i) => {
+                                                                const isPlayed = i < daysIntoWeek - 1;
+                                                                const isToday = i === daysIntoWeek - 1;
+                                                                return <div key={i} style={{ width: 14, height: 6, borderRadius: 3, background: isToday ? C.accent : isPlayed ? C.navy : C.gray100, flexShrink: 0 }} />;
+                                                            })}
+                                                        </div>
+                                                    </div>
+                                                    <span style={{ fontSize: 9, fontWeight: 700, color: C.gray400, marginLeft: 8 }}>
+                                                        {daysLeft === 0 ? 'Final day' : `${daysLeft}d left`}
+                                                    </span>
+                                                </div>
+
                                                 {closeness.type === 'categories' ? (
                                                     <>
-                                                        {/* Category dot grid */}
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
                                                             <span style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Categories</span>
                                                             <span style={{ fontSize: 10, fontWeight: 800, color: closeness.catColor }}>
-                                                                {closeness.net > 0 ? `+${closeness.net}` : closeness.net === 0 ? 'Even' : closeness.net} of {closeness.totalCats}
+                                                                {closeness.wins}W · {closeness.losses}L{closeness.ties ? ` · ${closeness.ties}T` : ''}
                                                             </span>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
-                                                            {Array(closeness.wins).fill('w').map((_, i) =>
-                                                                <div key={`w${i}`} style={{ width: 10, height: 10, borderRadius: '50%', background: C.green }} />
-                                                            )}
-                                                            {Array(closeness.ties).fill('t').map((_, i) =>
-                                                                <div key={`t${i}`} style={{ width: 10, height: 10, borderRadius: '50%', background: C.gray200, border: `1.5px solid ${C.gray400}` }} />
-                                                            )}
-                                                            {Array(closeness.losses).fill('l').map((_, i) =>
-                                                                <div key={`l${i}`} style={{ width: 10, height: 10, borderRadius: '50%', background: '#fca5a5' }} />
+                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                                            {cats ? cats.map((cat, i) => {
+                                                                // Color intensity encodes closeness: pale = tight battle, solid = comfortable
+                                                                let bg;
+                                                                if (cat.result === 'tie') bg = C.gray200;
+                                                                else if (cat.result === 'win') bg = cat.closeness < 0.08 ? '#bbf7d0' : cat.closeness < 0.25 ? '#4ade80' : C.green;
+                                                                else bg = cat.closeness < 0.08 ? '#fecaca' : cat.closeness < 0.25 ? '#f87171' : C.red;
+                                                                return <div key={i} style={{ width: 11, height: 11, borderRadius: '50%', background: bg, border: cat.result === 'tie' ? `1.5px solid ${C.gray400}` : 'none' }} />;
+                                                            }) : (
+                                                                // Fallback: flat colors when per-category data unavailable
+                                                                <>
+                                                                    {Array(closeness.wins).fill(0).map((_, i) => <div key={`w${i}`} style={{ width: 11, height: 11, borderRadius: '50%', background: C.green }} />)}
+                                                                    {Array(closeness.ties).fill(0).map((_, i) => <div key={`t${i}`} style={{ width: 11, height: 11, borderRadius: '50%', background: C.gray200, border: `1.5px solid ${C.gray400}` }} />)}
+                                                                    {Array(closeness.losses).fill(0).map((_, i) => <div key={`l${i}`} style={{ width: 11, height: 11, borderRadius: '50%', background: '#fca5a5' }} />)}
+                                                                </>
                                                             )}
                                                         </div>
                                                     </>
                                                 ) : (
-                                                    <>
-                                                        {/* Points: current margin + projected final, side by side */}
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 10 }}>
-                                                            <div>
-                                                                <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Now</div>
-                                                                <div style={{ fontSize: 20, fontWeight: 900, color: closeness.diffColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
-                                                                    {closeness.diff >= 0 ? '+' : ''}{closeness.diff.toFixed(2)}
+                                                    /* Yahoo points: current margin + projected side by side */
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                                        <div>
+                                                            <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Now</div>
+                                                            <div style={{ fontSize: 20, fontWeight: 900, color: closeness.diffColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
+                                                                {closeness.diff >= 0 ? '+' : ''}{closeness.diff.toFixed(2)}
+                                                                <span style={{ fontSize: 10, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
+                                                            </div>
+                                                        </div>
+                                                        {Math.abs(closeness.projDiff) >= 0.5 && (
+                                                            <div style={{ textAlign: 'right' }}>
+                                                                <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Projected</div>
+                                                                <div style={{ fontSize: 20, fontWeight: 900, color: closeness.projColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
+                                                                    {closeness.projDiff >= 0 ? '+' : ''}{closeness.projDiff.toFixed(1)}
                                                                     <span style={{ fontSize: 10, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
                                                                 </div>
                                                             </div>
-                                                            {Math.abs(closeness.projDiff) >= 0.5 && (
-                                                                <div style={{ textAlign: 'right' }}>
-                                                                    <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Projected</div>
-                                                                    <div style={{ fontSize: 20, fontWeight: 900, color: closeness.projColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
-                                                                        {closeness.projDiff >= 0 ? '+' : ''}{closeness.projDiff.toFixed(1)}
-                                                                        <span style={{ fontSize: 10, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </>
-                                                )}
-                                                {/* Weekly calendar: 7 day circles, filled = played, bright = today */}
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    {DAY_LABELS.map((d, i) => {
-                                                        const isPlayed = i < daysIntoWeek - 1;
-                                                        const isToday = i === daysIntoWeek - 1;
-                                                        return (
-                                                            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                                                                <div style={{
-                                                                    width: 22, height: 22, borderRadius: '50%',
-                                                                    background: isToday ? C.accent : isPlayed ? C.navy : C.gray100,
-                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                    border: isToday ? `2px solid ${C.accent}` : 'none',
-                                                                }}>
-                                                                    <span style={{ fontSize: 8, fontWeight: 800, color: (isPlayed || isToday) ? '#fff' : C.gray400 }}>{d}</span>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                                {daysLeft > 0 && (
-                                                    <div style={{ fontSize: 9, color: C.gray400, fontWeight: 600, textAlign: 'right', marginTop: 4 }}>{daysLeft}d left</div>
+                                                        )}
+                                                    </div>
                                                 )}
                                             </div>
                                             );
