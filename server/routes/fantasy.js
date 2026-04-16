@@ -325,17 +325,24 @@ const ESPN_INJURY_MAP = {
 const ESPN_LINEUP_STAT_DEFS = {
     '3': { label: 'AVG', side: 'hitter' },
     '5': { label: 'HR', side: 'hitter' },
+    '6': { label: 'XBH', side: 'hitter' },
     '8': { label: 'TB', side: 'hitter' },
     '17': { label: 'OBP', side: 'hitter' },
     '18': { label: 'OPS', side: 'hitter' },
     '20': { label: 'R', side: 'hitter' },
     '21': { label: 'RBI', side: 'hitter' },
     '23': { label: 'SB', side: 'hitter' },
+    '34': { label: 'H', side: 'hitter' },
+    '39': { label: 'BB', side: 'hitter' },
     '41': { label: 'WHIP', side: 'pitcher' },
+    '45': { label: 'IP', side: 'pitcher' },
     '47': { label: 'ERA', side: 'pitcher' },
     '48': { label: 'K', side: 'pitcher' },
     '51': { label: 'SV', side: 'pitcher' },
     '53': { label: 'W', side: 'pitcher' },
+    '57': { label: 'NSV', side: 'pitcher' },
+    '58': { label: 'HLD', side: 'pitcher' },
+    '63': { label: 'QS', side: 'pitcher' },
 };
 const ESPN_REVERSE_CATEGORY_IDS = new Set(['41', '47']);
 const YAHOO_LINEUP_STAT_SIDE_HINTS = {
@@ -738,7 +745,8 @@ function deriveEspnCategoryDetails(mySide, oppSide, settingsData) {
             closeness = Math.min(1, Math.abs(myValue - oppValue) / Math.max(Math.abs(myValue), Math.abs(oppValue), 1));
         }
 
-        categories.push({ result, closeness, label: ESPN_LINEUP_STAT_DEFS[statId]?.label || statId });
+        const label = ESPN_LINEUP_STAT_DEFS[statId]?.label;
+        categories.push({ result, closeness, label: label || `#${statId}` });
     });
 
     return categories.length > 0 ? { wins, losses, ties, categories } : null;
