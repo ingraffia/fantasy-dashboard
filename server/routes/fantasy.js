@@ -710,6 +710,10 @@ function deriveEspnCategoryDetails(mySide, oppSide, settingsData) {
         ? configuredStatIds
         : Object.keys(myStats).filter(id => oppStats[id]);
 
+    // Sort: hitters before pitchers for consistent grouping
+    const sideOrder = id => ESPN_LINEUP_STAT_DEFS[id]?.side === 'hitter' ? 0 : 1;
+    statIds.sort((a, b) => sideOrder(a) - sideOrder(b));
+
     let wins = 0, losses = 0, ties = 0;
     const categories = [];
 
@@ -739,14 +743,14 @@ function deriveEspnCategoryDetails(mySide, oppSide, settingsData) {
         else if (result === 'loss') losses++;
         else ties++;
 
-        // Normalized margin: 0 = tied, 1 = one side has everything
         let closeness = 0;
         if (myValue != null && oppValue != null && myValue !== oppValue) {
             closeness = Math.min(1, Math.abs(myValue - oppValue) / Math.max(Math.abs(myValue), Math.abs(oppValue), 1));
         }
 
-        const label = ESPN_LINEUP_STAT_DEFS[statId]?.label;
-        categories.push({ result, closeness, label: label || `#${statId}`, myValue, oppValue });
+        const def = ESPN_LINEUP_STAT_DEFS[statId];
+        const label = def?.label;
+        categories.push({ result, closeness, label: label || `#${statId}`, side: def?.side || 'pitcher', myValue, oppValue });
     });
 
     return categories.length > 0 ? { wins, losses, ties, categories } : null;
@@ -833,8 +837,8 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                                         const myStats = toMap(myStatsRes);
                                         const oppStats = toMap(oppStatsRes);
                                         const allCats = [
-                                            ...(lineupCategories.hitterSeason || []),
-                                            ...(lineupCategories.pitcherSeason || []),
+                                            ...(lineupCategories.hitterSeason || []).map(c => ({ ...c, side: 'hitter' })),
+                                            ...(lineupCategories.pitcherSeason || []).map(c => ({ ...c, side: 'pitcher' })),
                                         ];
                                         // Stats where lower value is better (ERA, WHIP)
                                         const reverseIds = new Set(
@@ -851,7 +855,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                                                 : (isReverse ? myVal < oppVal : myVal > oppVal) ? 'win' : 'loss';
                                             const closeness = myVal === oppVal ? 0
                                                 : Math.min(1, Math.abs(myVal - oppVal) / Math.max(Math.abs(myVal), Math.abs(oppVal), 1));
-                                            return { result, closeness, label: cat.label, myValue: myVal, oppValue: oppVal };
+                                            return { result, closeness, label: cat.label, side: cat.side || 'pitcher', myValue: myVal, oppValue: oppVal };
                                         }).filter(Boolean);
 
                                         if (categories.length === 0) categories = null;

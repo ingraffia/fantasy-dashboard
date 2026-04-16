@@ -2823,46 +2823,58 @@ export default function Dashboard({ api }) {
                                                 </div>
 
                                                 {closeness.type === 'categories' ? (
-                                                    <>
-                                                        {/* ESPN-style per-category comparison rows */}
-                                                        {cats ? cats.map((cat, i) => {
+                                                    cats ? (() => {
+                                                        const fmtVal = (v, label) => {
+                                                            if (v == null || v === '' || isNaN(Number(v))) return '—';
+                                                            const n = Number(v);
+                                                            if (['AVG','OBP','OPS','SLG'].includes(label)) return n.toFixed(3).replace(/^0\./, '.');
+                                                            if (['ERA','WHIP'].includes(label)) return n.toFixed(2);
+                                                            if (['IP'].includes(label)) return n.toFixed(1);
+                                                            return Number.isInteger(n) ? String(n) : n.toFixed(1);
+                                                        };
+                                                        const rows = [];
+                                                        let lastSide = null;
+                                                        cats.forEach((cat, i) => {
                                                             const isWin = cat.result === 'win';
                                                             const isLoss = cat.result === 'loss';
-                                                            const fmtVal = v => {
-                                                                if (v == null || v === '' || isNaN(Number(v))) return '—';
-                                                                const n = Number(v);
-                                                                if (['AVG','OBP','OPS','SLG'].includes(cat.label)) return n.toFixed(3).replace(/^0/, '');
-                                                                if (['ERA','WHIP'].includes(cat.label)) return n.toFixed(2);
-                                                                if (['IP'].includes(cat.label)) return n.toFixed(1);
-                                                                return Number.isInteger(n) ? n : n.toFixed(1);
-                                                            };
-                                                            const myVal = fmtVal(cat.myValue);
-                                                            const oppVal = fmtVal(cat.oppValue);
-                                                            const barPct = Math.round(Math.min(1, (cat.closeness || 0)) * 100);
-                                                            return (
-                                                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 32px 1fr', alignItems: 'center', gap: 4, marginBottom: i < cats.length - 1 ? 4 : 0 }}>
-                                                                    {/* My value */}
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-end' }}>
-                                                                        <span style={{ fontSize: 11, fontWeight: isWin ? 800 : 400, color: isWin ? C.green : C.gray400, lineHeight: 1, letterSpacing: isWin ? '-0.02em' : 0 }}>{myVal}</span>
-                                                                        {isWin && <div style={{ width: Math.max(3, barPct * 0.28), height: 3, borderRadius: 2, background: barPct > 30 ? C.green : '#86efac', flexShrink: 0 }} />}
+                                                            const isTie = cat.result === 'tie';
+                                                            const side = cat.side || 'pitcher';
+                                                            // Section divider when side changes
+                                                            if (side !== lastSide) {
+                                                                if (lastSide !== null) rows.push(
+                                                                    <div key={`div-${i}`} style={{ height: 1, background: C.gray100, margin: '4px 0' }} />
+                                                                );
+                                                                rows.push(
+                                                                    <div key={`hdr-${i}`} style={{ fontSize: 7, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
+                                                                        {side === 'hitter' ? 'Batting' : 'Pitching'}
                                                                     </div>
-                                                                    {/* Category label */}
-                                                                    <span style={{ textAlign: 'center', fontSize: 8, fontWeight: 700, color: C.gray400, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{cat.label}</span>
-                                                                    {/* Opp value */}
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'flex-start' }}>
-                                                                        {isLoss && <div style={{ width: Math.max(3, barPct * 0.28), height: 3, borderRadius: 2, background: barPct > 30 ? C.red : '#fca5a5', flexShrink: 0 }} />}
-                                                                        <span style={{ fontSize: 11, fontWeight: isLoss ? 800 : 400, color: isLoss ? C.red : C.gray400, lineHeight: 1, letterSpacing: isLoss ? '-0.02em' : 0 }}>{oppVal}</span>
-                                                                    </div>
+                                                                );
+                                                                lastSide = side;
+                                                            }
+                                                            const accentColor = isWin ? C.green : isLoss ? C.red : C.gray200;
+                                                            const rowBg = isWin ? 'rgba(22,163,74,0.05)' : isLoss ? 'rgba(220,38,38,0.05)' : 'transparent';
+                                                            rows.push(
+                                                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 34px 1fr', alignItems: 'center', borderLeft: `2.5px solid ${accentColor}`, borderRadius: '0 5px 5px 0', background: rowBg, padding: '3px 6px 3px 7px', marginBottom: 2 }}>
+                                                                    <span style={{ textAlign: 'right', fontSize: 11, fontWeight: isWin ? 700 : 400, color: isWin ? '#166534' : isTie ? C.gray600 : C.gray400, lineHeight: 1, paddingRight: 6 }}>
+                                                                        {fmtVal(cat.myValue, cat.label)}
+                                                                    </span>
+                                                                    <span style={{ textAlign: 'center', fontSize: 8, fontWeight: 700, color: C.gray400, letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1 }}>
+                                                                        {cat.label}
+                                                                    </span>
+                                                                    <span style={{ textAlign: 'left', fontSize: 11, fontWeight: isLoss ? 700 : 400, color: isLoss ? '#991b1b' : isTie ? C.gray600 : C.gray400, lineHeight: 1, paddingLeft: 6 }}>
+                                                                        {fmtVal(cat.oppValue, cat.label)}
+                                                                    </span>
                                                                 </div>
                                                             );
-                                                        }) : (
-                                                            <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-                                                                <span style={{ fontSize: 13, fontWeight: 800, color: C.green }}>{closeness.wins}W</span>
-                                                                {closeness.ties > 0 && <span style={{ fontSize: 13, fontWeight: 800, color: C.gray400 }}>{closeness.ties}T</span>}
-                                                                <span style={{ fontSize: 13, fontWeight: 800, color: C.red }}>{closeness.losses}L</span>
-                                                            </div>
-                                                        )}
-                                                    </>
+                                                        });
+                                                        return <>{rows}</>;
+                                                    })() : (
+                                                        <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
+                                                            <span style={{ fontSize: 13, fontWeight: 800, color: C.green }}>{closeness.wins}W</span>
+                                                            {closeness.ties > 0 && <span style={{ fontSize: 13, fontWeight: 800, color: C.gray400 }}>{closeness.ties}T</span>}
+                                                            <span style={{ fontSize: 13, fontWeight: 800, color: C.red }}>{closeness.losses}L</span>
+                                                        </div>
+                                                    )
                                                 ) : (
                                                     /* Yahoo points: current margin + projected side by side */
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
