@@ -806,15 +806,63 @@ router.get('/dashboard', requireAuth, async (req, res) => {
                                     typeof t === 'object' && t.team && flattenMeta(t.team[0]).team_key !== myTeamKey);
                                 if (!oppTeamData) return;
                                 const oppFlat = flattenMeta(oppTeamData.team[0]);
-                                matchup = {
-                                    week: currentWeek,
-                                    myScore: parseFloat(myTeamInMatchup.team[1]?.team_points?.total || 0).toFixed(2),
-                                    myProjected: parseFloat(myTeamInMatchup.team[1]?.team_projected_points?.total || 0).toFixed(2),
-                                    oppName: oppFlat.name,
-                                    oppScore: parseFloat(oppTeamData.team[1]?.team_points?.total || 0).toFixed(2),
-                                    oppProjected: parseFloat(oppTeamData.team[1]?.team_projected_points?.total || 0).toFixed(2),
-                                    isWinning: parseFloat(myTeamInMatchup.team[1]?.team_points?.total || 0) >= parseFloat(oppTeamData.team[1]?.team_points?.total || 0),
-                                };
+
+                                // Detect H2H category leagues via stat_winners
+                                const rawStatWinners = m.matchup['0']?.stat_winners;
+                                const statWinnersArr = Array.isArray(rawStatWinners)
+                                    ? rawStatWinners
+                                    : rawStatWinners && typeof rawStatWinners === 'object'
+                                        ? Object.values(rawStatWinners).filter(v => v?.stat_winner)
+                                        : [];
+
+                                if (statWinnersArr.length > 0) {
+                                    // H2H categories — build per-category dots with closeness
+                                    const myStatsRaw = myTeamInMatchup.team[1]?.team_stats?.stats || [];
+                                    const oppStatsRaw = oppTeamData.team[1]?.team_stats?.stats || [];
+                                    const myStatMap = {};
+                                    const oppStatMap = {};
+                                    myStatsRaw.forEach(s => { if (s?.stat?.stat_id != null) myStatMap[String(s.stat.stat_id)] = parseFloat(s.stat.value) || 0; });
+                                    oppStatsRaw.forEach(s => { if (s?.stat?.stat_id != null) oppStatMap[String(s.stat.stat_id)] = parseFloat(s.stat.value) || 0; });
+
+                                    const categories = statWinnersArr.map(sw => {
+                                        const w = sw.stat_winner || sw;
+                                        if (!w?.stat_id) return null;
+                                        const isTied = w.is_tied == 1 || w.is_tied === '1';
+                                        const result = isTied ? 'tie' : w.winner_team_key === myTeamKey ? 'win' : 'loss';
+                                        const sid = String(w.stat_id);
+                                        const myVal = myStatMap[sid] ?? null;
+                                        const oppVal = oppStatMap[sid] ?? null;
+                                        let closeness = 0;
+                                        if (myVal != null && oppVal != null && myVal !== oppVal) {
+                                            closeness = Math.min(1, Math.abs(myVal - oppVal) / Math.max(Math.abs(myVal), Math.abs(oppVal), 1));
+                                        }
+                                        return { result, closeness };
+                                    }).filter(Boolean);
+
+                                    const wins = categories.filter(c => c.result === 'win').length;
+                                    const losses = categories.filter(c => c.result === 'loss').length;
+                                    const ties = categories.filter(c => c.result === 'tie').length;
+                                    matchup = {
+                                        week: currentWeek,
+                                        myScore: `${wins}-${losses}-${ties}`,
+                                        myProjected: '', oppName: oppFlat.name,
+                                        oppScore: `${losses}-${wins}-${ties}`,
+                                        oppProjected: '',
+                                        isWinning: wins > losses,
+                                        categories,
+                                    };
+                                } else {
+                                    // H2H points or roto — total points display
+                                    matchup = {
+                                        week: currentWeek,
+                                        myScore: parseFloat(myTeamInMatchup.team[1]?.team_points?.total || 0).toFixed(2),
+                                        myProjected: parseFloat(myTeamInMatchup.team[1]?.team_projected_points?.total || 0).toFixed(2),
+                                        oppName: oppFlat.name,
+                                        oppScore: parseFloat(oppTeamData.team[1]?.team_points?.total || 0).toFixed(2),
+                                        oppProjected: parseFloat(oppTeamData.team[1]?.team_projected_points?.total || 0).toFixed(2),
+                                        isWinning: parseFloat(myTeamInMatchup.team[1]?.team_points?.total || 0) >= parseFloat(oppTeamData.team[1]?.team_points?.total || 0),
+                                    };
+                                }
                             });
                         }
                     }
