@@ -2818,35 +2818,35 @@ export default function Dashboard({ api }) {
 
                                                 {closeness.type === 'categories' ? (
                                                     <>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 }}>
-                                                            <span style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Categories</span>
-                                                            <span style={{ fontSize: 10, fontWeight: 800, color: closeness.catColor }}>
-                                                                {closeness.wins}W · {closeness.losses}L{closeness.ties ? ` · ${closeness.ties}T` : ''}
+                                                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 }}>
+                                                            <span style={{ fontSize: 11, fontWeight: 800, color: closeness.catColor, letterSpacing: '-0.01em' }}>
+                                                                {closeness.wins}W&nbsp;·&nbsp;{closeness.losses}L{closeness.ties ? `&nbsp;·&nbsp;${closeness.ties}T` : ''}
                                                             </span>
                                                         </div>
-                                                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                                                             {cats ? cats.map((cat, i) => {
-                                                                let bg, color;
-                                                                if (cat.result === 'tie') { bg = C.gray200; color = C.gray600; }
-                                                                else if (cat.result === 'win') {
-                                                                    if (cat.closeness < 0.08) { bg = '#bbf7d0'; color = '#15803d'; }
-                                                                    else if (cat.closeness < 0.25) { bg = '#4ade80'; color = '#14532d'; }
-                                                                    else { bg = C.green; color = '#fff'; }
+                                                                let bg, textColor, border;
+                                                                if (cat.result === 'tie') {
+                                                                    bg = C.gray100; textColor = C.gray600; border = `1px solid ${C.gray200}`;
+                                                                } else if (cat.result === 'win') {
+                                                                    if (cat.closeness < 0.1) { bg = '#f0fdf4'; textColor = '#15803d'; border = '1px solid #bbf7d0'; }
+                                                                    else if (cat.closeness < 0.3) { bg = '#dcfce7'; textColor = '#166534'; border = '1px solid #86efac'; }
+                                                                    else { bg = '#16a34a'; textColor = '#fff'; border = 'none'; }
                                                                 } else {
-                                                                    if (cat.closeness < 0.08) { bg = '#fecaca'; color = '#b91c1c'; }
-                                                                    else if (cat.closeness < 0.25) { bg = '#f87171'; color = '#7f1d1d'; }
-                                                                    else { bg = C.red; color = '#fff'; }
+                                                                    if (cat.closeness < 0.1) { bg = '#fef2f2'; textColor = '#b91c1c'; border = '1px solid #fecaca'; }
+                                                                    else if (cat.closeness < 0.3) { bg = '#fee2e2'; textColor = '#991b1b'; border = '1px solid #fca5a5'; }
+                                                                    else { bg = '#dc2626'; textColor = '#fff'; border = 'none'; }
                                                                 }
                                                                 return (
-                                                                    <div key={i} style={{ padding: '2px 4px', borderRadius: 3, background: bg, border: cat.result === 'tie' ? `1px solid ${C.gray400}` : 'none' }}>
-                                                                        <span style={{ fontSize: 8, fontWeight: 800, color, lineHeight: 1, letterSpacing: '0.02em' }}>{cat.label || '?'}</span>
+                                                                    <div key={i} style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 7px', borderRadius: 10, background: bg, border }}>
+                                                                        <span style={{ fontSize: 9, fontWeight: 700, color: textColor, letterSpacing: '0.03em', lineHeight: 1 }}>{cat.label || '?'}</span>
                                                                     </div>
                                                                 );
                                                             }) : (
                                                                 <>
-                                                                    {Array(closeness.wins).fill(0).map((_, i) => <div key={`w${i}`} style={{ width: 11, height: 11, borderRadius: '50%', background: C.green }} />)}
-                                                                    {Array(closeness.ties).fill(0).map((_, i) => <div key={`t${i}`} style={{ width: 11, height: 11, borderRadius: '50%', background: C.gray200, border: `1.5px solid ${C.gray400}` }} />)}
-                                                                    {Array(closeness.losses).fill(0).map((_, i) => <div key={`l${i}`} style={{ width: 11, height: 11, borderRadius: '50%', background: '#fca5a5' }} />)}
+                                                                    {Array(closeness.wins).fill(0).map((_, i) => <div key={`w${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 7px', borderRadius: 10, background: '#16a34a' }}><span style={{ fontSize: 9, fontWeight: 700, color: '#fff', letterSpacing: '0.03em' }}>W</span></div>)}
+                                                                    {Array(closeness.ties).fill(0).map((_, i) => <div key={`t${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 7px', borderRadius: 10, background: C.gray100, border: `1px solid ${C.gray200}` }}><span style={{ fontSize: 9, fontWeight: 700, color: C.gray600, letterSpacing: '0.03em' }}>T</span></div>)}
+                                                                    {Array(closeness.losses).fill(0).map((_, i) => <div key={`l${i}`} style={{ display: 'inline-flex', alignItems: 'center', height: 20, padding: '0 7px', borderRadius: 10, background: '#dc2626' }}><span style={{ fontSize: 9, fontWeight: 700, color: '#fff', letterSpacing: '0.03em' }}>L</span></div>)}
                                                                 </>
                                                             )}
                                                         </div>
