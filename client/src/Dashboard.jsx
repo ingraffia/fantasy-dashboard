@@ -2757,6 +2757,7 @@ export default function Dashboard({ api }) {
                     flexWrap: 'nowrap',
                     alignItems: 'flex-start',
                     gap: 14,
+                    alignItems: isMobile ? 'flex-start' : 'stretch',
                     overflowX: isMobile ? 'auto' : 'visible',
                     overflowY: 'visible',
                     ...(isMobile ? {
@@ -2821,7 +2822,7 @@ export default function Dashboard({ api }) {
                             borderRadius: 18,
                             border: `1px solid ${borderColor}`,
                             boxShadow: isWinning || isLosing ? '0 18px 40px rgba(15,23,42,0.10)' : '0 14px 32px rgba(15,23,42,0.08)',
-                            ...(isMobile ? { width: cardWidth, minWidth: cardWidth, maxWidth: cardWidth, flex: '0 0 auto', scrollSnapAlign: 'start' } : { flex: '1 1 0', minWidth: 0, height: 400 }),
+                            ...(isMobile ? { width: cardWidth, minWidth: cardWidth, maxWidth: cardWidth, flex: '0 0 auto', scrollSnapAlign: 'start' } : { flex: '1 1 0', minWidth: 0 }),
                             overflow: 'hidden',
                         }}>
                             {/* Fixed: league name + scores */}
@@ -2858,8 +2859,8 @@ export default function Dashboard({ api }) {
                                     </div>
                                 )}
                             </div>
-                            {/* Scrollable: win probability + categories */}
-                            <div className="scrollbar-hidden" style={{ flex: 1, overflowY: 'auto', padding: '12px 14px', borderTop: `1px solid ${C.gray100}`, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                            {/* Middle: win probability + categories */}
+                            <div style={{ flex: 1, padding: '12px 14px', borderTop: `1px solid ${C.gray100}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                                 {lg.matchup && closeness && (() => {
                                     const dow = new Date().getDay();
                                     const daysIntoWeek = dow === 0 ? 7 : dow;
