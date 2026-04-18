@@ -524,7 +524,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
             minWidth: cardWidth,
             maxWidth: cardWidth,
             flexShrink: 0,
-            minHeight: showBody ? 312 : undefined,
+            minHeight: 312,
             boxShadow: cardShadow,
         }}>
             <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, background: headerBg }}>
@@ -558,8 +558,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                     </div>
                 </div>
             </div>
-            {showBody && (
-                <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: '#f8fafc', gap: hasRosterPlayers ? 8 : 0 }}>
+            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: '#f8fafc', gap: hasRosterPlayers ? 8 : 0 }}>
                     {hasRosterPlayers && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                             <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -572,15 +571,17 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                     )}
                     {loading ? (
                         <div style={{ flex: 1, display: 'grid', placeItems: 'center', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading live stats...</div>
-                    ) : visibleRoster.map(({ bsPlayer, rosterPlayer }) => (
-                    <MyPlayerStatRow
-                        key={`${bsPlayer.name}-${bsPlayer.proTeam || bsPlayer.position || ''}`}
-                        bsPlayer={bsPlayer}
-                        rosterPlayer={rosterPlayer}
-                        imageMap={imageMap}
-                        onOpenPlayer={onOpenPlayer}
-                    />
-                ))}
+                    ) : hasRosterPlayers ? visibleRoster.map(({ bsPlayer, rosterPlayer }) => (
+                        <MyPlayerStatRow
+                            key={`${bsPlayer.name}-${bsPlayer.proTeam || bsPlayer.position || ''}`}
+                            bsPlayer={bsPlayer}
+                            rosterPlayer={rosterPlayer}
+                            imageMap={imageMap}
+                            onOpenPlayer={onOpenPlayer}
+                        />
+                    )) : (
+                        <div style={{ flex: 1, display: 'grid', placeItems: 'center', fontSize: 11, color: C.gray400, textAlign: 'center' }}>No players</div>
+                    )}
                 {!loading && started && hasOverflow && (
                     <button
                         type="button"
@@ -605,7 +606,6 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                     </button>
                 )}
             </div>
-            )}
         </div>
     )
 }
