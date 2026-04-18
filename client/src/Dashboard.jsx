@@ -2890,12 +2890,12 @@ export default function Dashboard({ api }) {
 
                                                 {/* Win probability bar */}
                                                 {winProb != null && (
-                                                    <div style={{ marginBottom: 10 }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-                                                            <span style={{ fontSize: 8, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Win probability</span>
-                                                            <span style={{ fontSize: 16, fontWeight: 900, color: probColor, lineHeight: 1, letterSpacing: '-0.03em' }}>{winProb}%</span>
+                                                    <div style={{ marginBottom: 12 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                                                            <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Win probability</span>
+                                                            <span style={{ fontSize: 18, fontWeight: 900, color: probColor, lineHeight: 1, letterSpacing: '-0.03em' }}>{winProb}%</span>
                                                         </div>
-                                                        <div style={{ height: 5, borderRadius: 3, background: C.gray100, overflow: 'hidden' }}>
+                                                        <div style={{ height: 6, borderRadius: 3, background: C.gray100, overflow: 'hidden' }}>
                                                             <div style={{ height: '100%', width: `${winProb}%`, borderRadius: 3, background: winProb >= 60 ? C.green : winProb <= 40 ? C.red : C.amber, transition: 'width 0.4s ease' }} />
                                                         </div>
                                                     </div>
@@ -2918,29 +2918,28 @@ export default function Dashboard({ api }) {
                                                             const isLoss = cat.result === 'loss';
                                                             const isTie = cat.result === 'tie';
                                                             const side = cat.side || 'pitcher';
-                                                            // Section divider when side changes
                                                             if (side !== lastSide) {
                                                                 if (lastSide !== null) rows.push(
-                                                                    <div key={`div-${i}`} style={{ height: 1, background: C.gray100, margin: '4px 0' }} />
+                                                                    <div key={`div-${i}`} style={{ height: 1, background: C.gray100, margin: '6px 0' }} />
                                                                 );
                                                                 rows.push(
-                                                                    <div key={`hdr-${i}`} style={{ fontSize: 7, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>
+                                                                    <div key={`hdr-${i}`} style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
                                                                         {side === 'hitter' ? 'Batting' : 'Pitching'}
                                                                     </div>
                                                                 );
                                                                 lastSide = side;
                                                             }
                                                             const accentColor = isWin ? C.green : isLoss ? C.red : C.gray200;
-                                                            const rowBg = isWin ? 'rgba(22,163,74,0.05)' : isLoss ? 'rgba(220,38,38,0.05)' : 'transparent';
+                                                            const rowBg = isWin ? 'rgba(22,163,74,0.06)' : isLoss ? 'rgba(220,38,38,0.06)' : 'transparent';
                                                             rows.push(
-                                                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 34px 1fr', alignItems: 'center', borderLeft: `2.5px solid ${accentColor}`, borderRadius: '0 5px 5px 0', background: rowBg, padding: '3px 6px 3px 7px', marginBottom: 2 }}>
-                                                                    <span style={{ textAlign: 'right', fontSize: 11, fontWeight: isWin ? 700 : 400, color: isWin ? '#166534' : isTie ? C.gray600 : C.gray400, lineHeight: 1, paddingRight: 6 }}>
+                                                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 46px 1fr', alignItems: 'center', borderLeft: `3px solid ${accentColor}`, borderRadius: '0 6px 6px 0', background: rowBg, padding: '5px 8px 5px 10px', marginBottom: 3 }}>
+                                                                    <span style={{ textAlign: 'right', fontSize: 13, fontWeight: isWin ? 700 : 400, color: isWin ? '#166534' : isTie ? C.gray600 : C.gray400, lineHeight: 1, paddingRight: 8 }}>
                                                                         {fmtVal(cat.myValue, cat.label)}
                                                                     </span>
-                                                                    <span style={{ textAlign: 'center', fontSize: 8, fontWeight: 700, color: C.gray400, letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1 }}>
+                                                                    <span style={{ textAlign: 'center', fontSize: 9, fontWeight: 800, color: C.gray400, letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1 }}>
                                                                         {cat.label}
                                                                     </span>
-                                                                    <span style={{ textAlign: 'left', fontSize: 11, fontWeight: isLoss ? 700 : 400, color: isLoss ? '#991b1b' : isTie ? C.gray600 : C.gray400, lineHeight: 1, paddingLeft: 6 }}>
+                                                                    <span style={{ textAlign: 'left', fontSize: 13, fontWeight: isLoss ? 700 : 400, color: isLoss ? '#991b1b' : isTie ? C.gray600 : C.gray400, lineHeight: 1, paddingLeft: 8 }}>
                                                                         {fmtVal(cat.oppValue, cat.label)}
                                                                     </span>
                                                                 </div>
@@ -2948,28 +2947,28 @@ export default function Dashboard({ api }) {
                                                         });
                                                         return <>{rows}</>;
                                                     })() : (
-                                                        <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-                                                            <span style={{ fontSize: 13, fontWeight: 800, color: C.green }}>{closeness.wins}W</span>
-                                                            {closeness.ties > 0 && <span style={{ fontSize: 13, fontWeight: 800, color: C.gray400 }}>{closeness.ties}T</span>}
-                                                            <span style={{ fontSize: 13, fontWeight: 800, color: C.red }}>{closeness.losses}L</span>
+                                                        <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+                                                            <span style={{ fontSize: 15, fontWeight: 800, color: C.green }}>{closeness.wins}W</span>
+                                                            {closeness.ties > 0 && <span style={{ fontSize: 15, fontWeight: 800, color: C.gray400 }}>{closeness.ties}T</span>}
+                                                            <span style={{ fontSize: 15, fontWeight: 800, color: C.red }}>{closeness.losses}L</span>
                                                         </div>
                                                     )
                                                 ) : (
                                                     /* Yahoo points: current margin + projected side by side */
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                                                         <div>
-                                                            <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Now</div>
-                                                            <div style={{ fontSize: 20, fontWeight: 900, color: closeness.diffColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
+                                                            <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Now</div>
+                                                            <div style={{ fontSize: 24, fontWeight: 900, color: closeness.diffColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
                                                                 {closeness.diff >= 0 ? '+' : ''}{closeness.diff.toFixed(2)}
-                                                                <span style={{ fontSize: 10, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
+                                                                <span style={{ fontSize: 11, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
                                                             </div>
                                                         </div>
                                                         {Math.abs(closeness.projDiff) >= 0.5 && (
                                                             <div style={{ textAlign: 'right' }}>
-                                                                <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>Projected</div>
-                                                                <div style={{ fontSize: 20, fontWeight: 900, color: closeness.projColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
+                                                                <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Projected</div>
+                                                                <div style={{ fontSize: 24, fontWeight: 900, color: closeness.projColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
                                                                     {closeness.projDiff >= 0 ? '+' : ''}{closeness.projDiff.toFixed(1)}
-                                                                    <span style={{ fontSize: 10, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
+                                                                    <span style={{ fontSize: 11, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
                                                                 </div>
                                                             </div>
                                                         )}
@@ -2987,30 +2986,17 @@ export default function Dashboard({ api }) {
                                     </div>
                                 )}
                             </div>
-                            <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: 6, background: '#f8fafc', flex: 1, justifyContent: 'center' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#ffffff', borderRadius: 12, border: `1px solid ${C.gray100}` }}>
-                                    <span style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Rank</span>
-                                    <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, lineHeight: 1 }}>{rankText}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#ffffff', borderRadius: 12, border: `1px solid ${C.gray100}` }}>
-                                    <span style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{lg.matchup ? 'Matchup Week' : 'Format'}</span>
-                                    <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, lineHeight: 1, textAlign: 'right' }}>
-                                        {lg.matchup ? lg.matchup.week : (lg.scoringType || '—')}
-                                    </span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: '#ffffff', borderRadius: 12, border: `1px solid ${C.gray100}` }}>
-                                    <span style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                                        {lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? 'Season Pts' : 'Season Record'}
-                                    </span>
-                                    <span style={{ fontSize: 14, fontWeight: 800, color: (isWinning || isLosing) ? myColor : C.navy, lineHeight: 1, textAlign: 'right', paddingLeft: 10 }}>
-                                        {lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? lg.standing.pointsFor : recordText}
-                                    </span>
-                                </div>
-                                {lg.source === 'espn' && lg.matchup?.debugSource && (
-                                    <div style={{ fontSize: 10, color: C.gray400 }}>
-                                        ESPN source: {lg.matchup.debugSource}
+                            <div style={{ borderTop: `1px solid ${C.gray100}`, background: '#f8fafc', display: 'flex' }}>
+                                {[
+                                    { label: 'Rank', value: rankText },
+                                    { label: lg.matchup ? 'Week' : 'Format', value: lg.matchup ? `Wk ${lg.matchup.week}` : (lg.scoringType || '—') },
+                                    { label: lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? 'Season Pts' : 'Record', value: lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? lg.standing.pointsFor : recordText },
+                                ].map(({ label, value }, i) => (
+                                    <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '12px 6px', borderLeft: i > 0 ? `1px solid ${C.gray100}` : 'none' }}>
+                                        <span style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>{label}</span>
+                                        <span style={{ fontSize: 15, fontWeight: 800, color: C.navy, lineHeight: 1, textAlign: 'center' }}>{value}</span>
                                     </div>
-                                )}
+                                ))}
                             </div>
                         </a>
                     )
