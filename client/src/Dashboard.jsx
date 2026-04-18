@@ -2721,13 +2721,22 @@ export default function Dashboard({ api }) {
             )}
 
             {/* Matchup Cards */}
+            {(() => {
+                const matchupWeek = data.find(lg => lg.matchup?.week)?.matchup?.week
+                return matchupWeek ? (
+                    <div style={{ padding: `0 ${isMobile ? '20px' : px}`, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Week {matchupWeek}</span>
+                        <span style={{ fontSize: 11, fontWeight: 500, color: C.gray400 }}>Matchups</span>
+                    </div>
+                ) : null
+            })()}
             <div
                 className="stagger-container scrollbar-hidden"
                 style={{
-                    padding: `16px ${isMobile ? '20px' : px} 10px`,
+                    padding: `8px ${isMobile ? '20px' : px} 10px`,
                     display: 'flex',
                     flexWrap: 'nowrap',
-                    alignItems: 'stretch',
+                    alignItems: 'flex-start',
                     gap: 14,
                     overflowX: isMobile ? 'auto' : 'visible',
                     overflowY: 'visible',
@@ -2794,7 +2803,6 @@ export default function Dashboard({ api }) {
                             border: `1px solid ${borderColor}`,
                             boxShadow: isWinning || isLosing ? '0 18px 40px rgba(15,23,42,0.10)' : '0 14px 32px rgba(15,23,42,0.08)',
                             ...(isMobile ? { width: cardWidth, minWidth: cardWidth, maxWidth: cardWidth, flex: '0 0 auto', scrollSnapAlign: 'start' } : { flex: '1 1 0', minWidth: 0 }),
-                            minHeight: 312,
                             overflow: 'hidden',
                         }}>
                             <div style={{ padding: '14px', background: headerBg, flex: 1 }}>
@@ -2980,7 +2988,6 @@ export default function Dashboard({ api }) {
                             <div style={{ borderTop: `1px solid ${C.gray100}`, background: '#f8fafc', display: 'flex' }}>
                                 {[
                                     { label: 'Rank', value: rankText },
-                                    { label: lg.matchup ? 'Week' : 'Format', value: lg.matchup ? `Wk ${lg.matchup.week}` : (lg.scoringType || '—') },
                                     { label: lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? 'Season Pts' : 'Record', value: lg.standing?.pointsFor && parseFloat(lg.standing.pointsFor) > 0 ? lg.standing.pointsFor : recordText },
                                 ].map(({ label, value }, i) => (
                                     <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, padding: '12px 6px', borderLeft: i > 0 ? `1px solid ${C.gray100}` : 'none' }}>
