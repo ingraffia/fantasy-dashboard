@@ -2681,13 +2681,14 @@ export default function Dashboard({ api }) {
             <div
                 className="stagger-container scrollbar-hidden"
                 style={{
-                    padding: `16px ${px} 10px`,
+                    padding: `16px ${isMobile ? '20px' : px} 10px`,
                     display: 'flex',
                     flexWrap: 'nowrap',
                     gap: 14,
                     overflowX: 'auto',
                     overflowY: 'visible',
                     scrollSnapType: 'x mandatory',
+                    scrollPaddingLeft: isMobile ? '20px' : px,
                     WebkitOverflowScrolling: 'touch',
                     scrollbarWidth: 'none',
                     msOverflowStyle: 'none',
@@ -2696,7 +2697,7 @@ export default function Dashboard({ api }) {
                 {data.map(lg => {
                     const isWinning = lg.matchup?.isWinning
                     const isLosing = lg.matchup && !isWinning && parseFloat(lg.matchup.oppScore || 0) > parseFloat(lg.matchup.myScore || 0)
-                    const cardWidth = isMobile ? 'calc(100vw - 32px)' : '300px'
+                    const cardWidth = isMobile ? 'calc(100vw - 48px)' : '300px'
                     const borderColor = isWinning ? '#86efac' : isLosing ? '#fca5a5' : '#bfdbfe'
                     const headerBg = '#ffffff'
                     const myColor = C.navy
