@@ -512,7 +512,6 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                 : 'linear-gradient(180deg, #0f2040 0%, #16324f 100%)'
     
     const showBody = loading || hasRosterPlayers
-    const myExpectedCount = isRosterGame ? rosterPlayers.filter(rp => rp.proTeam === game.awayTeam || rp.proTeam === game.homeTeam).length : 0
 
     return (
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
@@ -535,9 +534,9 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                         <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(219,231,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
                             MLB Today
                         </div>
-                        {myExpectedCount > 0 && (
+                        {withRoster.length > 0 && (
                             <span style={{ fontSize: 9, fontWeight: 800, color: '#bfdbfe', background: 'rgba(37,99,235,0.15)', padding: '2px 6px', borderRadius: 999, border: '1px solid rgba(37,99,235,0.25)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                {myExpectedCount} Player{myExpectedCount !== 1 ? 's' : ''}
+                                {withRoster.length} Player{withRoster.length !== 1 ? 's' : ''}
                             </span>
                         )}
                     </div>
