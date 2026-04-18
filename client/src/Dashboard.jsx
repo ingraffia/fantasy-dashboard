@@ -471,6 +471,7 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
 
 
 function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, onOpenPlayer, pregameCompact = false, isRosterGame = false }) {
+    const isMobile = useIsMobile()
     const started = game.isLive || game.isFinal
     const loading = !boxscore && started
     const [expanded, setExpanded] = useState(false)
@@ -499,7 +500,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     const scoreFontSize = compactCard ? 34 : 38
     const bodyPadding = '12px'
     const bodyMinHeight = 166
-    const cardWidth = 270
+    const cardWidth = isMobile ? 'calc(100vw - 48px)' : 300
     const cardBorder = game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : isRosterGame ? '#bfdbfe' : '#dbe7ff'
     const cardShadow = isRosterGame ? '0 16px 36px rgba(37,99,235,0.12)' : '0 12px 28px rgba(15,23,42,0.08)'
     const headerBg = game.isLive
@@ -610,6 +611,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
 }
 
 function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers, imageMap, px, onOpenPlayer }) {
+    const isMobile = useIsMobile()
     if (games.length === 0) return null
 
     const scrollRef = useRef(null)
@@ -633,7 +635,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
         return String(a.gamePk).localeCompare(String(b.gamePk))
     })
 
-    const CARD_STEP = 270 + 10 // cardWidth + gap
+    const CARD_STEP = isMobile ? window.innerWidth - 38 : 310 // cardWidth + gap
 
     useEffect(() => {
         const el = scrollRef.current
@@ -674,8 +676,8 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                 <div ref={scrollRef} style={{
                     display: 'flex', gap: 10,
                     overflowX: 'auto', overflowY: 'visible',
-                    paddingLeft: px, paddingRight: px, paddingBottom: 12,
-                    scrollPaddingLeft: px,
+                    paddingLeft: isMobile ? '20px' : px, paddingRight: isMobile ? '20px' : px, paddingBottom: 12,
+                    scrollPaddingLeft: isMobile ? '20px' : px,
                     scrollbarWidth: 'none', msOverflowStyle: 'none',
                     WebkitOverflowScrolling: 'touch',
                     scrollSnapType: 'x mandatory',
