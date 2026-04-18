@@ -2729,13 +2729,15 @@ export default function Dashboard({ api }) {
                     flexWrap: 'nowrap',
                     alignItems: 'stretch',
                     gap: 14,
-                    overflowX: 'auto',
+                    overflowX: isMobile ? 'auto' : 'visible',
                     overflowY: 'visible',
-                    scrollSnapType: 'x mandatory',
-                    scrollPaddingLeft: isMobile ? '20px' : px,
-                    WebkitOverflowScrolling: 'touch',
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
+                    ...(isMobile ? {
+                        scrollSnapType: 'x mandatory',
+                        scrollPaddingLeft: '20px',
+                        WebkitOverflowScrolling: 'touch',
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none',
+                    } : {}),
                 }}
             >
                 {data.map(lg => {
@@ -2791,13 +2793,9 @@ export default function Dashboard({ api }) {
                             borderRadius: 18,
                             border: `1px solid ${borderColor}`,
                             boxShadow: isWinning || isLosing ? '0 18px 40px rgba(15,23,42,0.10)' : '0 14px 32px rgba(15,23,42,0.08)',
-                            width: cardWidth,
-                            minWidth: cardWidth,
-                            maxWidth: cardWidth,
-                            flex: '0 0 auto',
+                            ...(isMobile ? { width: cardWidth, minWidth: cardWidth, maxWidth: cardWidth, flex: '0 0 auto', scrollSnapAlign: 'start' } : { flex: '1 1 0', minWidth: 0 }),
                             minHeight: 312,
                             overflow: 'hidden',
-                            scrollSnapAlign: 'start',
                         }}>
                             <div style={{ padding: '14px', background: headerBg, borderBottom: `1px solid ${C.gray100}` }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 }}>
