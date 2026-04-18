@@ -457,8 +457,26 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, leagueCount = 1, imageMap, on
                         </span>
                     )}
                     {leagueCount > 1 && (
-                        <span style={{ fontSize: 8, fontWeight: 800, color: '#6366f1', background: 'rgba(99,102,241,0.1)', padding: '2px 5px', borderRadius: 999, flexShrink: 0, letterSpacing: '0.04em', border: '1px solid rgba(99,102,241,0.2)' }}>
-                            {leagueCount}×
+                        <span style={{ display: 'inline-flex', alignItems: 'center', flexShrink: 0, gap: 0 }}>
+                            {[...Array(Math.min(leagueCount, 4))].map((_, i) => (
+                                <span key={i} style={{
+                                    width: 9, height: 9, borderRadius: '50%',
+                                    background: [
+                                        'linear-gradient(135deg,#6366f1,#818cf8)',
+                                        'linear-gradient(135deg,#8b5cf6,#a78bfa)',
+                                        'linear-gradient(135deg,#a855f7,#c084fc)',
+                                        'linear-gradient(135deg,#ec4899,#f472b6)',
+                                    ][i],
+                                    marginLeft: i === 0 ? 0 : -3,
+                                    border: '1.5px solid #ffffff',
+                                    boxShadow: '0 1px 3px rgba(99,102,241,0.35)',
+                                    display: 'inline-block',
+                                    flexShrink: 0,
+                                }} />
+                            ))}
+                            {leagueCount > 4 && (
+                                <span style={{ fontSize: 7, fontWeight: 900, color: '#6366f1', marginLeft: 3 }}>+{leagueCount - 4}</span>
+                            )}
                         </span>
                     )}
                 </div>
