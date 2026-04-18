@@ -312,6 +312,20 @@ const ESPN_SLOT_MAP = {
     16: 'BN', 17: 'IL', 19: '3B',
 };
 const ESPN_POS_MAP = { 1: 'SP', 2: 'C', 3: '1B', 4: '2B', 5: '3B', 6: 'SS', 7: 'OF', 8: 'OF', 9: 'OF', 10: 'DH', 11: 'RP' };
+// Maps only the canonical position slots (excludes flex/util/BN/IL slots)
+const ESPN_PRIMARY_SLOT_POS = { 0: 'C', 1: '1B', 2: '2B', 3: '3B', 4: 'SS', 5: 'OF', 11: 'DH', 13: 'SP', 14: 'RP' };
+function espnEligiblePositions(player) {
+    const slots = player?.eligibleSlots || [];
+    const seen = new Set();
+    const positions = [];
+    for (const slotId of slots) {
+        const pos = ESPN_PRIMARY_SLOT_POS[slotId];
+        if (!pos || seen.has(pos)) continue;
+        seen.add(pos);
+        positions.push(pos);
+    }
+    return positions.length > 0 ? positions.join('/') : (ESPN_POS_MAP[player?.defaultPositionId] || '—');
+}
 const ESPN_TEAM_MAP = {
     1: 'BAL', 2: 'BOS', 3: 'LAA', 4: 'CHW', 5: 'CLE', 6: 'DET', 7: 'KC', 8: 'MIL', 9: 'MIN', 10: 'NYY',
     11: 'OAK', 12: 'SEA', 13: 'TOR', 14: 'TOR', 15: 'TEX', 16: 'CHC', 17: 'CIN', 18: 'HOU', 19: 'LAD', 20: 'WSH',
@@ -1079,7 +1093,7 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
             const espnRanks = parseEspnRanks(player);
             return {
                 playerKey: `espn.p.${entry.playerId}`, name: player?.fullName || '—',
-                position: ESPN_POS_MAP[player?.defaultPositionId] || '—',
+                position: espnEligiblePositions(player),
                 proTeam: ESPN_TEAM_MAP[player?.proTeamId] || '—',
                 selectedPosition: ESPN_SLOT_MAP[entry.lineupSlotId] || 'BN',
                 injuryStatus: ESPN_INJURY_MAP[injuryKey] ?? null,
@@ -1160,7 +1174,7 @@ router.get('/espn-player/:playerId', requireAuth, async (req, res) => {
             : null;
         res.json({
             playerKey: `espn.p.${playerId}`, name: player.fullName,
-            position: ESPN_POS_MAP[player.defaultPositionId] || '—',
+            position: espnEligiblePositions(player),
             proTeam: ESPN_TEAM_MAP[player.proTeamId] || '—',
             proTeamAbbr: ESPN_TEAM_MAP[player.proTeamId] || '—',
             uniformNumber: player.jersey || null,
@@ -1562,7 +1576,7 @@ router.get('/espn-trade-suggest', requireAuth, async (req, res) => {
                     playerId: entry.playerId,
                     playerKey: `espn.p.${entry.playerId}`,
                     name: player.fullName,
-                    position: ESPN_POS_MAP[player.defaultPositionId] || 'UTIL',
+                    position: espnEligiblePositions(player),
                     defaultPositionId: player.defaultPositionId,
                     proTeam: ESPN_TEAM_MAP[player.proTeamId] || '—',
                     selectedPosition: ESPN_SLOT_MAP[entry.lineupSlotId] || 'BN',
