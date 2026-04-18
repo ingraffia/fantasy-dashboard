@@ -401,7 +401,7 @@ function CompactGamePill({ game }) {
     )
 }
 
-function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
+function MyPlayerStatRow({ bsPlayer, rosterPlayer, leagueCount = 1, imageMap, onOpenPlayer }) {
     const isPitcherPos = bsPlayer.pitching !== null
     const statLine = isPitcherPos ? formatPitcherLine(bsPlayer.pitching) : formatHitterLine(bsPlayer.batting)
     const isActive = bsPlayer.status === 'batting' || bsPlayer.status === 'pitching'
@@ -456,8 +456,14 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, imageMap, onOpenPlayer }) {
                             {bsPlayer.status === 'batting' ? 'AB' : 'P'}
                         </span>
                     )}
+                    {leagueCount > 1 && (
+                        <span style={{ fontSize: 8, fontWeight: 800, color: '#6366f1', background: 'rgba(99,102,241,0.1)', padding: '2px 5px', borderRadius: 999, flexShrink: 0, letterSpacing: '0.04em', border: '1px solid rgba(99,102,241,0.2)' }}>
+                            {leagueCount}×
+                        </span>
+                    )}
                 </div>
                 <div style={{ fontSize: 10, color: C.gray400, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <MlbLogo team={bsPlayer.proTeam} size={12} showText={false} />
                     <span>{bsPlayer.position}</span>
                     {rosterPlayer && <SlotPill slot={rosterPlayer.selectedPosition} />}
                 </div>
@@ -479,12 +485,20 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     const allBsPlayers = [...(boxscore?.away?.players || []), ...(boxscore?.home?.players || [])]
     const myBsPlayers = allBsPlayers.filter(p => myPlayerNames.has(playerIdentityKey(p)) || myPlayerNames.has(normName(p.name)))
 
-    const withRoster = myBsPlayers.map(bp => ({
-        bsPlayer: bp,
-        rosterPlayer: rosterPlayers.find(rp => playerIdentityKey(rp) === playerIdentityKey(bp))
-            || rosterPlayers.find(rp => normName(rp.name) === normName(bp.name) && rp.proTeam === bp.proTeam)
-            || rosterPlayers.find(rp => normName(rp.name) === normName(bp.name)),
-    })).sort((a, b) => {
+    const withRoster = myBsPlayers.map(bp => {
+        const bpKey = playerIdentityKey(bp)
+        const bpNorm = normName(bp.name)
+        const matches = rosterPlayers.filter(rp =>
+            playerIdentityKey(rp) === bpKey ||
+            (normName(rp.name) === bpNorm && rp.proTeam === bp.proTeam) ||
+            normName(rp.name) === bpNorm
+        )
+        return {
+            bsPlayer: bp,
+            rosterPlayer: matches[0] || null,
+            leagueCount: matches.length,
+        }
+    }).sort((a, b) => {
         const aP = !!a.bsPlayer.pitching; const bP = !!b.bsPlayer.pitching
         if (aP && !bP) return -1; if (!aP && bP) return 1
         return (a.bsPlayer.battingOrder ?? 999) - (b.bsPlayer.battingOrder ?? 999)
@@ -579,11 +593,12 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                     )}
                     {loading ? (
                         <div style={{ flex: 1, display: 'grid', placeItems: 'center', fontSize: 11, color: C.gray400, textAlign: 'center' }}>Loading live stats...</div>
-                    ) : hasRosterPlayers ? visibleRoster.map(({ bsPlayer, rosterPlayer }) => (
+                    ) : hasRosterPlayers ? visibleRoster.map(({ bsPlayer, rosterPlayer, leagueCount }) => (
                         <MyPlayerStatRow
                             key={`${bsPlayer.name}-${bsPlayer.proTeam || bsPlayer.position || ''}`}
                             bsPlayer={bsPlayer}
                             rosterPlayer={rosterPlayer}
+                            leagueCount={leagueCount}
                             imageMap={imageMap}
                             onOpenPlayer={onOpenPlayer}
                         />
