@@ -1089,6 +1089,11 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
         const rosterEntries = myTeam?.roster?.entries || [];
         const players = rosterEntries.map(entry => {
             const player = entry.playerPoolEntry?.player;
+            if (player?.fullName?.includes('Bregman')) {
+                console.log('[DEBUG Bregman] keys:', Object.keys(player));
+                console.log('[DEBUG Bregman] eligibleSlots:', player.eligibleSlots);
+                console.log('[DEBUG Bregman] defaultPositionId:', player.defaultPositionId);
+            }
             const injuryKey = player?.injuryStatus || 'ACTIVE';
             const espnRanks = parseEspnRanks(player);
             return {
