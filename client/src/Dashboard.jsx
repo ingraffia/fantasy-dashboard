@@ -2797,7 +2797,7 @@ export default function Dashboard({ api }) {
                             minHeight: 312,
                             overflow: 'hidden',
                         }}>
-                            <div style={{ padding: '14px', background: headerBg, borderBottom: `1px solid ${C.gray100}` }}>
+                            <div style={{ padding: '14px', background: headerBg, flex: 1 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
                                         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 999, background: platformBg, border: `1px solid ${C.gray200}`, flexShrink: 0 }}>
@@ -2860,31 +2860,22 @@ export default function Dashboard({ api }) {
 
                                             return (
                                             <div style={{ paddingTop: 10, borderTop: `1px solid ${C.gray100}` }}>
-                                                {/* Calendar row + record + probability */}
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                                        <div style={{ display: 'flex', gap: 4 }}>
-                                                            {DAY_LABELS.map((d, i) => (
-                                                                <span key={i} style={{ width: 14, fontSize: 7, fontWeight: 700, color: i === daysIntoWeek - 1 ? C.accent : C.gray400, textAlign: 'center', display: 'block' }}>{d}</span>
-                                                            ))}
-                                                        </div>
-                                                        <div style={{ display: 'flex', gap: 4 }}>
-                                                            {DAY_LABELS.map((_, i) => {
-                                                                const isPlayed = i < daysIntoWeek - 1;
-                                                                const isToday = i === daysIntoWeek - 1;
-                                                                return <div key={i} style={{ width: 14, height: 6, borderRadius: 3, background: isToday ? C.accent : isPlayed ? C.navy : C.gray100, flexShrink: 0 }} />;
-                                                            })}
-                                                        </div>
+                                                {/* Calendar — full width */}
+                                                <div style={{ marginBottom: 12 }}>
+                                                    <div style={{ display: 'flex', marginBottom: 5 }}>
+                                                        {DAY_LABELS.map((d, i) => (
+                                                            <span key={i} style={{ flex: 1, fontSize: 9, fontWeight: 700, color: i === daysIntoWeek - 1 ? C.accent : C.gray400, textAlign: 'center' }}>{d}</span>
+                                                        ))}
                                                     </div>
-                                                    <div style={{ textAlign: 'right' }}>
-                                                        {closeness.type === 'categories' && (
-                                                            <div style={{ fontSize: 11, fontWeight: 800, color: closeness.catColor, letterSpacing: '-0.01em', lineHeight: 1, marginBottom: 2 }}>
-                                                                {closeness.wins}W · {closeness.losses}L{closeness.ties ? ` · ${closeness.ties}T` : ''}
-                                                            </div>
-                                                        )}
-                                                        <div style={{ fontSize: 9, fontWeight: 600, color: C.gray400 }}>
-                                                            {daysLeft === 0 ? 'Final day' : `${daysLeft}d left`}
-                                                        </div>
+                                                    <div style={{ display: 'flex', gap: 2 }}>
+                                                        {DAY_LABELS.map((_, i) => {
+                                                            const isPlayed = i < daysIntoWeek - 1;
+                                                            const isToday = i === daysIntoWeek - 1;
+                                                            return <div key={i} style={{ flex: 1, height: 7, borderRadius: 3, background: isToday ? C.accent : isPlayed ? C.navy : C.gray100 }} />;
+                                                        })}
+                                                    </div>
+                                                    <div style={{ textAlign: 'right', marginTop: 5 }}>
+                                                        <span style={{ fontSize: 9, fontWeight: 600, color: C.gray400 }}>{daysLeft === 0 ? 'Final day' : `${daysLeft}d left`}</span>
                                                     </div>
                                                 </div>
 
