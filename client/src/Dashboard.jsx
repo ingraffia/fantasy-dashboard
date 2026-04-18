@@ -513,6 +513,13 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     
     const showBody = loading || hasRosterPlayers
 
+    // TEMP DEBUG
+    const allRosterInGame = rosterPlayers.filter(rp => rp.proTeam === game.awayTeam || rp.proTeam === game.homeTeam)
+    if (allRosterInGame.length > 0) {
+        console.log(`[${game.awayTeam}/${game.homeTeam}] all roster players on these teams (${allRosterInGame.length}):`, allRosterInGame.map(rp => `${rp.name} (${rp.proTeam}, slot: ${rp.selectedPosition})`))
+        console.log(`[${game.awayTeam}/${game.homeTeam}] actually tracked in boxscore (${withRoster.length}):`, withRoster.map(r => r.bsPlayer.name))
+    }
+
     return (
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
             background: C.white,
