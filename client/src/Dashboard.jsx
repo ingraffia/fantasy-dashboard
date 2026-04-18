@@ -499,7 +499,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     const headerPadding = '14px'
     const scoreFontSize = compactCard ? 34 : 38
     const bodyPadding = '12px'
-    const bodyMinHeight = 166
+    const bodyMinHeight = 220
     const cardWidth = isMobile ? 'calc(100vw - 48px)' : 300
     const cardBorder = game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : isRosterGame ? '#bfdbfe' : '#dbe7ff'
     const cardShadow = isRosterGame ? '0 16px 36px rgba(37,99,235,0.12)' : '0 12px 28px rgba(15,23,42,0.08)'
@@ -524,8 +524,10 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
             minWidth: cardWidth,
             maxWidth: cardWidth,
             flexShrink: 0,
-            minHeight: 312,
+            minHeight: 380,
             boxShadow: cardShadow,
+            display: 'flex',
+            flexDirection: 'column',
         }}>
             <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, background: headerBg }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
@@ -558,7 +560,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                     </div>
                 </div>
             </div>
-            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: '#f8fafc', gap: hasRosterPlayers ? 8 : 0 }}>
+            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: '#f8fafc', gap: hasRosterPlayers ? 8 : 0 }}>
                     {hasRosterPlayers && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                             <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -683,7 +685,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                     scrollSnapType: 'x mandatory',
                 }} className="scrollbar-hidden">
                     {sortedGames.map(g => (
-                        <div key={g.gamePk} style={{ scrollSnapAlign: 'start' }}>
+                        <div key={g.gamePk} style={{ scrollSnapAlign: 'start', display: 'flex' }}>
                             <BoxScoreCard
                                 game={g}
                                 boxscore={boxscores[g.gamePk]}
@@ -2686,6 +2688,7 @@ export default function Dashboard({ api }) {
                     padding: `16px ${isMobile ? '20px' : px} 10px`,
                     display: 'flex',
                     flexWrap: 'nowrap',
+                    alignItems: 'stretch',
                     gap: 14,
                     overflowX: 'auto',
                     overflowY: 'visible',
