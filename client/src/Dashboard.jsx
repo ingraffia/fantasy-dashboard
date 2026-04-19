@@ -2828,7 +2828,7 @@ export default function Dashboard({ api }) {
                         }}>
                             {/* Fixed: league name + scores */}
                             <div style={{ padding: '14px', background: headerBg, flexShrink: 0 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
                                         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 999, background: platformBg, border: `1px solid ${C.gray200}`, flexShrink: 0 }}>
                                             {lg.source === 'espn'
@@ -2845,23 +2845,23 @@ export default function Dashboard({ api }) {
                                 </div>
                                 {lg.matchup ? (
                                     <>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.gray100}` }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, height: 54, borderTop: `1px solid ${C.gray100}` }}>
                                             <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 6 }}>My Team</span>
-                                            <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: (isWinning || !isLosing) ? C.navy : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', flexShrink: 0, whiteSpace: 'nowrap' }}>{myDisplayScore ?? '—'}</span>
+                                            <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: (isWinning || !isLosing) ? C.navy : C.gray400, lineHeight: 0.9, letterSpacing: '-0.06em', flexShrink: 0, whiteSpace: 'nowrap' }}>{myDisplayScore ?? '—'}</span>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '10px 0', borderTop: `1px solid ${C.gray100}` }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, height: 54, borderTop: `1px solid ${C.gray100}` }}>
                                             <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 6 }}>{matchupLabel}</span>
-                                            <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing ? C.navy : oppDisplayScore == null ? 'transparent' : C.gray400, lineHeight: 0.82, letterSpacing: '-0.06em', flexShrink: 0, whiteSpace: 'nowrap' }}>{oppDisplayScore ?? '—'}</span>
+                                            <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing ? C.navy : oppDisplayScore == null ? 'transparent' : C.gray400, lineHeight: 0.9, letterSpacing: '-0.06em', flexShrink: 0, whiteSpace: 'nowrap' }}>{oppDisplayScore ?? '—'}</span>
                                         </div>
                                     </>
                                 ) : (
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px 0', borderTop: `1px solid ${C.gray100}` }}>
-                                        <span style={{ fontSize: Math.min(scoreFontSize + 12, 42), fontWeight: 900, color: C.navy, lineHeight: 0.82, letterSpacing: '-0.04em' }}>{myDisplayScore ?? '—'}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 108, borderTop: `1px solid ${C.gray100}` }}>
+                                        <span style={{ fontSize: Math.min(scoreFontSize + 12, 42), fontWeight: 900, color: C.navy, lineHeight: 0.9, letterSpacing: '-0.04em' }}>{myDisplayScore ?? '—'}</span>
                                     </div>
                                 )}
                             </div>
                             {/* Middle: win probability + categories */}
-                            <div style={{ flex: 1, padding: '12px 14px', borderTop: `1px solid ${C.gray100}`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+                            <div style={{ flex: 1, padding: '14px', borderTop: `1px solid ${C.gray100}`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
                                 {lg.matchup && closeness && (() => {
                                     const dow = new Date().getDay();
                                     const daysIntoWeek = dow === 0 ? 7 : dow;
@@ -2882,7 +2882,7 @@ export default function Dashboard({ api }) {
                                     return (
                                         <>
                                             {winProb != null && (
-                                                <div style={{ marginBottom: 12 }}>
+                                                <div style={{ marginBottom: 14 }}>
                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
                                                         <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Win probability</span>
                                                         <span style={{ fontSize: 18, fontWeight: 900, color: probColor, lineHeight: 1, letterSpacing: '-0.03em' }}>{winProb}%</span>
