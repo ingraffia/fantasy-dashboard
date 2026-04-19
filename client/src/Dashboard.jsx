@@ -511,6 +511,9 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
             (normName(rp.name) === bpNorm && rp.proTeam === bp.proTeam) ||
             normName(rp.name) === bpNorm
         )
+        if (bpNorm === 'corbincarroll') {
+            console.log('[Carroll] rosterPlayers total:', rosterPlayers.length, '| matches:', matches.map(rp => ({ league: rp.leagueKey, name: rp.name, team: rp.proTeam })))
+        }
         return {
             bsPlayer: bp,
             rosterPlayer: matches[0] || null,
@@ -1168,23 +1171,28 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                             <SectionTitle>Your Rosters</SectionTitle>
                             <div style={{ background: '#ffffff', borderRadius: 14, border: `1px solid ${C.gray100}`, boxShadow: '0 4px 12px rgba(15,23,42,0.03)', overflow: 'hidden' }}>
                                 {leagues.map((lg, i) => {
-                                    const onRoster = lg.players?.some(p => p.playerKey === playerKey)
-                                    const slot = lg.players?.find(p => p.playerKey === playerKey)?.selectedPosition
-                                    
+                                    const playerNameNorm = normName(playerName)
+                                    const rosterEntry = lg.players?.find(p => p.playerKey === playerKey)
+                                        || (playerNameNorm ? lg.players?.find(p => normName(p.name) === playerNameNorm) : null)
+                                    const onRoster = !!rosterEntry
+                                    const slot = rosterEntry?.selectedPosition
+
                                     let statusNode = <span style={{ fontSize: 11, color: C.gray400 }}>Checking...</span>
                                     let rowBg = 'transparent'
-                                    
+
                                     if (onRoster) {
                                         rowBg = 'rgba(37, 99, 235, 0.05)'
                                         statusNode = <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><SlotPill slot={slot} /></div>
-                                    } else if (lg.leagueKey.startsWith('espn')) {
+                                    } else if (lg.leagueKey.startsWith('espn') || playerKey.startsWith('espn.')) {
                                         statusNode = <span style={{ fontSize: 12, color: C.gray400 }}>Not on roster</span>
-                                    } else if (ownership && ownership[playerKey] && ownership[playerKey][lg.leagueKey]) {
+                                    } else if (ownership[playerKey]) {
                                         const stat = ownership[playerKey][lg.leagueKey]
-                                        if (stat.available === true) {
+                                        if (stat?.available === true) {
                                             statusNode = <Tag text="Available" bg={C.greenLight} color={C.green} />
-                                        } else {
+                                        } else if (stat) {
                                             statusNode = <Tag text={stat.ownerTeamName || 'Taken'} bg="#fef2f2" color="#dc2626" />
+                                        } else {
+                                            statusNode = <span style={{ fontSize: 12, color: C.gray400 }}>Not on roster</span>
                                         }
                                     }
 
