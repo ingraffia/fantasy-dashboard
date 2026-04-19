@@ -2931,26 +2931,53 @@ export default function Dashboard({ api }) {
                                                         <span style={{ fontSize: 15, fontWeight: 800, color: C.red }}>{closeness.losses}L</span>
                                                     </div>
                                                 )
-                                            ) : (
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                                                    <div>
-                                                        <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Now</div>
-                                                        <div style={{ fontSize: 24, fontWeight: 900, color: closeness.diffColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
-                                                            {closeness.diff >= 0 ? '+' : ''}{closeness.diff.toFixed(2)}
-                                                            <span style={{ fontSize: 11, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
-                                                        </div>
-                                                    </div>
-                                                    {Math.abs(closeness.projDiff) >= 0.5 && (
-                                                        <div style={{ textAlign: 'right' }}>
-                                                            <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>Projected</div>
-                                                            <div style={{ fontSize: 24, fontWeight: 900, color: closeness.projColor, lineHeight: 1, letterSpacing: '-0.04em' }}>
-                                                                {closeness.projDiff >= 0 ? '+' : ''}{closeness.projDiff.toFixed(1)}
-                                                                <span style={{ fontSize: 11, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
+                                            ) : (() => {
+                                                const myProj = parseFloat(lg.matchup.myProjected) || 0;
+                                                const oppProj = parseFloat(lg.matchup.oppProjected) || 0;
+                                                const myScore = parseFloat(lg.matchup.myScore) || 0;
+                                                const oppScore = parseFloat(lg.matchup.oppScore) || 0;
+                                                const projMargin = myProj - oppProj;
+                                                const total = myProj + oppProj;
+                                                const ratio = total > 0 ? projMargin / total : 0;
+                                                const ptWinProb = Math.round(100 / (1 + Math.exp(-8 * ratio)));
+                                                const ptProbColor = ptWinProb >= 60 ? C.green : ptWinProb <= 40 ? C.red : C.amber;
+                                                const lead = myScore - oppScore;
+                                                const leadLabel = lead > 0.01 ? 'Lead' : lead < -0.01 ? 'Deficit' : 'Tied';
+                                                const leadColor = lead > 0.01 ? C.green : lead < -0.01 ? C.red : C.gray600;
+                                                return (
+                                                    <>
+                                                        <div style={{ marginBottom: 14 }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                                                                <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Win probability</span>
+                                                                <span style={{ fontSize: 18, fontWeight: 900, color: ptProbColor, lineHeight: 1, letterSpacing: '-0.03em' }}>{ptWinProb}%</span>
+                                                            </div>
+                                                            <div style={{ height: 6, borderRadius: 3, background: C.gray100, overflow: 'hidden' }}>
+                                                                <div style={{ height: '100%', width: `${ptWinProb}%`, borderRadius: 3, background: ptProbColor, transition: 'width 0.4s ease' }} />
                                                             </div>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            )}
+                                                        <div style={{ marginBottom: 12 }}>
+                                                            <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 6 }}>Projected Final</div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                <div>
+                                                                    <div style={{ fontSize: 22, fontWeight: 900, color: C.navy, lineHeight: 1, letterSpacing: '-0.03em' }}>{myProj.toFixed(1)}</div>
+                                                                    <div style={{ fontSize: 10, fontWeight: 600, color: C.gray400, marginTop: 3 }}>My team</div>
+                                                                </div>
+                                                                <div style={{ fontSize: 11, fontWeight: 700, color: C.gray300 }}>vs</div>
+                                                                <div style={{ textAlign: 'right' }}>
+                                                                    <div style={{ fontSize: 22, fontWeight: 900, color: C.gray500, lineHeight: 1, letterSpacing: '-0.03em' }}>{oppProj.toFixed(1)}</div>
+                                                                    <div style={{ fontSize: 10, fontWeight: 600, color: C.gray400, marginTop: 3 }}>Opponent</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ borderTop: `1px solid ${C.gray100}`, paddingTop: 10 }}>
+                                                            <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 4 }}>Current {leadLabel}</div>
+                                                            <div style={{ fontSize: 20, fontWeight: 900, color: leadColor, lineHeight: 1, letterSpacing: '-0.03em' }}>
+                                                                {lead >= 0 ? '+' : ''}{lead.toFixed(2)}<span style={{ fontSize: 11, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
+                                                            </div>
+                                                        </div>
+                                                    </>
+                                                );
+                                            })()}
                                         </>
                                     );
                                 })()}
