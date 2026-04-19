@@ -2728,7 +2728,7 @@ export default function Dashboard({ api }) {
                 const daysLeft = 7 - daysIntoWeek
                 const DAY_LABELS = ['M','T','W','T','F','S','S']
                 return (
-                    <div style={{ padding: `0 ${isMobile ? '20px' : px}`, marginBottom: 10 }}>
+                    <div style={{ padding: `16px ${isMobile ? '20px' : px} 10px`, marginBottom: 10 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                             {matchupWeek && <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Week {matchupWeek}</span>}
                             <span style={{ fontSize: 11, fontWeight: 500, color: C.gray400 }}>{matchupWeek ? 'Matchups' : 'Matchups'}</span>
@@ -2860,7 +2860,7 @@ export default function Dashboard({ api }) {
                                 )}
                             </div>
                             {/* Middle: win probability + categories */}
-                            <div style={{ flex: 1, padding: '12px 14px', borderTop: `1px solid ${C.gray100}`, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <div style={{ flex: 1, padding: '12px 14px', borderTop: `1px solid ${C.gray100}`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
                                 {lg.matchup && closeness && (() => {
                                     const dow = new Date().getDay();
                                     const daysIntoWeek = dow === 0 ? 7 : dow;
