@@ -61,7 +61,7 @@ function parsePlayers(playersRaw) {
             playerKey: playerObj.player_key,
             name: playerObj.name?.full,
             position: playerObj.display_position,
-            proTeam: playerObj.editorial_team_abbr,
+            proTeam: (playerObj.editorial_team_abbr || '').toUpperCase() || null,
             selectedPosition: selectedPos,
             injuryStatus: playerObj.status || null,
             isUndroppable: playerObj.is_undroppable == 1,

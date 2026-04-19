@@ -514,7 +514,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
         return {
             bsPlayer: bp,
             rosterPlayer: matches[0] || null,
-            leagueCount: matches.length,
+            leagueCount: new Set(matches.map(rp => rp.leagueKey).filter(Boolean)).size || matches.length,
         }
     }).sort((a, b) => {
         const aP = !!a.bsPlayer.pitching; const bP = !!b.bsPlayer.pitching
@@ -544,13 +544,6 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                 : 'linear-gradient(180deg, #0f2040 0%, #16324f 100%)'
     
     const showBody = loading || hasRosterPlayers
-
-    // TEMP DEBUG
-    const allRosterInGame = rosterPlayers.filter(rp => rp.proTeam === game.awayTeam || rp.proTeam === game.homeTeam)
-    if (allRosterInGame.length > 0) {
-        console.log(`[${game.awayTeam}/${game.homeTeam}] all roster players on these teams (${allRosterInGame.length}):`, allRosterInGame.map(rp => `${rp.name} (${rp.proTeam}, slot: ${rp.selectedPosition})`))
-        console.log(`[${game.awayTeam}/${game.homeTeam}] actually tracked in boxscore (${withRoster.length}):`, withRoster.map(r => r.bsPlayer.name))
-    }
 
     return (
         <div className="surface-card surface-card--interactive animate-fade-up" style={{
@@ -2212,7 +2205,7 @@ export default function Dashboard({ api }) {
         }, 700)
     }, [loadDashboard, loadScoreboard])
 
-    const myTeams = useMemo(() => new Set(data.flatMap(lg => lg.players.map(p => p.proTeam)).filter(Boolean)), [data])
+    const myTeams = useMemo(() => new Set(data.flatMap(lg => lg.players.map(p => (p.proTeam || '').toUpperCase())).filter(Boolean)), [data])
 
     const loadBoxscores = useCallback((currentGames, currentMyTeams) => {
         const relevant = currentGames.filter(g => (g.isLive || g.isFinal) && (currentMyTeams.has(g.awayTeam) || currentMyTeams.has(g.homeTeam)))
@@ -2380,7 +2373,7 @@ export default function Dashboard({ api }) {
         return img
     }, [imageMap])
 
-    const allRosterPlayers = useMemo(() => data.flatMap(lg => lg.players), [data])
+    const allRosterPlayers = useMemo(() => data.flatMap(lg => lg.players.map(p => ({ ...p, leagueKey: lg.leagueKey }))), [data])
     const myPlayerNames = useMemo(() => new Set(allRosterPlayers.flatMap(p => [playerIdentityKey(p), normName(p.name)]).filter(Boolean)), [allRosterPlayers])
 
     const todayStatsMap = useMemo(() => {
