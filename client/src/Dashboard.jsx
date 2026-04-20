@@ -693,7 +693,8 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
     const isLast = activeIdx >= sortedGames.length - 1
 
     return (
-        <div className="surface-card surface-card--strong animate-fade-up" style={{ background: 'rgba(255,255,255,0.92)', borderBottom: `1px solid ${C.gray100}`, paddingTop: 14, paddingBottom: 16, borderRadius: 0 }}>
+        <div className="animate-fade-up">
+        <div className="surface-card surface-card--strong" style={{ background: 'rgba(255,255,255,0.92)', borderBottom: `1px solid ${C.gray100}`, paddingTop: 14, paddingBottom: 4, borderRadius: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 12 }}>
                 <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -743,28 +744,29 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                 )}
             </div>
 
-            {sortedGames.length > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 5, paddingTop: 4 }}>
-                    {sortedGames.map((g, i) => (
-                        <button
-                            key={g.gamePk}
-                            type="button"
-                            onClick={() => scrollTo(i)}
-                            style={{
-                                width: i === activeIdx ? 18 : 6,
-                                height: 6,
-                                borderRadius: 3,
-                                background: i === activeIdx ? C.accent : C.gray200,
-                                border: 'none', padding: 0, cursor: 'pointer',
-                                transition: 'width 200ms ease, background 200ms ease',
-                                flexShrink: 0,
-                            }}
-                        />
-                    ))}
-                </div>
-            )}
-
             <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
+        </div>
+
+        {sortedGames.length > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 5, padding: '10px 0' }}>
+                {sortedGames.map((g, i) => (
+                    <button
+                        key={g.gamePk}
+                        type="button"
+                        onClick={() => scrollTo(i)}
+                        style={{
+                            width: i === activeIdx ? 18 : 6,
+                            height: 6,
+                            borderRadius: 3,
+                            background: i === activeIdx ? C.accent : C.gray200,
+                            border: 'none', padding: 0, cursor: 'pointer',
+                            transition: 'width 200ms ease, background 200ms ease',
+                            flexShrink: 0,
+                        }}
+                    />
+                ))}
+            </div>
+        )}
         </div>
     )
 }
