@@ -3085,6 +3085,28 @@ export default function Dashboard({ api }) {
                                     </select>
                                 </>
                             )}
+                            {isMobile && (
+                                <button
+                                    onClick={() => setPlayerSort(prev => prev === 'rosterShare' ? 'rank' : 'rosterShare')}
+                                    style={{
+                                        border: `1px solid ${playerSort === 'rosterShare' ? C.navy : C.gray200}`,
+                                        background: playerSort === 'rosterShare' ? C.navy : C.white,
+                                        color: playerSort === 'rosterShare' ? C.white : C.gray600,
+                                        borderRadius: 8,
+                                        padding: '6px 12px',
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        flexShrink: 0,
+                                    }}
+                                >
+                                    <span>{playerSort === 'rosterShare' ? '↓' : '↕'}</span>
+                                    <span>Most Owned</span>
+                                </button>
+                            )}
                             <span style={{ fontSize: 11, color: C.gray400, marginLeft: 'auto' }}>{filtered.length} players</span>
                         </div>
 
