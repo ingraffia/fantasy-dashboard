@@ -594,7 +594,7 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
                     </div>
                 </div>
             </div>
-            <div style={{ padding: bodyPadding, minHeight: bodyMinHeight, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: '#f8fafc', gap: hasRosterPlayers ? 8 : 0 }}>
+            <div style={{ padding: bodyPadding, minHeight: hasRosterPlayers ? 0 : bodyMinHeight, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', overflow: 'hidden', background: '#f8fafc', gap: hasRosterPlayers ? 8 : 0 }}>
                     {hasRosterPlayers && (
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
                             <div style={{ fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
