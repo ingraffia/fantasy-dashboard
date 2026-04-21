@@ -1382,230 +1382,274 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         return m
     }, [games])
 
+    const renderEventRow = (event, i, showTeam = true) => {
+        const playerKey = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
+        const avatarUrl = imageMap[playerKey] || imageMap[normName(event.playerName)] || event.imageUrl
+        const game = gameByPk.get(String(event.gamePk))
+        const isBad = event.impact?.some(x => x.startsWith('-') || x === 'CS' || x.includes('allowed'))
+        const accentColor = isBad ? C.red : event.isScoringPlay ? C.accent : C.green
+        return (
+            <div key={event.id} className="feed-event-row" style={{
+                animationDelay: `${Math.min(i * 35, 280)}ms`,
+                display: 'flex', alignItems: 'center', gap: 11,
+                padding: '11px 14px 11px 0',
+                marginLeft: 14,
+                borderTop: i > 0 ? `1px solid ${C.gray50}` : 'none',
+                borderLeft: `3px solid ${accentColor}`,
+                paddingLeft: 12,
+                background: C.white,
+                transition: 'background 0.15s ease',
+            }}>
+                <PlayerAvatar imageUrl={avatarUrl} name={event.playerName} size={36} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Name row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2, flexWrap: 'wrap' }}>
+                        <button type="button"
+                            onClick={() => event.playerKey && onOpenPlayer?.(event.playerKey, event.playerName)}
+                            disabled={!event.playerKey}
+                            style={{ border: 'none', background: 'transparent', padding: 0, margin: 0,
+                                cursor: event.playerKey ? 'pointer' : 'default',
+                                fontWeight: 800, fontSize: 13, color: C.navy, letterSpacing: '-0.01em' }}>
+                            {event.playerName}
+                        </button>
+                        {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
+                        {showTeam && event.playerTeam && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4,
+                                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                                border: `1px solid ${C.gray200}`,
+                                borderRadius: 7, padding: '2px 7px 2px 4px',
+                                boxShadow: '0 1px 2px rgba(15,23,42,0.06)' }}>
+                                <MlbLogo team={event.playerTeam} size={13} showText={false} />
+                                <span style={{ fontSize: 10, fontWeight: 900, color: C.gray700, letterSpacing: '0.03em' }}>
+                                    {normalizeClientTeamAbbr(event.playerTeam)}
+                                </span>
+                            </span>
+                        )}
+                    </div>
+                    {/* Summary */}
+                    <div style={{ fontSize: 12, fontWeight: 600, color: C.gray700, lineHeight: 1.3,
+                        marginBottom: event.impact?.length ? 5 : 0 }}>
+                        {event.summary}
+                    </div>
+                    {/* Impact pills */}
+                    {event.impact?.length > 0 && (
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                            {event.impact.map((item) => {
+                                const bad = item.startsWith('-') || item === 'CS' || item.includes('allowed')
+                                return (
+                                    <span key={`${event.id}-${item}`} style={{ fontSize: 10, fontWeight: 800,
+                                        color: bad ? C.red : C.green,
+                                        background: bad ? C.redLight : C.greenLight,
+                                        padding: '2px 7px', borderRadius: 999,
+                                        letterSpacing: '-0.01em' }}>
+                                        {item}
+                                    </span>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+                {/* Right meta */}
+                <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 38 }}>
+                    {event.inningLabel && (
+                        <div style={{ fontSize: 10, fontWeight: 700, color: accentColor, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+                            {event.inningLabel}
+                        </div>
+                    )}
+                    <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap', marginTop: 2 }}>
+                        {formatRelativeTime(event.timestamp)}
+                    </div>
+                    {showTeam && game && (
+                        <div style={{ fontSize: 9, color: C.gray300, whiteSpace: 'nowrap', marginTop: 2, fontWeight: 600 }}>
+                            {game.awayTeam} · {game.homeTeam}
+                        </div>
+                    )}
+                </div>
+            </div>
+        )
+    }
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {/* Header row */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {totalLiveGames > 0 ? (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800, color: C.green }}>
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-                        {totalLiveGames} live
-                    </span>
-                ) : (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: C.gray400 }}>Today&apos;s feed</span>
-                )}
-                {lastUpdated && (
-                    <span style={{ fontSize: 11, color: C.gray400 }}>
-                        · {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                    </span>
-                )}
-                {/* View toggle */}
-                <div style={{ marginLeft: 'auto', display: 'inline-flex', background: C.gray100, borderRadius: 8, padding: 2, gap: 2 }}>
-                    {['all', 'game'].map(v => (
-                        <button key={v} onClick={() => setGroupBy(v)}
-                            style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-                                background: groupBy === v ? C.white : 'transparent',
-                                color: groupBy === v ? C.navy : C.gray400,
-                                boxShadow: groupBy === v ? '0 1px 3px rgba(15,23,42,0.10)' : 'none',
-                                transition: 'all 0.15s ease' }}>
-                            {v === 'all' ? 'All' : 'By Game'}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+            {/* ── Control bar ── */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+
+                {/* Live status chip */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {totalLiveGames > 0 ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
+                            background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                            border: '1px solid #86efac', borderRadius: 20,
+                            padding: '4px 10px 4px 8px',
+                            boxShadow: '0 1px 4px rgba(5,150,105,0.15)' }}>
+                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.green,
+                                display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />
+                            <span style={{ fontSize: 11, fontWeight: 800, color: '#065f46', letterSpacing: '-0.01em' }}>
+                                {totalLiveGames} LIVE
+                            </span>
+                        </span>
+                    ) : (
+                        <span style={{ fontSize: 12, fontWeight: 700, color: C.gray500 }}>Today&apos;s Feed</span>
+                    )}
+                    {lastUpdated && (
+                        <span style={{ fontSize: 10, color: C.gray400, paddingLeft: 2 }}>
+                            Updated {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                        </span>
+                    )}
+                </div>
+
+                {/* Segmented toggle */}
+                <div style={{ marginLeft: 'auto', position: 'relative', display: 'inline-flex',
+                    background: C.gray100, borderRadius: 10, padding: 3, gap: 0 }}>
+                    {[['all', 'All'], ['game', 'By Game']].map(([v, label]) => (
+                        <button key={v} onClick={() => setGroupBy(v)} style={{
+                            fontSize: 11, fontWeight: groupBy === v ? 800 : 600,
+                            padding: '5px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                            background: groupBy === v
+                                ? 'linear-gradient(135deg, #0f2040 0%, #1e4272 60%, #2563eb 100%)'
+                                : 'transparent',
+                            color: groupBy === v ? '#fff' : C.gray500,
+                            boxShadow: groupBy === v ? '0 4px 12px rgba(15,32,64,0.25), inset 0 1px 0 rgba(255,255,255,0.12)' : 'none',
+                            transition: 'all 0.2s var(--ease-out)',
+                            letterSpacing: '-0.01em' }}>
+                            {label}
                         </button>
                     ))}
                 </div>
-                <button onClick={() => loadFeed({ silent: events.length > 0 })}
-                    style={{ fontSize: 11, fontWeight: 700, color: C.gray500,
-                        background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 8,
-                        padding: '5px 12px', cursor: 'pointer' }}>
-                    {refreshing ? '···' : 'Refresh'}
+
+                {/* Refresh button — large, animated */}
+                <button
+                    onClick={() => loadFeed({ silent: events.length > 0 })}
+                    className={`${refreshing ? 'refresh-btn--spinning' : ''} ${totalLiveGames > 0 && !refreshing ? 'refresh-btn--live' : ''}`}
+                    title="Refresh feed"
+                    style={{
+                        width: 44, height: 44, borderRadius: '50%', border: 'none',
+                        cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: refreshing
+                            ? 'linear-gradient(135deg, #0f2040 0%, #2563eb 100%)'
+                            : totalLiveGames > 0
+                                ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'
+                                : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                        boxShadow: refreshing
+                            ? '0 6px 20px rgba(37,99,235,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
+                            : '0 4px 14px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)',
+                        border: refreshing ? 'none' : `1.5px solid ${totalLiveGames > 0 ? '#86efac' : C.gray200}`,
+                        transition: 'all 0.22s var(--ease-out)',
+                    }}>
+                    <span className="refresh-icon" style={{
+                        fontSize: 20, lineHeight: 1,
+                        color: refreshing ? '#fff' : totalLiveGames > 0 ? '#065f46' : C.gray500,
+                        display: 'block', userSelect: 'none',
+                    }}>↻</span>
                 </button>
             </div>
 
-            {/* Scrollable game pills */}
+            {/* ── Scoreboard pills ── */}
             {sortedTrackedGames.length > 0 && (
-                <div className="scrollbar-hidden" style={{ display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+                <div className="scrollbar-hidden" style={{ display: 'flex', gap: 7, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
                     {sortedTrackedGames.map((game) => (
                         <CompactGamePill key={game.gamePk} game={game} />
                     ))}
                 </div>
             )}
 
+            {/* ── Error ── */}
             {error && (
-                <div style={{ padding: '10px 12px', borderRadius: 10, background: C.redLight, color: C.red, fontSize: 12 }}>
+                <div style={{ padding: '10px 14px', borderRadius: 12, background: C.redLight,
+                    color: C.red, fontSize: 12, fontWeight: 600,
+                    border: `1px solid rgba(220,38,38,0.18)` }}>
                     {error}
                 </div>
             )}
 
-            {/* Empty states */}
+            {/* ── Empty / waiting states ── */}
             {trackedGames.length === 0 && (
-                <div style={{ padding: '48px 16px', textAlign: 'center', color: C.gray400, background: C.white, borderRadius: 14, border: `1px solid ${C.gray100}` }}>
-                    <div style={{ fontSize: 28, marginBottom: 8 }}>📡</div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 4 }}>No roster games today</div>
-                    <div style={{ fontSize: 12 }}>Player actions will appear here during live games.</div>
+                <div style={{ padding: '52px 20px', textAlign: 'center', background: C.white,
+                    borderRadius: 16, border: `1px solid ${C.gray100}` }}>
+                    <div style={{ fontSize: 36, marginBottom: 10, filter: 'grayscale(0.2)' }}>📡</div>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: C.gray700, marginBottom: 5 }}>No roster games today</div>
+                    <div style={{ fontSize: 12, color: C.gray400, maxWidth: 220, margin: '0 auto', lineHeight: 1.5 }}>
+                        Player actions appear here during live games.
+                    </div>
                 </div>
             )}
 
             {trackedGames.length > 0 && startedTrackedGames.length === 0 && (
-                <div style={{ padding: '40px 16px', textAlign: 'center', color: C.gray400, background: C.white, borderRadius: 14, border: `1px solid ${C.gray100}` }}>
-                    <div style={{ fontSize: 28, marginBottom: 8 }}>🕒</div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 4 }}>Waiting for first pitch</div>
-                    <div style={{ fontSize: 12 }}>Your feed lights up as soon as a game starts.</div>
+                <div style={{ padding: '44px 20px', textAlign: 'center', background: C.white,
+                    borderRadius: 16, border: `1px solid ${C.gray100}` }}>
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>⚾</div>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: C.gray700, marginBottom: 5 }}>Waiting for first pitch</div>
+                    <div style={{ fontSize: 12, color: C.gray400, lineHeight: 1.5 }}>Your feed lights up when a game starts.</div>
                 </div>
             )}
 
             {startedTrackedGames.length > 0 && loading && events.length === 0 && (
-                <div style={{ padding: '40px 16px', textAlign: 'center', color: C.gray400 }}>
-                    Listening for player actions…
+                <div style={{ padding: '44px 20px', textAlign: 'center', background: C.white,
+                    borderRadius: 16, border: `1px solid ${C.gray100}` }}>
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2.5px solid rgba(37,99,235,0.18)',
+                        borderTopColor: C.accent, animation: 'refreshSpin 0.7s linear infinite', margin: '0 auto 12px' }} />
+                    <div style={{ fontSize: 13, color: C.gray400 }}>Listening for player actions…</div>
                 </div>
             )}
 
             {startedTrackedGames.length > 0 && !loading && events.length === 0 && !error && (
-                <div style={{ padding: '40px 16px', textAlign: 'center', color: C.gray400, background: C.white, borderRadius: 14, border: `1px solid ${C.gray100}` }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 4 }}>No actions yet</div>
-                    <div style={{ fontSize: 12 }}>None of your players have a fantasy event yet.</div>
+                <div style={{ padding: '44px 20px', textAlign: 'center', background: C.white,
+                    borderRadius: 16, border: `1px solid ${C.gray100}` }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: C.gray700, marginBottom: 5 }}>No actions yet</div>
+                    <div style={{ fontSize: 12, color: C.gray400, lineHeight: 1.5 }}>
+                        Games are on — waiting for your players to make a move.
+                    </div>
                 </div>
             )}
 
-            {/* All-events flat feed */}
+            {/* ── All-events flat feed ── */}
             {groupBy === 'all' && events.length > 0 && (
-                <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.gray100}`, overflow: 'hidden' }}>
-                    {sortedAllEvents.map((event, i) => {
-                        const playerKey = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
-                        const avatarUrl = imageMap[playerKey] || imageMap[normName(event.playerName)] || event.imageUrl
-                        const game = gameByPk.get(String(event.gamePk))
-                        return (
-                            <div key={event.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                                borderTop: i > 0 ? `1px solid ${C.gray50}` : 'none',
-                                background: event.isScoringPlay ? 'rgba(239,246,255,0.6)' : C.white }}>
-                                <PlayerAvatar imageUrl={avatarUrl} name={event.playerName} size={34} />
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
-                                        <button type="button"
-                                            onClick={() => event.playerKey && onOpenPlayer?.(event.playerKey, event.playerName)}
-                                            disabled={!event.playerKey}
-                                            style={{ border: 'none', background: 'transparent', padding: 0, margin: 0,
-                                                cursor: event.playerKey ? 'pointer' : 'default',
-                                                fontWeight: 700, fontSize: 13, color: C.navy }}>
-                                            {event.playerName}
-                                        </button>
-                                        {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
-                                        {/* Team chip */}
-                                        {event.playerTeam && (
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3,
-                                                background: C.gray50, border: `1px solid ${C.gray200}`,
-                                                borderRadius: 6, padding: '1px 5px' }}>
-                                                <MlbLogo team={event.playerTeam} size={12} showText={false} />
-                                                <span style={{ fontSize: 10, fontWeight: 800, color: C.gray600, letterSpacing: '0.02em' }}>
-                                                    {normalizeClientTeamAbbr(event.playerTeam)}
-                                                </span>
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div style={{ fontSize: 12, color: C.gray700, lineHeight: 1.35, marginBottom: event.impact?.length ? 4 : 0 }}>
-                                        {event.summary}
-                                    </div>
-                                    {event.impact?.length > 0 && (
-                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                            {event.impact.map((item) => {
-                                                const bad = item.startsWith('-') || item === 'CS' || item.includes('allowed')
-                                                return (
-                                                    <span key={`${event.id}-${item}`} style={{ fontSize: 10, fontWeight: 800,
-                                                        color: bad ? C.red : C.green,
-                                                        background: bad ? C.redLight : C.greenLight,
-                                                        padding: '2px 6px', borderRadius: 999 }}>
-                                                        {item}
-                                                    </span>
-                                                )
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                                <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                                    <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap' }}>{event.inningLabel}</div>
-                                    <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap' }}>{formatRelativeTime(event.timestamp)}</div>
-                                    {game && (
-                                        <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap', marginTop: 1 }}>
-                                            {game.awayTeam}–{game.homeTeam}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )
-                    })}
+                <div style={{ background: C.white, borderRadius: 16,
+                    border: `1px solid ${C.gray100}`, overflow: 'hidden',
+                    boxShadow: '0 4px 20px rgba(15,23,42,0.05)' }}>
+                    {sortedAllEvents.map((ev, i) => renderEventRow(ev, i, true))}
                 </div>
             )}
 
-            {/* By-game sections */}
+            {/* ── By-game sections ── */}
             {groupBy === 'game' && visibleGames.length > 0 && events.length > 0 && visibleGames.map((game) => {
                 const gameEvents = eventsByGame.get(String(game.gamePk)) || []
                 return (
-                    <div key={game.gamePk} style={{ background: C.white, borderRadius: 14, border: `1px solid ${game.isLive ? '#bbf7d0' : C.gray100}`, overflow: 'hidden' }}>
+                    <div key={game.gamePk} style={{ background: C.white, borderRadius: 16, overflow: 'hidden',
+                        border: `1px solid ${game.isLive ? '#86efac' : C.gray100}`,
+                        boxShadow: game.isLive
+                            ? '0 4px 20px rgba(5,150,105,0.10)'
+                            : '0 4px 20px rgba(15,23,42,0.05)' }}>
+                        {/* Game header */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                            padding: '9px 12px', background: game.isLive ? 'rgba(240,253,244,0.9)' : C.gray50,
-                            borderBottom: `1px solid ${C.gray100}` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1, overflow: 'hidden' }}>
-                                <MlbLogo team={game.awayTeam} size={14} showText={false} />
-                                <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{game.awayTeam}</span>
+                            padding: '10px 14px',
+                            background: game.isLive
+                                ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'
+                                : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                            borderBottom: `1px solid ${game.isLive ? '#bbf7d0' : C.gray100}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
+                                <MlbLogo team={game.awayTeam} size={15} showText={false} />
+                                <span style={{ fontSize: 12, fontWeight: 800, color: C.navy }}>{game.awayTeam}</span>
                                 {(game.isLive || game.isFinal) && (
-                                    <span style={{ fontSize: 12, fontWeight: 800, color: C.gray600 }}>{game.awayScore}–{game.homeScore}</span>
+                                    <span style={{ fontSize: 13, fontWeight: 900, color: C.gray800,
+                                        background: C.white, borderRadius: 6, padding: '1px 6px',
+                                        border: `1px solid ${C.gray200}`, letterSpacing: '-0.02em' }}>
+                                        {game.awayScore}–{game.homeScore}
+                                    </span>
                                 )}
-                                <span style={{ fontSize: 11, color: C.gray400 }}>@</span>
-                                <MlbLogo team={game.homeTeam} size={14} showText={false} />
-                                <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{game.homeTeam}</span>
+                                <span style={{ fontSize: 11, color: C.gray400, fontWeight: 600 }}>@</span>
+                                <MlbLogo team={game.homeTeam} size={15} showText={false} />
+                                <span style={{ fontSize: 12, fontWeight: 800, color: C.navy }}>{game.homeTeam}</span>
                             </div>
                             <GameStatusBadge game={game} />
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            {gameEvents.length === 0 ? (
-                                <div style={{ padding: '12px', color: C.gray400, fontSize: 12 }}>
-                                    No fantasy actions yet.
-                                </div>
-                            ) : gameEvents.map((event, i) => {
-                                const playerKey = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
-                                const avatarUrl = imageMap[playerKey] || imageMap[normName(event.playerName)] || event.imageUrl
-                                return (
-                                    <div key={event.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                                        borderTop: i > 0 ? `1px solid ${C.gray50}` : 'none',
-                                        background: event.isScoringPlay ? 'rgba(239,246,255,0.6)' : C.white }}>
-                                        <PlayerAvatar imageUrl={avatarUrl} name={event.playerName} size={34} />
-                                        <div style={{ flex: 1, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
-                                                <button type="button"
-                                                    onClick={() => event.playerKey && onOpenPlayer?.(event.playerKey, event.playerName)}
-                                                    disabled={!event.playerKey}
-                                                    style={{ border: 'none', background: 'transparent', padding: 0, margin: 0,
-                                                        cursor: event.playerKey ? 'pointer' : 'default',
-                                                        fontWeight: 700, fontSize: 13, color: C.navy }}>
-                                                    {event.playerName}
-                                                </button>
-                                                {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
-                                            </div>
-                                            <div style={{ fontSize: 12, color: C.gray700, lineHeight: 1.35, marginBottom: event.impact?.length ? 4 : 0 }}>
-                                                {event.summary}
-                                            </div>
-                                            {event.impact?.length > 0 && (
-                                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                                    {event.impact.map((item) => {
-                                                        const bad = item.startsWith('-') || item === 'CS' || item.includes('allowed')
-                                                        return (
-                                                            <span key={`${event.id}-${item}`} style={{ fontSize: 10, fontWeight: 800,
-                                                                color: bad ? C.red : C.green,
-                                                                background: bad ? C.redLight : C.greenLight,
-                                                                padding: '2px 6px', borderRadius: 999 }}>
-                                                                {item}
-                                                            </span>
-                                                        )
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                                            <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap' }}>{event.inningLabel}</div>
-                                            <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap' }}>{formatRelativeTime(event.timestamp)}</div>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
+                        {/* Events */}
+                        {gameEvents.length === 0 ? (
+                            <div style={{ padding: '14px 14px', color: C.gray400, fontSize: 12, fontStyle: 'italic' }}>
+                                No fantasy actions in this game yet.
+                            </div>
+                        ) : gameEvents.map((ev, i) => renderEventRow(ev, i, false))}
                     </div>
                 )
             })}
