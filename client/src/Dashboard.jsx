@@ -1371,156 +1371,152 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     const totalLiveGames = trackedGames.filter((game) => game.isLive).length
 
     return (
-        <div style={{ display: 'grid', gap: 14 }}>
-            <div className="surface-card surface-card--strong" style={{ padding: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <div style={{ fontWeight: 800, fontSize: 16, color: C.navy }}>Live Feed</div>
-                            {totalLiveGames > 0 && (
-                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 800, color: C.green, background: C.greenLight, padding: '3px 8px', borderRadius: 999 }}>
-                                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
-                                    {totalLiveGames} live
-                                </span>
-                            )}
-                        </div>
-                        <div style={{ fontSize: 12, color: C.gray400, marginTop: 4 }}>
-                            Real-time actions from your rostered players as today&apos;s MLB games unfold.
-                        </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        {lastUpdated && (
-                            <span style={{ fontSize: 11, color: C.gray400 }}>
-                                Updated {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                            </span>
-                        )}
-                        <button onClick={() => loadFeed({ silent: events.length > 0 })} style={{ ...btnStyle, fontSize: 11 }}>
-                            {refreshing ? 'Refreshing…' : 'Refresh'}
-                        </button>
-                    </div>
-                </div>
-
-                {sortedTrackedGames.length > 0 && (
-                    <div className="scrollbar-hidden" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: 14, WebkitOverflowScrolling: 'touch' }}>
-                        {sortedTrackedGames.map((game) => (
-                            <CompactGamePill key={game.gamePk} game={game} />
-                        ))}
-                    </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Header row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {totalLiveGames > 0 ? (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 800, color: C.green }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                        {totalLiveGames} live
+                    </span>
+                ) : (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.gray400 }}>Today&apos;s feed</span>
                 )}
-
-                {trackedGames.length === 0 && (
-                    <div style={{ padding: '32px 16px', textAlign: 'center', color: C.gray400 }}>
-                        <div style={{ fontSize: 28, marginBottom: 8 }}>📡</div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 6 }}>No roster games on today&apos;s slate</div>
-                        <div style={{ fontSize: 12 }}>Once one of your players has a game today, their live actions will show up here automatically.</div>
-                    </div>
+                {lastUpdated && (
+                    <span style={{ fontSize: 11, color: C.gray400 }}>
+                        · {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    </span>
                 )}
-
-                {trackedGames.length > 0 && startedTrackedGames.length === 0 && (
-                    <div style={{ padding: '24px 16px', textAlign: 'center', color: C.gray400 }}>
-                        <div style={{ fontSize: 28, marginBottom: 8 }}>🕒</div>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 6 }}>Waiting for first pitch</div>
-                        <div style={{ fontSize: 12 }}>Your tracked player feed will light up as soon as one of today&apos;s games starts.</div>
-                    </div>
-                )}
-
-                {error && (
-                    <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: C.redLight, color: C.red, fontSize: 12 }}>
-                        Live feed error: {error}
-                    </div>
-                )}
-
-                {startedTrackedGames.length > 0 && loading && events.length === 0 && (
-                    <div style={{ padding: '32px 16px', textAlign: 'center', color: C.gray400 }}>
-                        Listening for player actions…
-                    </div>
-                )}
-
-                {startedTrackedGames.length > 0 && !loading && events.length === 0 && !error && (
-                    <div style={{ padding: '24px 16px', textAlign: 'center', color: C.gray400 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 6 }}>No tracked actions yet</div>
-                        <div style={{ fontSize: 12 }}>The games are on, but none of your players have logged a fantasy-relevant event yet.</div>
-                    </div>
-                )}
-
-                {visibleGames.length > 0 && events.length > 0 && (
-                    <div style={{ display: 'grid', gap: 12 }}>
-                        {visibleGames.map((game) => {
-                            const gameEvents = eventsByGame.get(String(game.gamePk)) || []
-                            return (
-                                <div key={game.gamePk} style={{ background: 'rgba(255,255,255,0.82)', borderRadius: 16, border: `1px solid ${game.isLive ? '#bbf7d0' : C.gray200}`, overflow: 'hidden' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', borderBottom: `1px solid ${C.gray100}`, background: game.isLive ? 'rgba(240,253,244,0.9)' : 'rgba(248,250,252,0.95)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                                                <MlbLogo team={game.awayTeam} size={18} showText={false} badge={true} />
-                                                <span style={{ fontSize: 13, fontWeight: 800, color: C.navy }}>{game.awayTeam}</span>
-                                            </div>
-                                            <span style={{ fontSize: 11, color: C.gray400 }}>at</span>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                                                <MlbLogo team={game.homeTeam} size={18} showText={false} badge={true} />
-                                                <span style={{ fontSize: 13, fontWeight: 800, color: C.navy }}>{game.homeTeam}</span>
-                                            </div>
-                                        </div>
-                                        <GameStatusBadge game={game} />
-                                    </div>
-                                    <div style={{ display: 'grid', gap: 8, padding: 12 }}>
-                                        {gameEvents.length === 0 ? (
-                                            <div style={{ padding: '10px 12px', borderRadius: 12, background: '#ffffff', border: `1px dashed ${C.gray200}`, color: C.gray400, fontSize: 12 }}>
-                                                No fantasy actions from your roster in this game yet.
-                                            </div>
-                                        ) : gameEvents.map((event) => {
-                                            const playerKey = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
-                                            const avatarUrl = imageMap[playerKey] || imageMap[normName(event.playerName)] || event.imageUrl
-                                            return (
-                                                <div key={event.id} style={{ display: 'flex', gap: 10, padding: isMobile ? '10px 10px' : '11px 12px', borderRadius: 14, background: '#ffffff', border: `1px solid ${event.isScoringPlay ? '#bfdbfe' : C.gray100}`, boxShadow: '0 8px 18px rgba(15,23,42,0.03)' }}>
-                                                    <PlayerAvatar imageUrl={avatarUrl} name={event.playerName} size={36} />
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => event.playerKey && onOpenPlayer?.(event.playerKey, event.playerName)}
-                                                                disabled={!event.playerKey}
-                                                                style={{ border: 'none', background: 'transparent', padding: 0, margin: 0, cursor: event.playerKey ? 'pointer' : 'default', color: C.gray800, fontWeight: 800, fontSize: 13 }}
-                                                            >
-                                                                {event.playerName}
-                                                            </button>
-                                                            {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
-                                                            <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                                                {event.inningLabel}
-                                                            </span>
-                                                            <span style={{ fontSize: 10, color: C.gray400 }}>{formatRelativeTime(event.timestamp)}</span>
-                                                        </div>
-                                                        <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 4 }}>
-                                                            {event.summary}
-                                                        </div>
-                                                        {event.impact?.length > 0 && (
-                                                            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 5 }}>
-                                                                {event.impact.map((item) => (
-                                                                    <span key={`${event.id}-${item}`} style={{ fontSize: 10, fontWeight: 800, color: item.startsWith('-') || item === 'CS' || item.includes('allowed') ? C.red : C.green, background: item.startsWith('-') || item === 'CS' || item.includes('allowed') ? C.redLight : C.greenLight, padding: '2px 7px', borderRadius: 999 }}>
-                                                                        {item}
-                                                                    </span>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                        <div style={{ fontSize: 11, color: C.gray600, lineHeight: 1.4 }}>
-                                                            {event.detail}
-                                                        </div>
-                                                        {event.scoreText && (
-                                                            <div style={{ marginTop: 5, fontSize: 10, color: C.gray400 }}>
-                                                                {event.scoreText}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                )}
+                <button onClick={() => loadFeed({ silent: events.length > 0 })}
+                    style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: C.gray500,
+                        background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 8,
+                        padding: '5px 12px', cursor: 'pointer' }}>
+                    {refreshing ? '···' : 'Refresh'}
+                </button>
             </div>
+
+            {/* Scrollable game pills */}
+            {sortedTrackedGames.length > 0 && (
+                <div className="scrollbar-hidden" style={{ display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+                    {sortedTrackedGames.map((game) => (
+                        <CompactGamePill key={game.gamePk} game={game} />
+                    ))}
+                </div>
+            )}
+
+            {error && (
+                <div style={{ padding: '10px 12px', borderRadius: 10, background: C.redLight, color: C.red, fontSize: 12 }}>
+                    {error}
+                </div>
+            )}
+
+            {/* Empty states */}
+            {trackedGames.length === 0 && (
+                <div style={{ padding: '48px 16px', textAlign: 'center', color: C.gray400, background: C.white, borderRadius: 14, border: `1px solid ${C.gray100}` }}>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>📡</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 4 }}>No roster games today</div>
+                    <div style={{ fontSize: 12 }}>Player actions will appear here during live games.</div>
+                </div>
+            )}
+
+            {trackedGames.length > 0 && startedTrackedGames.length === 0 && (
+                <div style={{ padding: '40px 16px', textAlign: 'center', color: C.gray400, background: C.white, borderRadius: 14, border: `1px solid ${C.gray100}` }}>
+                    <div style={{ fontSize: 28, marginBottom: 8 }}>🕒</div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 4 }}>Waiting for first pitch</div>
+                    <div style={{ fontSize: 12 }}>Your feed lights up as soon as a game starts.</div>
+                </div>
+            )}
+
+            {startedTrackedGames.length > 0 && loading && events.length === 0 && (
+                <div style={{ padding: '40px 16px', textAlign: 'center', color: C.gray400 }}>
+                    Listening for player actions…
+                </div>
+            )}
+
+            {startedTrackedGames.length > 0 && !loading && events.length === 0 && !error && (
+                <div style={{ padding: '40px 16px', textAlign: 'center', color: C.gray400, background: C.white, borderRadius: 14, border: `1px solid ${C.gray100}` }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 4 }}>No actions yet</div>
+                    <div style={{ fontSize: 12 }}>None of your players have a fantasy event yet.</div>
+                </div>
+            )}
+
+            {/* Game sections */}
+            {visibleGames.length > 0 && events.length > 0 && visibleGames.map((game) => {
+                const gameEvents = eventsByGame.get(String(game.gamePk)) || []
+                return (
+                    <div key={game.gamePk} style={{ background: C.white, borderRadius: 14, border: `1px solid ${game.isLive ? '#bbf7d0' : C.gray100}`, overflow: 'hidden' }}>
+                        {/* Game header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                            padding: '9px 12px', background: game.isLive ? 'rgba(240,253,244,0.9)' : C.gray50,
+                            borderBottom: `1px solid ${C.gray100}` }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                                <MlbLogo team={game.awayTeam} size={14} showText={false} />
+                                <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{game.awayTeam}</span>
+                                {(game.isLive || game.isFinal) && (
+                                    <span style={{ fontSize: 12, fontWeight: 800, color: C.gray600 }}>{game.awayScore}–{game.homeScore}</span>
+                                )}
+                                <span style={{ fontSize: 11, color: C.gray400 }}>@</span>
+                                <MlbLogo team={game.homeTeam} size={14} showText={false} />
+                                <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{game.homeTeam}</span>
+                            </div>
+                            <GameStatusBadge game={game} />
+                        </div>
+                        {/* Events */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            {gameEvents.length === 0 ? (
+                                <div style={{ padding: '12px', color: C.gray400, fontSize: 12 }}>
+                                    No fantasy actions yet.
+                                </div>
+                            ) : gameEvents.map((event) => {
+                                const playerKey = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
+                                const avatarUrl = imageMap[playerKey] || imageMap[normName(event.playerName)] || event.imageUrl
+                                return (
+                                    <div key={event.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                                        borderTop: `1px solid ${C.gray50}`,
+                                        background: event.isScoringPlay ? 'rgba(239,246,255,0.6)' : C.white }}>
+                                        <PlayerAvatar imageUrl={avatarUrl} name={event.playerName} size={34} />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2 }}>
+                                                <button type="button"
+                                                    onClick={() => event.playerKey && onOpenPlayer?.(event.playerKey, event.playerName)}
+                                                    disabled={!event.playerKey}
+                                                    style={{ border: 'none', background: 'transparent', padding: 0, margin: 0,
+                                                        cursor: event.playerKey ? 'pointer' : 'default',
+                                                        fontWeight: 700, fontSize: 13, color: C.navy }}>
+                                                    {event.playerName}
+                                                </button>
+                                                {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: C.gray700, lineHeight: 1.35, marginBottom: event.impact?.length ? 4 : 0 }}>
+                                                {event.summary}
+                                            </div>
+                                            {event.impact?.length > 0 && (
+                                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                                    {event.impact.map((item) => {
+                                                        const bad = item.startsWith('-') || item === 'CS' || item.includes('allowed')
+                                                        return (
+                                                            <span key={`${event.id}-${item}`} style={{ fontSize: 10, fontWeight: 800,
+                                                                color: bad ? C.red : C.green,
+                                                                background: bad ? C.redLight : C.greenLight,
+                                                                padding: '2px 6px', borderRadius: 999 }}>
+                                                                {item}
+                                                            </span>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                                            <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap' }}>{event.inningLabel}</div>
+                                            <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap' }}>{formatRelativeTime(event.timestamp)}</div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+                )
+            })}
         </div>
     )
 }
