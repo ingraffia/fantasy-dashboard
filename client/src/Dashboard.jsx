@@ -755,10 +755,10 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                         type="button"
                         onClick={() => scrollTo(i)}
                         style={{
-                            width: i === activeIdx ? 18 : 6,
-                            height: 6,
-                            borderRadius: 3,
-                            background: i === activeIdx ? C.accent : C.gray200,
+                            width: i === activeIdx ? 20 : 8,
+                            height: 8,
+                            borderRadius: 4,
+                            background: i === activeIdx ? C.accent : C.gray400,
                             border: 'none', padding: 0, cursor: 'pointer',
                             transition: 'width 200ms ease, background 200ms ease',
                             flexShrink: 0,
