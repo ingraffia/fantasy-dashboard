@@ -1092,9 +1092,9 @@ router.get('/espn-dashboard', requireAuth, async (req, res) => {
             const injuryKey = player?.injuryStatus || 'ACTIVE';
             const espnRanks = parseEspnRanks(player);
             return {
-                playerKey: `espn.p.${entry.playerId}`, name: player?.fullName || '—',
+                playerKey: `espn.p.${entry.playerId}`, name: player?.fullName || null,
                 position: espnEligiblePositions(player),
-                proTeam: ESPN_TEAM_MAP[player?.proTeamId] || '—',
+                proTeam: ESPN_TEAM_MAP[player?.proTeamId] || null,
                 selectedPosition: ESPN_SLOT_MAP[entry.lineupSlotId] || 'BN',
                 injuryStatus: ESPN_INJURY_MAP[injuryKey] ?? null,
                 isUndroppable: !entry.playerPoolEntry?.droppable,

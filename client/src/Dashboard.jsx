@@ -92,9 +92,13 @@ function normName(name) {
         .replace(/[^a-z]/g, '')
 }
 
+// Maps known ESPN↔Yahoo team abbreviation variants to a canonical form
+const TEAM_ABBR_CANON = { WSH: 'WAS' }
+
 function playerIdentityKey(playerLike) {
     const baseName = normName(playerLike?.name)
-    const team = String(playerLike?.proTeam || playerLike?.team || '').trim().toUpperCase()
+    const raw = String(playerLike?.proTeam || playerLike?.team || '').trim().toUpperCase()
+    const team = (raw && raw !== '—') ? (TEAM_ABBR_CANON[raw] || raw) : ''
     return `${baseName}::${team}`
 }
 
@@ -2417,10 +2421,18 @@ export default function Dashboard({ api }) {
 
     const allPlayers = (() => {
         const playerMap = {}
+        const nameIndex = {}  // baseName → canonical key (handles team abbr mismatches)
         data.forEach(lg => {
             lg.players.forEach(p => {
-                const n = playerIdentityKey(p) || p.playerKey
-                if (!playerMap[n]) playerMap[n] = { ...p, primaryPlayerKey: p.playerKey, primaryName: p.name, leagueSlots: [], allRanks: [] }
+                const idKey = playerIdentityKey(p)
+                const baseName = normName(p.name)
+                // Use the first key seen for this player name, so mismatched team
+                // abbreviations (e.g. WAS vs WSH) still resolve to the same entry
+                const n = nameIndex[baseName] ?? idKey ?? p.playerKey
+                if (!playerMap[n]) {
+                    playerMap[n] = { ...p, primaryPlayerKey: p.playerKey, primaryName: p.name, leagueSlots: [], allRanks: [] }
+                    if (baseName) nameIndex[baseName] = n
+                }
                 playerMap[n].leagueSlots.push({ leagueName: lg.leagueName, leagueKey: lg.leagueKey, leagueUrl: lg.leagueUrl, selectedPosition: p.selectedPosition })
                 playerMap[n].allRanks.push(getPlayerRanks(p.playerKey, lg.leagueKey))
                 if (p.injuryStatus && !playerMap[n].injuryStatus) playerMap[n].injuryStatus = p.injuryStatus
