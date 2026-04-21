@@ -1268,6 +1268,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     const [refreshing, setRefreshing] = useState(false)
     const [error, setError] = useState(null)
     const [lastUpdated, setLastUpdated] = useState(null)
+    const [groupBy, setGroupBy] = useState('all')
 
     const trackedRosterPlayers = useMemo(() => {
         const seen = new Map()
@@ -1370,6 +1371,17 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
 
     const totalLiveGames = trackedGames.filter((game) => game.isLive).length
 
+    const sortedAllEvents = useMemo(() =>
+        [...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),
+        [events]
+    )
+
+    const gameByPk = useMemo(() => {
+        const m = new Map()
+        games.forEach(g => m.set(String(g.gamePk), g))
+        return m
+    }, [games])
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {/* Header row */}
@@ -1387,8 +1399,21 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                         · {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                     </span>
                 )}
+                {/* View toggle */}
+                <div style={{ marginLeft: 'auto', display: 'inline-flex', background: C.gray100, borderRadius: 8, padding: 2, gap: 2 }}>
+                    {['all', 'game'].map(v => (
+                        <button key={v} onClick={() => setGroupBy(v)}
+                            style={{ fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+                                background: groupBy === v ? C.white : 'transparent',
+                                color: groupBy === v ? C.navy : C.gray400,
+                                boxShadow: groupBy === v ? '0 1px 3px rgba(15,23,42,0.10)' : 'none',
+                                transition: 'all 0.15s ease' }}>
+                            {v === 'all' ? 'All' : 'By Game'}
+                        </button>
+                    ))}
+                </div>
                 <button onClick={() => loadFeed({ silent: events.length > 0 })}
-                    style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 700, color: C.gray500,
+                    style={{ fontSize: 11, fontWeight: 700, color: C.gray500,
                         background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 8,
                         padding: '5px 12px', cursor: 'pointer' }}>
                     {refreshing ? '···' : 'Refresh'}
@@ -1440,12 +1465,80 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                 </div>
             )}
 
-            {/* Game sections */}
-            {visibleGames.length > 0 && events.length > 0 && visibleGames.map((game) => {
+            {/* All-events flat feed */}
+            {groupBy === 'all' && events.length > 0 && (
+                <div style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.gray100}`, overflow: 'hidden' }}>
+                    {sortedAllEvents.map((event, i) => {
+                        const playerKey = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
+                        const avatarUrl = imageMap[playerKey] || imageMap[normName(event.playerName)] || event.imageUrl
+                        const game = gameByPk.get(String(event.gamePk))
+                        return (
+                            <div key={event.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                                borderTop: i > 0 ? `1px solid ${C.gray50}` : 'none',
+                                background: event.isScoringPlay ? 'rgba(239,246,255,0.6)' : C.white }}>
+                                <PlayerAvatar imageUrl={avatarUrl} name={event.playerName} size={34} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                                        <button type="button"
+                                            onClick={() => event.playerKey && onOpenPlayer?.(event.playerKey, event.playerName)}
+                                            disabled={!event.playerKey}
+                                            style={{ border: 'none', background: 'transparent', padding: 0, margin: 0,
+                                                cursor: event.playerKey ? 'pointer' : 'default',
+                                                fontWeight: 700, fontSize: 13, color: C.navy }}>
+                                            {event.playerName}
+                                        </button>
+                                        {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
+                                        {/* Team chip */}
+                                        {event.playerTeam && (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3,
+                                                background: C.gray50, border: `1px solid ${C.gray200}`,
+                                                borderRadius: 6, padding: '1px 5px' }}>
+                                                <MlbLogo team={event.playerTeam} size={12} showText={false} />
+                                                <span style={{ fontSize: 10, fontWeight: 800, color: C.gray600, letterSpacing: '0.02em' }}>
+                                                    {normalizeClientTeamAbbr(event.playerTeam)}
+                                                </span>
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: C.gray700, lineHeight: 1.35, marginBottom: event.impact?.length ? 4 : 0 }}>
+                                        {event.summary}
+                                    </div>
+                                    {event.impact?.length > 0 && (
+                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                            {event.impact.map((item) => {
+                                                const bad = item.startsWith('-') || item === 'CS' || item.includes('allowed')
+                                                return (
+                                                    <span key={`${event.id}-${item}`} style={{ fontSize: 10, fontWeight: 800,
+                                                        color: bad ? C.red : C.green,
+                                                        background: bad ? C.redLight : C.greenLight,
+                                                        padding: '2px 6px', borderRadius: 999 }}>
+                                                        {item}
+                                                    </span>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                                    <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap' }}>{event.inningLabel}</div>
+                                    <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap' }}>{formatRelativeTime(event.timestamp)}</div>
+                                    {game && (
+                                        <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap', marginTop: 1 }}>
+                                            {game.awayTeam}–{game.homeTeam}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            )}
+
+            {/* By-game sections */}
+            {groupBy === 'game' && visibleGames.length > 0 && events.length > 0 && visibleGames.map((game) => {
                 const gameEvents = eventsByGame.get(String(game.gamePk)) || []
                 return (
                     <div key={game.gamePk} style={{ background: C.white, borderRadius: 14, border: `1px solid ${game.isLive ? '#bbf7d0' : C.gray100}`, overflow: 'hidden' }}>
-                        {/* Game header */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                             padding: '9px 12px', background: game.isLive ? 'rgba(240,253,244,0.9)' : C.gray50,
                             borderBottom: `1px solid ${C.gray100}` }}>
@@ -1461,18 +1554,17 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             </div>
                             <GameStatusBadge game={game} />
                         </div>
-                        {/* Events */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                             {gameEvents.length === 0 ? (
                                 <div style={{ padding: '12px', color: C.gray400, fontSize: 12 }}>
                                     No fantasy actions yet.
                                 </div>
-                            ) : gameEvents.map((event) => {
+                            ) : gameEvents.map((event, i) => {
                                 const playerKey = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
                                 const avatarUrl = imageMap[playerKey] || imageMap[normName(event.playerName)] || event.imageUrl
                                 return (
                                     <div key={event.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
-                                        borderTop: `1px solid ${C.gray50}`,
+                                        borderTop: i > 0 ? `1px solid ${C.gray50}` : 'none',
                                         background: event.isScoringPlay ? 'rgba(239,246,255,0.6)' : C.white }}>
                                         <PlayerAvatar imageUrl={avatarUrl} name={event.playerName} size={34} />
                                         <div style={{ flex: 1, minWidth: 0 }}>
