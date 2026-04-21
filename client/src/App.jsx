@@ -37,7 +37,7 @@ function LoginScreen({ api }) {
               { icon: '📊', label: 'Live Box Scores', desc: 'Real-time game stats woven into your lineup' },
               { icon: '🔄', label: 'Multi-League', desc: 'Yahoo & ESPN unified in one dashboard' },
               { icon: '🎯', label: 'Waiver Intel', desc: 'Cross-league ownership & rankings' },
-              { icon: '⚡', label: 'Trade Analyzer', desc: 'Category impact trades, instantly' },
+              { icon: '📡', label: 'Live Feed', desc: 'Your roster actions, as they happen' },
             ].map(f => (
               <div key={f.label} className="login-feature-item">
                 <span className="login-feature-icon">{f.icon}</span>

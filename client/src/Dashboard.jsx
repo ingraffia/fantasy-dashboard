@@ -142,6 +142,32 @@ function getLocalDateKey() {
     return `${year}-${month}-${day}`
 }
 
+const CLIENT_TEAM_ABBR_MAP = {
+    AZ: 'ARI',
+    ARI: 'ARI',
+    WAS: 'WSH',
+    WSH: 'WSH',
+    CWS: 'CHW',
+    CHW: 'CHW',
+    LA: 'LAD',
+    LAD: 'LAD',
+}
+
+function normalizeClientTeamAbbr(team) {
+    const value = String(team || '').trim().toUpperCase()
+    return CLIENT_TEAM_ABBR_MAP[value] || value
+}
+
+function formatRelativeTime(timestamp) {
+    if (!timestamp) return 'Just now'
+    const diffMs = Date.now() - new Date(timestamp).getTime()
+    if (!Number.isFinite(diffMs) || diffMs < 60_000) return 'Just now'
+    const mins = Math.round(diffMs / 60_000)
+    if (mins < 60) return `${mins}m ago`
+    const hours = Math.round(mins / 60)
+    return `${hours}h ago`
+}
+
 function Tag({ text, bg = C.gray100, color = C.gray600 }) {
     return <span className="premium-badge" style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: bg, color, lineHeight: '18px', letterSpacing: '-0.01em' }}>{text}</span>
 }
@@ -1234,655 +1260,267 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
 }
 
 
-// ─── ESPN Trade Analyzer ─────────────────────────────────────────────────────
+// ─── Live Feed ───────────────────────────────────────────────────────────────
 
-const ESPN_CAT_LABELS = ['R', 'TB', 'RBI', 'SB', 'OBP', 'K', 'W', 'SV', 'ERA', 'WHIP']
-const RATE_CATS = ['OBP', 'ERA', 'WHIP']
-const LOW_BETTER_CATS = ['ERA', 'WHIP']
+function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMobile }) {
+    const [events, setEvents] = useState([])
+    const [loading, setLoading] = useState(false)
+    const [refreshing, setRefreshing] = useState(false)
+    const [error, setError] = useState(null)
+    const [lastUpdated, setLastUpdated] = useState(null)
 
-function CatRankBar({ label, rank, total = 12 }) {
-    const pct = ((total - rank) / (total - 1)) * 100
-    const isWeak = rank >= 7
-    const isStrong = rank <= 4
-    const color = isStrong ? C.green : isWeak ? C.red : C.amber
-    const bg = isStrong ? C.greenLight : isWeak ? C.redLight : C.amberLight
-    return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.gray600, width: 36, flexShrink: 0 }}>{label}</span>
-            <div style={{ flex: 1, background: C.gray100, borderRadius: 99, height: 8, overflow: 'hidden' }}>
-                <div style={{ width: `${pct}%`, background: color, height: '100%', borderRadius: 99, transition: 'width 0.4s ease' }} />
-            </div>
-            <span style={{ fontSize: 11, fontWeight: 800, color, background: bg, padding: '1px 7px', borderRadius: 99, minWidth: 28, textAlign: 'center' }}>#{rank}</span>
-        </div>
+    const trackedRosterPlayers = useMemo(() => {
+        const seen = new Map()
+        rosterPlayers.forEach((player) => {
+            const key = `${normName(player.name)}::${normalizeClientTeamAbbr(player.proTeam)}`
+            if (!player?.name || !player?.proTeam || seen.has(key)) return
+            seen.set(key, {
+                playerKey: player.playerKey,
+                name: player.name,
+                proTeam: normalizeClientTeamAbbr(player.proTeam),
+                position: player.position,
+                selectedPosition: player.selectedPosition,
+                imageUrl: player.imageUrl,
+            })
+        })
+        return Array.from(seen.values())
+    }, [rosterPlayers])
+
+    const trackedTeams = useMemo(
+        () => new Set(trackedRosterPlayers.map((player) => normalizeClientTeamAbbr(player.proTeam)).filter(Boolean)),
+        [trackedRosterPlayers]
     )
-}
 
-function CatImpactPill({ label, value }) {
-    if (!value && value !== 0) return null
-    const isRate = RATE_CATS.includes(label)
-    const isLowBetter = LOW_BETTER_CATS.includes(label)
-    const isGood = isLowBetter ? value < -0.02 : value > 0
-    const isBad = isLowBetter ? value > 0.02 : value < 0
-    const isNeutral = !isGood && !isBad
+    const trackedGames = useMemo(() => {
+        return games.filter((game) => (
+            trackedTeams.has(normalizeClientTeamAbbr(game.awayTeam))
+            || trackedTeams.has(normalizeClientTeamAbbr(game.homeTeam))
+        ))
+    }, [games, trackedTeams])
 
-    if (Math.abs(value) < (isRate ? 0.005 : 1)) return null
-
-    const sign = isLowBetter ? (value < 0 ? '+' : '') : (value > 0 ? '+' : '')
-    const display = isRate ? `${sign}${value.toFixed(3)}` : `${sign}${Math.round(value)}`
-    const color = isGood ? C.green : isBad ? C.red : C.gray400
-    const bg = isGood ? C.greenLight : isBad ? C.redLight : C.gray100
-
-    return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 10, fontWeight: 700, color, background: bg, padding: '1px 6px', borderRadius: 4, margin: '2px' }}>
-            {label} {display}
-        </span>
+    const startedTrackedGames = useMemo(
+        () => trackedGames.filter((game) => (game.isLive || game.isFinal) && !game.isPostponed),
+        [trackedGames]
     )
-}
 
-function PlayerPill({ player }) {
+    const sortedTrackedGames = useMemo(() => {
+        return [...trackedGames].sort((a, b) => {
+            if (a.isLive !== b.isLive) return a.isLive ? -1 : 1
+            if (a.isFinal !== b.isFinal) return a.isFinal ? 1 : -1
+            const aTime = a.startTime ? new Date(a.startTime).getTime() : Number.MAX_SAFE_INTEGER
+            const bTime = b.startTime ? new Date(b.startTime).getTime() : Number.MAX_SAFE_INTEGER
+            return aTime - bTime
+        })
+    }, [trackedGames])
+
+    const loadFeed = useCallback(async ({ silent = false } = {}) => {
+        if (startedTrackedGames.length === 0 || trackedRosterPlayers.length === 0) {
+            setEvents([])
+            setError(null)
+            setLoading(false)
+            setRefreshing(false)
+            return
+        }
+
+        if (silent) setRefreshing(true)
+        else setLoading(true)
+
+        try {
+            const response = await axios.post(`${api}/api/live-feed`, {
+                gamePks: startedTrackedGames.map((game) => game.gamePk),
+                rosterPlayers: trackedRosterPlayers,
+            }, { withCredentials: true })
+            setEvents(response.data?.events || [])
+            setLastUpdated(new Date())
+            setError(null)
+        } catch (e) {
+            setError(e.response?.data?.error || e.message)
+        } finally {
+            setLoading(false)
+            setRefreshing(false)
+        }
+    }, [api, startedTrackedGames, trackedRosterPlayers])
+
+    useEffect(() => {
+        loadFeed()
+    }, [loadFeed])
+
+    useEffect(() => {
+        if (!startedTrackedGames.some((game) => game.isLive)) return
+        const interval = setInterval(() => loadFeed({ silent: true }), 45_000)
+        return () => clearInterval(interval)
+    }, [startedTrackedGames, loadFeed])
+
+    const eventsByGame = useMemo(() => {
+        const grouped = new Map()
+        events.forEach((event) => {
+            const key = String(event.gamePk)
+            const bucket = grouped.get(key) || []
+            bucket.push(event)
+            grouped.set(key, bucket)
+        })
+        return grouped
+    }, [events])
+
+    const visibleGames = useMemo(() => {
+        const gamesWithEvents = new Set(events.map((event) => String(event.gamePk)))
+        const activeGames = startedTrackedGames.filter((game) => game.isLive || gamesWithEvents.has(String(game.gamePk)))
+        return activeGames.length > 0 ? activeGames : startedTrackedGames
+    }, [events, startedTrackedGames])
+
+    const totalLiveGames = trackedGames.filter((game) => game.isLive).length
+
     return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-            <span style={{ fontWeight: 800, fontSize: 13, color: C.gray800 }}>{player.name}</span>
-            <span style={{ fontSize: 11, color: C.gray400 }}>({player.position})</span>
-        </span>
-    )
-}
-
-function SuggestionCard({ suggestion, expanded, onToggle }) {
-    const { giving, receiving, fromTeam, catImpact, weaknessesFilled, strengthsHurt,
-        zDelta, catDelta, totalScore, tradeSize } = suggestion
-
-    const borderColor = totalScore > 1 ? C.green : totalScore > 0 ? C.amber : C.gray200
-
-    return (
-        <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderLeft: `4px solid ${borderColor}`, borderRadius: 8, overflow: 'hidden', marginBottom: 8 }}>
-            {/* Header */}
-            <div onClick={onToggle} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
-                onMouseEnter={e => e.currentTarget.style.background = C.gray50}
-                onMouseLeave={e => e.currentTarget.style.background = C.white}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Give side */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
-                        <span style={{ fontSize: 11, color: C.red, fontWeight: 700, flexShrink: 0 }}>Give</span>
-                        {giving.map((p, i) => (
-                            <span key={p.playerKey} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                {i > 0 && <span style={{ fontSize: 11, color: C.gray200 }}>+</span>}
-                                <PlayerPill player={p} />
-                            </span>
-                        ))}
+        <div style={{ display: 'grid', gap: 14 }}>
+            <div className="surface-card surface-card--strong" style={{ padding: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <div style={{ fontWeight: 800, fontSize: 16, color: C.navy }}>Live Feed</div>
+                            {totalLiveGames > 0 && (
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 800, color: C.green, background: C.greenLight, padding: '3px 8px', borderRadius: 999 }}>
+                                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green, display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                                    {totalLiveGames} live
+                                </span>
+                            )}
+                        </div>
+                        <div style={{ fontSize: 12, color: C.gray400, marginTop: 4 }}>
+                            Real-time actions from your rostered players as today&apos;s MLB games unfold.
+                        </div>
                     </div>
-                    {/* Get side */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-                        <span style={{ fontSize: 11, color: C.green, fontWeight: 700, flexShrink: 0 }}>Get</span>
-                        {receiving.map((p, i) => (
-                            <span key={p.playerKey} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                {i > 0 && <span style={{ fontSize: 11, color: C.gray200 }}>+</span>}
-                                <PlayerPill player={p} />
-                            </span>
-                        ))}
-                        <span style={{ fontSize: 10, color: C.gray400 }}>from {fromTeam}</span>
-                    </div>
-                    {/* Tags */}
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {tradeSize && tradeSize !== '1for1' && (
-                            <span style={{ fontSize: 10, fontWeight: 700, color: '#7c3aed', background: '#f3e8ff', padding: '1px 6px', borderRadius: 4 }}>
-                                {tradeSize.replace('for', '-for-')}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        {lastUpdated && (
+                            <span style={{ fontSize: 11, color: C.gray400 }}>
+                                Updated {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                             </span>
                         )}
-                        {weaknessesFilled.length > 0 && (
-                            <span style={{ fontSize: 10, fontWeight: 700, color: C.green, background: C.greenLight, padding: '1px 6px', borderRadius: 4 }}>
-                                ↑ {weaknessesFilled.join(', ')}
-                            </span>
-                        )}
-                        {strengthsHurt.length > 0 && (
-                            <span style={{ fontSize: 10, fontWeight: 700, color: C.red, background: C.redLight, padding: '1px 6px', borderRadius: 4 }}>
-                                ↓ {strengthsHurt.join(', ')}
-                            </span>
-                        )}
+                        <button onClick={() => loadFeed({ silent: events.length > 0 })} style={{ ...btnStyle, fontSize: 11 }}>
+                            {refreshing ? 'Refreshing…' : 'Refresh'}
+                        </button>
                     </div>
                 </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 10, color: C.gray400, marginBottom: 2 }}>Val {zDelta > 0 ? '+' : ''}{zDelta}</div>
-                    <div style={{ fontSize: 10, color: C.gray400 }}>{catDelta > 0 ? '+' : ''}{catDelta} cats</div>
-                    <div style={{ fontSize: 10, color: C.gray400, marginTop: 2 }}>{expanded ? '▲' : '▼'}</div>
-                </div>
-            </div>
 
-            {/* Expanded detail */}
-            {expanded && (
-                <div style={{ borderTop: `1px solid ${C.gray100}`, padding: '12px 14px' }}>
-                    {/* Player cards — support multiple players per side */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                        {[{ players: giving, label: 'Giving', color: C.red }, { players: receiving, label: 'Receiving', color: C.green }].map(({ players, label, color }) => (
-                            <div key={label} style={{ background: C.gray50, borderRadius: 8, padding: '10px 12px' }}>
-                                <div style={{ fontSize: 10, fontWeight: 700, color, textTransform: 'uppercase', marginBottom: 8 }}>{label}</div>
-                                {players.map(player => (
-                                    <div key={player.playerKey} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: `1px solid ${C.gray200}` }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                                            <PlayerAvatar imageUrl={player.imageUrl} name={player.name} size={28} />
-                                            <div>
-                                                <div style={{ fontWeight: 700, fontSize: 12 }}>{player.name}</div>
-                                                <div style={{ fontSize: 11, color: C.gray400, display: 'flex', alignItems: 'center', gap: 4 }}>{player.position} · <MlbLogo team={player.proTeam} size={14} showText={true} /></div>
+                {sortedTrackedGames.length > 0 && (
+                    <div className="scrollbar-hidden" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: 14, WebkitOverflowScrolling: 'touch' }}>
+                        {sortedTrackedGames.map((game) => (
+                            <CompactGamePill key={game.gamePk} game={game} />
+                        ))}
+                    </div>
+                )}
+
+                {trackedGames.length === 0 && (
+                    <div style={{ padding: '32px 16px', textAlign: 'center', color: C.gray400 }}>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>📡</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 6 }}>No roster games on today&apos;s slate</div>
+                        <div style={{ fontSize: 12 }}>Once one of your players has a game today, their live actions will show up here automatically.</div>
+                    </div>
+                )}
+
+                {trackedGames.length > 0 && startedTrackedGames.length === 0 && (
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: C.gray400 }}>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>🕒</div>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 6 }}>Waiting for first pitch</div>
+                        <div style={{ fontSize: 12 }}>Your tracked player feed will light up as soon as one of today&apos;s games starts.</div>
+                    </div>
+                )}
+
+                {error && (
+                    <div style={{ marginBottom: 14, padding: '12px 14px', borderRadius: 12, background: C.redLight, color: C.red, fontSize: 12 }}>
+                        Live feed error: {error}
+                    </div>
+                )}
+
+                {startedTrackedGames.length > 0 && loading && events.length === 0 && (
+                    <div style={{ padding: '32px 16px', textAlign: 'center', color: C.gray400 }}>
+                        Listening for player actions…
+                    </div>
+                )}
+
+                {startedTrackedGames.length > 0 && !loading && events.length === 0 && !error && (
+                    <div style={{ padding: '24px 16px', textAlign: 'center', color: C.gray400 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: C.gray600, marginBottom: 6 }}>No tracked actions yet</div>
+                        <div style={{ fontSize: 12 }}>The games are on, but none of your players have logged a fantasy-relevant event yet.</div>
+                    </div>
+                )}
+
+                {visibleGames.length > 0 && events.length > 0 && (
+                    <div style={{ display: 'grid', gap: 12 }}>
+                        {visibleGames.map((game) => {
+                            const gameEvents = eventsByGame.get(String(game.gamePk)) || []
+                            return (
+                                <div key={game.gamePk} style={{ background: 'rgba(255,255,255,0.82)', borderRadius: 16, border: `1px solid ${game.isLive ? '#bbf7d0' : C.gray200}`, overflow: 'hidden' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px', borderBottom: `1px solid ${C.gray100}`, background: game.isLive ? 'rgba(240,253,244,0.9)' : 'rgba(248,250,252,0.95)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                                                <MlbLogo team={game.awayTeam} size={18} showText={false} badge={true} />
+                                                <span style={{ fontSize: 13, fontWeight: 800, color: C.navy }}>{game.awayTeam}</span>
+                                            </div>
+                                            <span style={{ fontSize: 11, color: C.gray400 }}>at</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                                                <MlbLogo team={game.homeTeam} size={18} showText={false} badge={true} />
+                                                <span style={{ fontSize: 13, fontWeight: 800, color: C.navy }}>{game.homeTeam}</span>
                                             </div>
                                         </div>
-                                        <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>2025</div>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 6 }}>
-                                            {Object.keys(player.s2025 || {}).length === 0
-                                                ? <span style={{ fontSize: 10, color: C.gray400 }}>No data</span>
-                                                : [
-                                                    { id: '20', l: 'R' }, { id: '8', l: 'TB' }, { id: '21', l: 'RBI' },
-                                                    { id: '23', l: 'SB' }, { id: '17', l: 'OBP' },
-                                                    { id: '48', l: 'K' }, { id: '53', l: 'W' }, { id: '51', l: 'SV' },
-                                                    { id: '47', l: 'ERA' }, { id: '41', l: 'WHIP' }
-                                                ].map(({ id, l }) => {
-                                                    const v = player.s2025?.[id]
-                                                    if (!v && v !== 0) return null
-                                                    const display = RATE_CATS.includes(l) ? parseFloat(v).toFixed(2) : Math.round(v)
-                                                    if (display === 0 || display === '0.00') return null
-                                                    return <span key={id} style={{ fontSize: 10, background: C.gray100, padding: '1px 4px', borderRadius: 3 }}><span style={{ color: C.gray400 }}>{l} </span><span style={{ fontWeight: 700 }}>{display}</span></span>
-                                                })
-                                            }
-                                        </div>
-                                        <div style={{ fontSize: 10, color: C.gray400, fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>2026</div>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: 4 }}>
-                                            {[
-                                                { id: '20', l: 'R' }, { id: '8', l: 'TB' }, { id: '21', l: 'RBI' },
-                                                { id: '23', l: 'SB' }, { id: '17', l: 'OBP' },
-                                                { id: '48', l: 'K' }, { id: '53', l: 'W' }, { id: '51', l: 'SV' },
-                                                { id: '47', l: 'ERA' }, { id: '41', l: 'WHIP' }
-                                            ].map(({ id, l }) => {
-                                                const v = player.s2026?.[id]
-                                                if (!v && v !== 0) return null
-                                                const display = RATE_CATS.includes(l) ? parseFloat(v).toFixed(2) : Math.round(v)
-                                                if (display === 0 || display === '0.00') return null
-                                                return <span key={id} style={{ fontSize: 10, background: C.accentLight, padding: '1px 4px', borderRadius: 3 }}><span style={{ color: C.gray400 }}>{l} </span><span style={{ fontWeight: 700 }}>{display}</span></span>
-                                            })}
-                                        </div>
+                                        <GameStatusBadge game={game} />
                                     </div>
-                                ))}
-                            </div>
-                        ))}
-                    </div>
-                    {/* Category impact */}
-                    <div style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', marginBottom: 6 }}>Category Impact</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                        {ESPN_CAT_LABELS.map(label => (
-                            <CatImpactPill key={label} label={label} value={catImpact[label]} />
-                        ))}
-                    </div>
-                </div>
-            )}
-        </div>
-    )
-}
-
-function ESPNTradeAnalyzer({ api }) {
-    const [tradeData, setTradeData] = useState(null)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState(null)
-    const [expandedIdx, setExpandedIdx] = useState(null)
-    const [filterCat, setFilterCat] = useState('All')
-
-    const load = () => {
-        setLoading(true)
-        setError(null)
-        axios.get(`${api}/api/espn-trade-suggest`, { withCredentials: true })
-            .then(r => { setTradeData(r.data); setLoading(false) })
-            .catch(e => { setError(e.response?.data?.error || e.message); setLoading(false) })
-    }
-
-    const visible = tradeData?.suggestions?.filter(s =>
-        filterCat === 'All' || s.weaknessesFilled.includes(filterCat)
-    ) || []
-
-    if (!tradeData && !loading) return (
-        <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>⚾</div>
-            <div style={{ fontWeight: 800, fontSize: 16, color: C.navy, marginBottom: 6 }}>ESPN Trade Analyzer</div>
-            <div style={{ fontSize: 13, color: C.gray400, marginBottom: 20, maxWidth: 400, margin: '0 auto 20px' }}>
-                Analyzes your team's weaknesses across all 10 categories and suggests specific trades to fill them — based on 2025 stats and 2026 projections.
-            </div>
-            <button onClick={load} style={{ padding: '12px 40px', borderRadius: 10, border: 'none', background: C.navy, color: C.white, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                ⚡ Generate Trade Suggestions
-            </button>
-        </div>
-    )
-
-    if (loading) return (
-        <div style={{ textAlign: 'center', padding: '3rem', color: C.gray400 }}>
-            <div style={{ fontSize: 13, marginBottom: 8 }}>Analyzing all 12 rosters...</div>
-            <div style={{ fontSize: 11 }}>Blending 2025 stats with 2026 projections</div>
-        </div>
-    )
-
-    if (error) return (
-        <div style={{ padding: '1rem', background: C.redLight, borderRadius: 8, color: C.red, fontSize: 13 }}>
-            Error: {error} <button onClick={load} style={btnStyle}>Retry</button>
-        </div>
-    )
-
-    const { myTeam } = tradeData
-
-    return (
-        <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                <div>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: C.navy }}>ESPN Trade Analyzer</div>
-                    <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>
-                        {myTeam.teamName} · {visible.length} suggestions
-                    </div>
-                </div>
-                <button onClick={load} style={{ ...btnStyle, fontSize: 11 }}>↻ Refresh</button>
-            </div>
-
-            {/* Category profile */}
-            <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
-                    Your Category Rankings (1 = best in league)
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
-                    {ESPN_CAT_LABELS.map(label => (
-                        <CatRankBar key={label} label={label} rank={myTeam.catRanks[label] || 6} />
-                    ))}
-                </div>
-                {myTeam.weaknesses.length > 0 && (
-                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.gray100}` }}>
-                        <span style={{ fontSize: 11, color: C.gray400 }}>Weaknesses: </span>
-                        {myTeam.weaknesses.map(w => (
-                            <Tag key={w} text={w} bg={C.redLight} color={C.red} />
-                        ))}
-                        {' '}
-                        <span style={{ fontSize: 11, color: C.gray400, marginLeft: 8 }}>Strengths: </span>
-                        {myTeam.strengths.map(s => (
-                            <Tag key={s} text={s} bg={C.greenLight} color={C.green} />
-                        ))}
+                                    <div style={{ display: 'grid', gap: 8, padding: 12 }}>
+                                        {gameEvents.length === 0 ? (
+                                            <div style={{ padding: '10px 12px', borderRadius: 12, background: '#ffffff', border: `1px dashed ${C.gray200}`, color: C.gray400, fontSize: 12 }}>
+                                                No fantasy actions from your roster in this game yet.
+                                            </div>
+                                        ) : gameEvents.map((event) => {
+                                            const playerKey = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
+                                            const avatarUrl = imageMap[playerKey] || imageMap[normName(event.playerName)] || event.imageUrl
+                                            return (
+                                                <div key={event.id} style={{ display: 'flex', gap: 10, padding: isMobile ? '10px 10px' : '11px 12px', borderRadius: 14, background: '#ffffff', border: `1px solid ${event.isScoringPlay ? '#bfdbfe' : C.gray100}`, boxShadow: '0 8px 18px rgba(15,23,42,0.03)' }}>
+                                                    <PlayerAvatar imageUrl={avatarUrl} name={event.playerName} size={36} />
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => event.playerKey && onOpenPlayer?.(event.playerKey, event.playerName)}
+                                                                disabled={!event.playerKey}
+                                                                style={{ border: 'none', background: 'transparent', padding: 0, margin: 0, cursor: event.playerKey ? 'pointer' : 'default', color: C.gray800, fontWeight: 800, fontSize: 13 }}
+                                                            >
+                                                                {event.playerName}
+                                                            </button>
+                                                            {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
+                                                            <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                                                {event.inningLabel}
+                                                            </span>
+                                                            <span style={{ fontSize: 10, color: C.gray400 }}>{formatRelativeTime(event.timestamp)}</span>
+                                                        </div>
+                                                        <div style={{ fontSize: 13, fontWeight: 700, color: C.navy, marginBottom: 4 }}>
+                                                            {event.summary}
+                                                        </div>
+                                                        {event.impact?.length > 0 && (
+                                                            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 5 }}>
+                                                                {event.impact.map((item) => (
+                                                                    <span key={`${event.id}-${item}`} style={{ fontSize: 10, fontWeight: 800, color: item.startsWith('-') || item === 'CS' || item.includes('allowed') ? C.red : C.green, background: item.startsWith('-') || item === 'CS' || item.includes('allowed') ? C.redLight : C.greenLight, padding: '2px 7px', borderRadius: 999 }}>
+                                                                        {item}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                        <div style={{ fontSize: 11, color: C.gray600, lineHeight: 1.4 }}>
+                                                            {event.detail}
+                                                        </div>
+                                                        {event.scoreText && (
+                                                            <div style={{ marginTop: 5, fontSize: 10, color: C.gray400 }}>
+                                                                {event.scoreText}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )
+                        })}
                     </div>
                 )}
             </div>
-
-            {/* Filter by category */}
-            <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span style={{ fontSize: 11, color: C.gray400, fontWeight: 600 }}>Filter by weakness:</span>
-                {['All', ...myTeam.weaknesses].map(cat => (
-                    <button key={cat} onClick={() => setFilterCat(cat)} style={{
-                        padding: '3px 10px', fontSize: 11, borderRadius: 99, cursor: 'pointer', fontWeight: 600,
-                        background: filterCat === cat ? C.navy : C.white,
-                        color: filterCat === cat ? C.white : C.gray600,
-                        border: `1px solid ${filterCat === cat ? C.navy : C.gray200}`,
-                    }}>{cat}</button>
-                ))}
-            </div>
-
-            {/* Suggestions */}
-            {visible.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: C.gray400, fontSize: 13 }}>
-                    No suggestions found for this category filter.
-                </div>
-            ) : (
-                visible.map((s, i) => (
-                    <SuggestionCard
-                        key={`${s.giving.playerKey}-${s.receiving.playerKey}`}
-                        suggestion={s}
-                        expanded={expandedIdx === i}
-                        onToggle={() => setExpandedIdx(expandedIdx === i ? null : i)}
-                    />
-                ))
-            )}
-        </div>
-    )
-}
-
-// ─── Trade Analyzer ─────────────────────────────────────────────────────────
-
-const ESPN_LEAGUE_KEY_PREFIX = 'espn.l.'
-const KEEPER_LEAGUE_KEY = 'espn' // only ESPN is keeper
-
-const HITTER_CAT = [
-    { id: '12', label: 'HR', better: 'high' },
-    { id: '13', label: 'RBI', better: 'high' },
-    { id: '7', label: 'R', better: 'high' },
-    { id: '16', label: 'SB', better: 'high' },
-    { id: '4', label: 'OBP', better: 'high' },
-    { id: '8', label: 'H', better: 'high' },
-]
-const PITCHER_CAT = [
-    { id: '26', label: 'K', better: 'high' },
-    { id: '27', label: 'ERA', better: 'low' },
-    { id: '29', label: 'WHIP', better: 'low' },
-    { id: '42', label: 'SV', better: 'high' },
-    { id: '28', label: 'IP', better: 'high' },
-]
-
-function TradePlayerCard({ player, onRemove }) {
-    return (
-        <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <PlayerAvatar imageUrl={player.imageUrl} name={player.name} size={36} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: C.gray800 }}>{player.name}</span>
-                    <Tag text={player.position || '—'} />
-                    {player.injuryStatus && <Tag text={player.injuryStatus} bg={C.redLight} color={C.red} />}
-                </div>
-                <div style={{ marginTop: 2 }}><MlbLogo team={player.proTeamAbbr || player.proTeam} size={14} showText={true} /></div>
-                {player.overallRank && (
-                    <div style={{ fontSize: 11, color: C.gray400, marginTop: 2 }}>
-                        Overall <RankBadge rank={player.overallRank} />
-                    </div>
-                )}
-            </div>
-            <button onClick={() => onRemove(player.playerKey)} style={{ background: C.redLight, border: 'none', color: C.red, cursor: 'pointer', borderRadius: 4, padding: '3px 7px', fontSize: 12, flexShrink: 0 }}>✕</button>
-        </div>
-    )
-}
-
-function TradeLeagueVerdict({ leagueKey, leagueName, scoringType, givingPlayers, receivingPlayers }) {
-    const isEspn = leagueKey.startsWith(ESPN_LEAGUE_KEY_PREFIX)
-
-    // Calculate rank delta for this league
-    const getRank = (p) => p.ranksByLeague?.[leagueKey]?.overallRank || p.overallRank || null
-
-    const givingRanks = givingPlayers.map(p => getRank(p)).filter(Boolean)
-    const receivingRanks = receivingPlayers.map(p => getRank(p)).filter(Boolean)
-
-    const avgGiving = givingRanks.length ? givingRanks.reduce((a, b) => a + b, 0) / givingRanks.length : null
-    const avgReceiving = receivingRanks.length ? receivingRanks.reduce((a, b) => a + b, 0) / receivingRanks.length : null
-
-    let verdict = null
-    let verdictColor = C.gray400
-    let verdictBg = C.gray50
-    let verdictText = 'Incomplete'
-
-    if (avgGiving !== null && avgReceiving !== null) {
-        const delta = avgGiving - avgReceiving // positive = you're getting better players (lower rank = better)
-        if (delta > 30) { verdict = 'Win'; verdictColor = C.green; verdictBg = C.greenLight; verdictText = `You win (+${Math.round(delta)} rank)` }
-        else if (delta > 10) { verdict = 'Slight Win'; verdictColor = C.green; verdictBg = C.greenLight; verdictText = `Slight win (+${Math.round(delta)})` }
-        else if (delta < -30) { verdict = 'Loss'; verdictColor = C.red; verdictBg = C.redLight; verdictText = `You lose (${Math.round(delta)} rank)` }
-        else if (delta < -10) { verdict = 'Slight Loss'; verdictColor = C.red; verdictBg = C.redLight; verdictText = `Slight loss (${Math.round(delta)})` }
-        else { verdict = 'Even'; verdictColor = C.amber; verdictBg = C.amberLight; verdictText = `Even trade (${delta >= 0 ? '+' : ''}${Math.round(delta)})` }
-    }
-
-    return (
-        <div style={{ background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 10, overflow: 'hidden' }}>
-            <div style={{ padding: '8px 14px', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {isEspn
-                        ? <img src="https://a.espncdn.com/favicon.ico" width={12} height={12} alt="ESPN" />
-                        : <img src="https://s.yimg.com/cv/apiv2/default/icons/favicon_y19_32x32_custom.svg" width={12} height={12} alt="Yahoo" />}
-                    <span style={{ fontSize: 12, fontWeight: 700, color: C.navy }}>{leagueName}</span>
-                </div>
-                {verdict && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: verdictColor, background: verdictBg, padding: '2px 10px', borderRadius: 99 }}>
-                        {verdictText}
-                    </span>
-                )}
-            </div>
-            <div style={{ padding: '10px 14px', display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, alignItems: 'start' }}>
-                {/* Giving */}
-                <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: C.red, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Giving</div>
-                    {givingPlayers.map(p => {
-                        const rank = getRank(p)
-                        return (
-                            <div key={p.playerKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: `1px solid ${C.gray100}` }}>
-                                <span style={{ fontSize: 12, fontWeight: 500, color: C.gray800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>{p.name}</span>
-                                <RankBadge rank={rank} />
-                            </div>
-                        )
-                    })}
-                    {avgGiving && <div style={{ fontSize: 11, color: C.gray400, marginTop: 6 }}>Avg rank: #{Math.round(avgGiving)}</div>}
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 20 }}>
-                    <span style={{ fontSize: 16, color: C.gray200, fontWeight: 700 }}>⇄</span>
-                </div>
-
-                {/* Receiving */}
-                <div>
-                    <div style={{ fontSize: 10, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Receiving</div>
-                    {receivingPlayers.map(p => {
-                        const rank = getRank(p)
-                        return (
-                            <div key={p.playerKey} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '3px 0', borderBottom: `1px solid ${C.gray100}` }}>
-                                <span style={{ fontSize: 12, fontWeight: 500, color: C.gray800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 110 }}>{p.name}</span>
-                                <RankBadge rank={rank} />
-                            </div>
-                        )
-                    })}
-                    {avgReceiving && <div style={{ fontSize: 11, color: C.gray400, marginTop: 6 }}>Avg rank: #{Math.round(avgReceiving)}</div>}
-                </div>
-            </div>
-
-        </div>
-    )
-}
-
-function TradeAnalyzer({ api, data, allRosterPlayers, getResImg }) {
-    const [givingKeys, setGivingKeys] = useState([])
-    const [receivingKeys, setReceivingKeys] = useState([])
-    const [givingSearch, setGivingSearch] = useState('')
-    const [receivingSearch, setReceivingSearch] = useState('')
-    const [givingResults, setGivingResults] = useState([])
-    const [receivingResults, setReceivingResults] = useState([])
-    const [givingSearching, setGivingSearching] = useState(false)
-    const [receivingSearching, setReceivingSearching] = useState(false)
-    const [analysisResult, setAnalysisResult] = useState(null)
-    const [analyzing, setAnalyzing] = useState(false)
-
-    // Debounced search
-    useEffect(() => {
-        if (givingSearch.length < 2) { setGivingResults([]); return }
-        const t = setTimeout(() => {
-            setGivingSearching(true)
-            axios.get(`${api}/api/player-search?q=${encodeURIComponent(givingSearch)}`, { withCredentials: true })
-                .then(r => { setGivingResults(r.data); setGivingSearching(false) })
-                .catch(() => setGivingSearching(false))
-        }, 300)
-        return () => clearTimeout(t)
-    }, [givingSearch])
-
-    useEffect(() => {
-        if (receivingSearch.length < 2) { setReceivingResults([]); return }
-        const t = setTimeout(() => {
-            setReceivingSearching(true)
-            axios.get(`${api}/api/player-search?q=${encodeURIComponent(receivingSearch)}`, { withCredentials: true })
-                .then(r => { setReceivingResults(r.data); setReceivingSearching(false) })
-                .catch(() => setReceivingSearching(false))
-        }, 300)
-        return () => clearTimeout(t)
-    }, [receivingSearch])
-
-    const [givingPlayers, setGivingPlayers] = useState([])
-    const [receivingPlayers, setReceivingPlayers] = useState([])
-
-    const addPlayer = (side, player) => {
-        if (side === 'giving') {
-            if (givingPlayers.find(p => p.playerKey === player.playerKey)) return
-            setGivingPlayers(prev => [...prev, player])
-            setGivingKeys(prev => [...prev, player.playerKey])
-            setGivingSearch('')
-            setGivingResults([])
-        } else {
-            if (receivingPlayers.find(p => p.playerKey === player.playerKey)) return
-            setReceivingPlayers(prev => [...prev, player])
-            setReceivingKeys(prev => [...prev, player.playerKey])
-            setReceivingSearch('')
-            setReceivingResults([])
-        }
-        setAnalysisResult(null)
-    }
-
-    const removePlayer = (side, playerKey) => {
-        if (side === 'giving') {
-            setGivingPlayers(prev => prev.filter(p => p.playerKey !== playerKey))
-            setGivingKeys(prev => prev.filter(k => k !== playerKey))
-        } else {
-            setReceivingPlayers(prev => prev.filter(p => p.playerKey !== playerKey))
-            setReceivingKeys(prev => prev.filter(k => k !== playerKey))
-        }
-        setAnalysisResult(null)
-    }
-
-    const analyze = async () => {
-        if (givingPlayers.length === 0 || receivingPlayers.length === 0) return
-        setAnalyzing(true)
-        try {
-            const r = await axios.post(`${api}/api/trade-analyze`,
-                { givingKeys: givingPlayers.map(p => p.playerKey), receivingKeys: receivingPlayers.map(p => p.playerKey) },
-                { withCredentials: true }
-            )
-            setAnalysisResult(r.data)
-        } catch (e) {
-            console.error('Trade analyze failed:', e.message)
-        }
-        setAnalyzing(false)
-    }
-
-    const reset = () => {
-        setGivingPlayers([]); setReceivingPlayers([])
-        setGivingKeys([]); setReceivingKeys([])
-        setGivingSearch(''); setReceivingSearch('')
-        setAnalysisResult(null)
-    }
-
-    const isEspnPlayer = (playerKey) => playerKey.startsWith('espn.')
-
-    const SearchDropdown = ({ results, onSelect, loading }) => {
-        if (!results.length && !loading) return null
-        return (
-            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: C.white, border: `1px solid ${C.gray200}`, borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 100, maxHeight: 280, overflowY: 'auto' }}>
-                {loading ? (
-                    <div style={{ padding: '12px 14px', fontSize: 12, color: C.gray400 }}>Searching...</div>
-                ) : results.map(p => (
-                    <div key={p.playerKey} onClick={() => onSelect(p)}
-                        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${C.gray100}` }}
-                        onMouseEnter={e => e.currentTarget.style.background = C.gray50}
-                        onMouseLeave={e => e.currentTarget.style.background = C.white}>
-                        <PlayerAvatar imageUrl={p.imageUrl} name={p.name} size={28} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
-                            <div style={{ fontSize: 11, color: C.gray400, display: 'flex', alignItems: 'center', gap: 4 }}>{p.position} · <MlbLogo team={p.proTeam} size={14} showText={true} /></div>
-                        </div>
-                        {p.overallRank && <RankBadge rank={p.overallRank} />}
-                    </div>
-                ))}
-            </div>
-        )
-    }
-
-    // Merge analysis result data back into player cards
-    const enrichedGiving = analysisResult
-        ? givingPlayers.map(p => ({ ...p, ...(analysisResult.giving.find(r => r.playerKey === p.playerKey) || {}) }))
-        : givingPlayers
-    const enrichedReceiving = analysisResult
-        ? receivingPlayers.map(p => ({ ...p, ...(analysisResult.receiving.find(r => r.playerKey === p.playerKey) || {}) }))
-        : receivingPlayers
-
-    return (
-        <div>
-            <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                    <div style={{ fontWeight: 800, fontSize: 16, color: C.navy }}>Trade Analyzer</div>
-                    <div style={{ fontSize: 12, color: C.gray400, marginTop: 2 }}>Add players to both sides, then analyze across all your leagues</div>
-                </div>
-                {(givingPlayers.length > 0 || receivingPlayers.length > 0) && (
-                    <button onClick={reset} style={{ ...btnStyle, fontSize: 11, color: C.red, borderColor: C.red }}>Reset</button>
-                )}
-            </div>
-
-            {/* Player selection — two columns */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                {/* Giving */}
-                <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.red, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                        You're Giving
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
-                        {givingPlayers.map(p => (
-                            <TradePlayerCard key={p.playerKey} player={p} onRemove={(k) => removePlayer('giving', k)} isEspn={isEspnPlayer(p.playerKey)} />
-                        ))}
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                        <input
-                            placeholder="Search player to add..."
-                            value={givingSearch}
-                            onChange={e => setGivingSearch(e.target.value)}
-                            style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', borderColor: C.red, borderStyle: 'dashed' }}
-                        />
-                        <SearchDropdown results={givingResults} onSelect={(p) => addPlayer('giving', p)} loading={givingSearching} />
-                    </div>
-                </div>
-
-                {/* Receiving */}
-                <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.green, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
-                        You're Receiving
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
-                        {receivingPlayers.map(p => (
-                            <TradePlayerCard key={p.playerKey} player={p} onRemove={(k) => removePlayer('receiving', k)} isEspn={isEspnPlayer(p.playerKey)} />
-                        ))}
-                    </div>
-                    <div style={{ position: 'relative' }}>
-                        <input
-                            placeholder="Search player to add..."
-                            value={receivingSearch}
-                            onChange={e => setReceivingSearch(e.target.value)}
-                            style={{ ...inputStyle, width: '100%', boxSizing: 'border-box', borderColor: C.green, borderStyle: 'dashed' }}
-                        />
-                        <SearchDropdown results={receivingResults} onSelect={(p) => addPlayer('receiving', p)} loading={receivingSearching} />
-                    </div>
-                </div>
-            </div>
-
-            {/* Analyze button */}
-            {givingPlayers.length > 0 && receivingPlayers.length > 0 && (
-                <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                    <button onClick={analyze} disabled={analyzing} style={{
-                        padding: '12px 40px', borderRadius: 10, border: 'none',
-                        background: analyzing ? C.gray200 : C.navy, color: analyzing ? C.gray400 : C.white,
-                        fontSize: 14, fontWeight: 700, cursor: analyzing ? 'not-allowed' : 'pointer',
-                        transition: 'all 0.15s',
-                    }}>
-                        {analyzing ? 'Analyzing...' : '⚡ Analyze Trade'}
-                    </button>
-                    {!analysisResult && !analyzing && (
-                        <div style={{ fontSize: 11, color: C.gray400, marginTop: 6 }}>
-                            Fetches rankings across all {data.length} leagues
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {/* Results per league */}
-            {analysisResult && (
-                <div>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-                        Verdict by League
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {/* Yahoo leagues from analysis result */}
-                        {analysisResult.leagueKeys.map(lk => (
-                            <TradeLeagueVerdict
-                                key={lk.leagueKey}
-                                leagueKey={lk.leagueKey}
-                                leagueName={lk.leagueName}
-                                scoringType={lk.scoringType}
-                                givingPlayers={enrichedGiving}
-                                receivingPlayers={enrichedReceiving}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* Empty state */}
-            {givingPlayers.length === 0 && receivingPlayers.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: C.gray400 }}>
-                    <div style={{ fontSize: 32, marginBottom: 10 }}>⚖️</div>
-                    <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6, color: C.gray600 }}>Build a trade to analyze</div>
-                    <div style={{ fontSize: 12 }}>Search for players on both sides, then hit Analyze to see verdicts across all your leagues</div>
-                </div>
-            )}
         </div>
     )
 }
@@ -3050,7 +2688,7 @@ export default function Dashboard({ api }) {
                         boxShadow: tabScrolled ? 'inset 0 1px 0 rgba(255,255,255,0.08)' : undefined,
                     }}
                 >
-                    {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }, { id: 'trade', label: 'Trade' }].map(tab => {
+                    {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }, { id: 'activity', label: 'Live Feed' }].map(tab => {
                         const isActive = activeTab === tab.id
                         return (
                             <button
@@ -3433,9 +3071,16 @@ export default function Dashboard({ api }) {
                     </>
                 )}
 
-                {/* TRADE ANALYZER */}
-                {activeTab === 'trade' && (
-                    <ESPNTradeAnalyzer api={api} />
+                {/* LIVE FEED */}
+                {activeTab === 'activity' && (
+                    <LiveFeedPanel
+                        api={api}
+                        games={games}
+                        rosterPlayers={allRosterPlayers}
+                        imageMap={imageMap}
+                        onOpenPlayer={openPlayer}
+                        isMobile={isMobile}
+                    />
                 )}
             </div>
             </div>
