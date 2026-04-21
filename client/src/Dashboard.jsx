@@ -1672,6 +1672,7 @@ export default function Dashboard({ api }) {
     const [error, setError] = useState(null)
     const [lastUpdated, setLastUpdated] = useState(null)
     const [activeTab, setActiveTab] = useState('lineup')
+    const [hasManualTabSelection, setHasManualTabSelection] = useState(false)
     const [tabScrolled, setTabScrolled] = useState(false)
     const [activeLeague, setActiveLeague] = useState(null)
     const [search, setSearch] = useState('')
@@ -2057,6 +2058,11 @@ export default function Dashboard({ api }) {
         if (!g.startTime) return false
         return new Date(g.startTime).getTime() <= Date.now()
     })
+
+    useEffect(() => {
+        if (hasManualTabSelection) return
+        setActiveTab(hasStartedGamesToday ? 'activity' : 'lineup')
+    }, [hasStartedGamesToday, hasManualTabSelection])
 
     const allPlayers = (() => {
         const playerMap = {}
@@ -2694,7 +2700,10 @@ export default function Dashboard({ api }) {
                             <button
                                 className={`tab-pill${isActive ? ' is-active' : ''}`}
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
+                                onClick={() => {
+                                    setHasManualTabSelection(true)
+                                    setActiveTab(tab.id)
+                                }}
                                 style={{
                                     flex: isMobile ? 1 : 'none',
                                     padding: isMobile ? '10px 8px' : '10px 28px',
