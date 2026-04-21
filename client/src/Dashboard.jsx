@@ -2688,7 +2688,7 @@ export default function Dashboard({ api }) {
                         boxShadow: tabScrolled ? 'inset 0 1px 0 rgba(255,255,255,0.08)' : undefined,
                     }}
                 >
-                    {[{ id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }, { id: 'activity', label: 'Live Feed' }].map(tab => {
+                    {[{ id: 'activity', label: 'Live Feed' }, { id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }].map(tab => {
                         const isActive = activeTab === tab.id
                         return (
                             <button
