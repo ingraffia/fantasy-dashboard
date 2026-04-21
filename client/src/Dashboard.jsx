@@ -2056,6 +2056,7 @@ export default function Dashboard({ api }) {
     const [loadWarnings, setLoadWarnings] = useState([])
     const [pullState, setPullState] = useState({ active: false, distance: 0, ready: false, refreshing: false })
     const [isScrolled, setIsScrolled] = useState(false)
+    const [expandedMatchup, setExpandedMatchup] = useState(null)
 
     const tabSentinelRef = useRef(null)
 
@@ -2770,9 +2771,8 @@ export default function Dashboard({ api }) {
                     padding: `8px ${isMobile ? '20px' : px} 10px`,
                     display: 'flex',
                     flexWrap: 'nowrap',
-                    alignItems: 'flex-start',
                     gap: 14,
-                    alignItems: isMobile ? 'flex-start' : 'stretch',
+                    alignItems: 'flex-start',
                     overflowX: isMobile ? 'auto' : 'visible',
                     overflowY: 'visible',
                     ...(isMobile ? {
@@ -2787,13 +2787,11 @@ export default function Dashboard({ api }) {
                 {data.map(lg => {
                     const isWinning = lg.matchup?.isWinning
                     const isLosing = lg.matchup && !isWinning && parseFloat(lg.matchup.oppScore || 0) > parseFloat(lg.matchup.myScore || 0)
-                    const cardWidth = isMobile ? 'calc(100vw - 48px)' : '300px'
+                    const hasDetails = !!(lg.matchup && computeMatchupCloseness(lg))
+                    const isExpanded = expandedMatchup === lg.leagueKey
+                    const cardWidth = isMobile ? 'calc(100vw - 48px)' : undefined
                     const borderColor = isWinning ? '#86efac' : isLosing ? '#fca5a5' : '#bfdbfe'
-                    const headerBg = '#ffffff'
-                    const myColor = C.navy
-                    const oppColor = C.gray400
                     const platformBg = lg.source === 'espn' ? 'rgba(240,72,62,0.12)' : 'rgba(96,1,210,0.12)'
-                    const platformColor = lg.source === 'espn' ? '#f0483e' : '#6001d2'
                     const href = lg.source === 'espn'
                         ? `https://fantasy.espn.com/baseball/league?leagueId=${lg.leagueKey.split('.l.')[1]}`
                         : `https://baseball.fantasysports.yahoo.com/b1/${lg.leagueKey.split('.l.')[1]}`
@@ -2808,195 +2806,194 @@ export default function Dashboard({ api }) {
                             : lg.matchup.oppScore)
                         : null
                     const closeness = computeMatchupCloseness(lg)
-                    const recordText = lg.standing ? `${lg.standing.wins}W-${lg.standing.losses}L${lg.standing.ties ? `-${lg.standing.ties}T` : ''}` : 'No standings'
+                    const recordText = lg.standing ? `${lg.standing.wins}W-${lg.standing.losses}L${lg.standing.ties ? `-${lg.standing.ties}T` : ''}` : '—'
                     const rankText = lg.standing?.rank ? `#${lg.standing.rank}` : '—'
-                    const matchupLabel = lg.matchup?.oppName || (lg.matchup ? 'Opponent' : 'Season total')
+                    const matchupLabel = lg.matchup?.oppName || 'Season total'
                     const matchupTone = isWinning ? 'Winning' : isLosing ? 'Trailing' : 'Even'
                     const matchupToneColor = isWinning ? '#166534' : isLosing ? '#f0483e' : C.gray500
                     const matchupToneBg = isWinning ? '#dcfce7' : isLosing ? 'rgba(240,72,62,0.12)' : C.gray100
                     const matchupToneBorder = isWinning ? 'rgba(22,101,52,0.15)' : isLosing ? 'rgba(240,72,62,0.2)' : 'rgba(0,0,0,0.06)'
-                    
                     const getDynSize = (str) => {
                         if (!str) return 34;
                         const len = String(str).length;
-                        if (len > 9) return 18;
-                        if (len > 7) return 22;
-                        if (len > 5) return 26;
+                        if (len > 9) return 18; if (len > 7) return 22; if (len > 5) return 26;
                         return 34;
                     }
                     const scoreFontSize = getDynSize(myDisplayScore)
                     const oppScoreFontSize = getDynSize(oppDisplayScore)
-                    
+
                     return (
-                        <a className="surface-card surface-card--interactive matchup-card animate-fade-up" href={href} target="_blank" rel="noopener noreferrer" key={lg.leagueKey} style={{
-                            textDecoration: 'none',
-                            color: 'inherit',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            background: '#ffffff',
-                            borderRadius: 18,
-                            border: `1px solid ${borderColor}`,
-                            boxShadow: isWinning || isLosing ? '0 18px 40px rgba(15,23,42,0.10)' : '0 14px 32px rgba(15,23,42,0.08)',
-                            ...(isMobile ? { width: cardWidth, minWidth: cardWidth, maxWidth: cardWidth, flex: '0 0 auto', scrollSnapAlign: 'start' } : { flex: '1 1 0', minWidth: 0 }),
-                            overflow: 'hidden',
-                        }}>
-                            {/* Fixed: league name + scores */}
-                            <div style={{ padding: '14px', background: headerBg, flexShrink: 0 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                        <div
+                            className="surface-card matchup-card animate-fade-up"
+                            key={lg.leagueKey}
+                            onClick={() => hasDetails && setExpandedMatchup(isExpanded ? null : lg.leagueKey)}
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                background: '#ffffff',
+                                borderRadius: 18,
+                                border: `1px solid ${borderColor}`,
+                                boxShadow: isWinning || isLosing ? '0 18px 40px rgba(15,23,42,0.10)' : '0 14px 32px rgba(15,23,42,0.08)',
+                                cursor: hasDetails ? 'pointer' : 'default',
+                                overflow: 'hidden',
+                                ...(isMobile ? { width: cardWidth, minWidth: cardWidth, maxWidth: cardWidth, flex: '0 0 auto', scrollSnapAlign: 'start' } : { flex: '1 1 0', minWidth: 0 }),
+                            }}
+                        >
+                            {/* Header: league + status + open link */}
+                            <div style={{ padding: '14px 14px 0', flexShrink: 0 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
                                         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: 999, background: platformBg, border: `1px solid ${C.gray200}`, flexShrink: 0 }}>
                                             {lg.source === 'espn'
                                                 ? <img src="https://a.espncdn.com/favicon.ico" width={12} height={12} alt="ESPN" />
                                                 : <img src="https://s.yimg.com/cv/apiv2/default/icons/favicon_y19_32x32_custom.svg" width={12} height={12} alt="Yahoo" />}
                                         </span>
-                                        <div style={{ minWidth: 0 }}>
-                                            <div style={{ fontSize: 10, fontWeight: 800, color: C.gray500, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{lg.leagueName}</div>
-                                        </div>
+                                        <span style={{ fontSize: 10, fontWeight: 800, color: C.gray500, textTransform: 'uppercase', letterSpacing: '0.08em', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lg.leagueName}</span>
                                     </div>
-                                    <span style={{ fontSize: 10, color: matchupToneColor, fontWeight: 800, background: matchupToneBg, padding: '5px 9px', borderRadius: 999, border: `1px solid ${matchupToneBorder}`, flexShrink: 0 }}>
-                                        {lg.matchup ? `${matchupTone} this week` : 'Season format'}
-                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                        <span style={{ fontSize: 10, color: matchupToneColor, fontWeight: 800, background: matchupToneBg, padding: '4px 8px', borderRadius: 999, border: `1px solid ${matchupToneBorder}` }}>
+                                            {lg.matchup ? `${matchupTone} this week` : 'Season format'}
+                                        </span>
+                                        <a href={href} target="_blank" rel="noopener noreferrer"
+                                            onClick={e => e.stopPropagation()}
+                                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 8, background: C.gray50, border: `1px solid ${C.gray200}`, color: C.gray400, fontSize: 11, textDecoration: 'none', flexShrink: 0 }}>↗</a>
+                                    </div>
                                 </div>
-                                {lg.matchup ? (
-                                    <>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, height: 54, borderTop: `1px solid ${C.gray100}` }}>
-                                            <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 6 }}>My Team</span>
-                                            <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: (isWinning || !isLosing) ? C.navy : C.gray400, lineHeight: 0.9, letterSpacing: '-0.06em', flexShrink: 0, whiteSpace: 'nowrap' }}>{myDisplayScore ?? '—'}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, height: 54, borderTop: `1px solid ${C.gray100}` }}>
-                                            <span style={{ fontSize: 14, fontWeight: 800, color: C.navy, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 6 }}>{matchupLabel}</span>
-                                            <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing ? C.navy : oppDisplayScore == null ? 'transparent' : C.gray400, lineHeight: 0.9, letterSpacing: '-0.06em', flexShrink: 0, whiteSpace: 'nowrap' }}>{oppDisplayScore ?? '—'}</span>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 108, borderTop: `1px solid ${C.gray100}` }}>
-                                        <span style={{ fontSize: Math.min(scoreFontSize + 12, 42), fontWeight: 900, color: C.navy, lineHeight: 0.9, letterSpacing: '-0.04em' }}>{myDisplayScore ?? '—'}</span>
+
+                                {/* Score rows — uniform height for all cards */}
+                                <div style={{ borderTop: `1px solid ${C.gray100}` }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, height: 54 }}>
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: C.navy, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 6 }}>My Team</span>
+                                        <span style={{ fontSize: scoreFontSize, fontWeight: 900, color: isLosing ? C.gray400 : C.navy, lineHeight: 0.9, letterSpacing: '-0.06em', flexShrink: 0, whiteSpace: 'nowrap' }}>{myDisplayScore ?? '—'}</span>
                                     </div>
-                                )}
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, height: 54, borderTop: `1px solid ${C.gray100}` }}>
+                                        <span style={{ fontSize: 13, fontWeight: 700, color: lg.matchup ? C.navy : C.gray400, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 6 }}>{matchupLabel}</span>
+                                        <span style={{ fontSize: oppScoreFontSize, fontWeight: 900, color: isLosing ? C.navy : C.gray400, lineHeight: 0.9, letterSpacing: '-0.06em', flexShrink: 0, whiteSpace: 'nowrap', visibility: oppDisplayScore == null ? 'hidden' : 'visible' }}>{oppDisplayScore ?? '—'}</span>
+                                    </div>
+                                </div>
                             </div>
-                            {/* Middle: win probability + categories */}
-                            <div style={{ flex: 1, padding: '14px', borderTop: `1px solid ${C.gray100}`, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
-                                {lg.matchup && closeness && (() => {
-                                    const dow = new Date().getDay();
-                                    const daysIntoWeek = dow === 0 ? 7 : dow;
-                                    const weekProgress = daysIntoWeek / 7;
-                                    const cats = lg.matchup?.categories;
-                                    let winProb = null;
-                                    if (cats && cats.length > 0 && closeness.type === 'categories') {
-                                        let expWins = 0;
-                                        cats.forEach(cat => {
-                                            const cl = cat.closeness || 0;
-                                            if (cat.result === 'win') expWins += Math.min(0.97, 0.5 + 0.5 * (cl + (1 - cl) * weekProgress));
-                                            else if (cat.result === 'loss') expWins += Math.max(0.03, 0.5 * (1 - cl) * (1 - weekProgress));
-                                            else expWins += 0.5;
-                                        });
-                                        winProb = Math.round(100 / (1 + Math.exp(-9 * (expWins / cats.length - 0.5))));
-                                    }
-                                    const probColor = winProb == null ? C.gray400 : winProb >= 60 ? C.green : winProb <= 40 ? C.red : C.amber;
-                                    return (
-                                        <>
-                                            {winProb != null && (
-                                                <div style={{ marginBottom: 14 }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
-                                                        <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Win probability</span>
-                                                        <span style={{ fontSize: 18, fontWeight: 900, color: probColor, lineHeight: 1, letterSpacing: '-0.03em' }}>{winProb}%</span>
-                                                    </div>
-                                                    <div style={{ height: 6, borderRadius: 3, background: C.gray100, overflow: 'hidden' }}>
-                                                        <div style={{ height: '100%', width: `${winProb}%`, borderRadius: 3, background: winProb >= 60 ? C.green : winProb <= 40 ? C.red : C.amber, transition: 'width 0.4s ease' }} />
-                                                    </div>
+
+                            {/* Expandable detail section */}
+                            {isExpanded && hasDetails && closeness && (() => {
+                                const dow = new Date().getDay();
+                                const daysIntoWeek = dow === 0 ? 7 : dow;
+                                const weekProgress = daysIntoWeek / 7;
+                                const cats = lg.matchup?.categories;
+                                let winProb = null;
+                                if (cats && cats.length > 0 && closeness.type === 'categories') {
+                                    let expWins = 0;
+                                    cats.forEach(cat => {
+                                        const cl = cat.closeness || 0;
+                                        if (cat.result === 'win') expWins += Math.min(0.97, 0.5 + 0.5 * (cl + (1 - cl) * weekProgress));
+                                        else if (cat.result === 'loss') expWins += Math.max(0.03, 0.5 * (1 - cl) * (1 - weekProgress));
+                                        else expWins += 0.5;
+                                    });
+                                    winProb = Math.round(100 / (1 + Math.exp(-9 * (expWins / cats.length - 0.5))));
+                                }
+                                const probColor = winProb == null ? C.gray400 : winProb >= 60 ? C.green : winProb <= 40 ? C.red : C.amber;
+                                return (
+                                    <div style={{ padding: '14px', borderTop: `1px solid ${C.gray100}` }}>
+                                        {winProb != null && (
+                                            <div style={{ marginBottom: 14 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                                                    <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Win probability</span>
+                                                    <span style={{ fontSize: 18, fontWeight: 900, color: probColor, lineHeight: 1, letterSpacing: '-0.03em' }}>{winProb}%</span>
                                                 </div>
-                                            )}
-                                            {closeness.type === 'categories' ? (
-                                                cats ? (() => {
-                                                    const fmtVal = (v, label) => {
-                                                        if (v == null || v === '' || isNaN(Number(v))) return '—';
-                                                        const n = Number(v);
-                                                        if (['AVG','OBP','OPS','SLG'].includes(label)) return n.toFixed(3).replace(/^0\./, '.');
-                                                        if (['ERA','WHIP'].includes(label)) return n.toFixed(2);
-                                                        if (['IP'].includes(label)) return n.toFixed(1);
-                                                        return Number.isInteger(n) ? String(n) : n.toFixed(1);
-                                                    };
-                                                    const rows = [];
-                                                    let lastSide = null;
-                                                    cats.forEach((cat, i) => {
-                                                        const isWin = cat.result === 'win';
-                                                        const isLoss = cat.result === 'loss';
-                                                        const isTie = cat.result === 'tie';
-                                                        const side = cat.side || 'pitcher';
-                                                        if (side !== lastSide) {
-                                                            if (lastSide !== null) rows.push(<div key={`div-${i}`} style={{ height: 1, background: C.gray100, margin: '6px 0' }} />);
-                                                            rows.push(<div key={`hdr-${i}`} style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{side === 'hitter' ? 'Batting' : 'Pitching'}</div>);
-                                                            lastSide = side;
-                                                        }
-                                                        const accentColor = isWin ? C.green : isLoss ? C.red : C.gray200;
-                                                        const rowBg = isWin ? 'rgba(22,163,74,0.06)' : isLoss ? 'rgba(220,38,38,0.06)' : 'transparent';
-                                                        rows.push(
-                                                            <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 46px 1fr', alignItems: 'center', borderLeft: `3px solid ${accentColor}`, borderRadius: '0 6px 6px 0', background: rowBg, padding: '5px 8px 5px 10px', marginBottom: 3 }}>
-                                                                <span style={{ textAlign: 'right', fontSize: 13, fontWeight: isWin ? 700 : 400, color: isWin ? '#166534' : isTie ? C.gray600 : C.gray400, lineHeight: 1, paddingRight: 8 }}>{fmtVal(cat.myValue, cat.label)}</span>
-                                                                <span style={{ textAlign: 'center', fontSize: 9, fontWeight: 800, color: C.gray400, letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1 }}>{cat.label}</span>
-                                                                <span style={{ textAlign: 'left', fontSize: 13, fontWeight: isLoss ? 700 : 400, color: isLoss ? '#991b1b' : isTie ? C.gray600 : C.gray400, lineHeight: 1, paddingLeft: 8 }}>{fmtVal(cat.oppValue, cat.label)}</span>
-                                                            </div>
-                                                        );
-                                                    });
-                                                    return <>{rows}</>;
-                                                })() : (
-                                                    <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
-                                                        <span style={{ fontSize: 15, fontWeight: 800, color: C.green }}>{closeness.wins}W</span>
-                                                        {closeness.ties > 0 && <span style={{ fontSize: 15, fontWeight: 800, color: C.gray400 }}>{closeness.ties}T</span>}
-                                                        <span style={{ fontSize: 15, fontWeight: 800, color: C.red }}>{closeness.losses}L</span>
+                                                <div style={{ height: 6, borderRadius: 3, background: C.gray100, overflow: 'hidden' }}>
+                                                    <div style={{ height: '100%', width: `${winProb}%`, borderRadius: 3, background: probColor, transition: 'width 0.4s ease' }} />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {closeness.type === 'categories' ? (
+                                            cats ? (() => {
+                                                const fmtVal = (v, label) => {
+                                                    if (v == null || v === '' || isNaN(Number(v))) return '—';
+                                                    const n = Number(v);
+                                                    if (['AVG','OBP','OPS','SLG'].includes(label)) return n.toFixed(3).replace(/^0\./, '.');
+                                                    if (['ERA','WHIP'].includes(label)) return n.toFixed(2);
+                                                    if (['IP'].includes(label)) return n.toFixed(1);
+                                                    return Number.isInteger(n) ? String(n) : n.toFixed(1);
+                                                };
+                                                const rows = [];
+                                                let lastSide = null;
+                                                cats.forEach((cat, i) => {
+                                                    const isWin = cat.result === 'win';
+                                                    const isLoss = cat.result === 'loss';
+                                                    const isTie = cat.result === 'tie';
+                                                    const side = cat.side || 'pitcher';
+                                                    if (side !== lastSide) {
+                                                        if (lastSide !== null) rows.push(<div key={`div-${i}`} style={{ height: 1, background: C.gray100, margin: '6px 0' }} />);
+                                                        rows.push(<div key={`hdr-${i}`} style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>{side === 'hitter' ? 'Batting' : 'Pitching'}</div>);
+                                                        lastSide = side;
+                                                    }
+                                                    rows.push(
+                                                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 46px 1fr', alignItems: 'center', borderLeft: `3px solid ${isWin ? C.green : isLoss ? C.red : C.gray200}`, borderRadius: '0 6px 6px 0', background: isWin ? 'rgba(22,163,74,0.06)' : isLoss ? 'rgba(220,38,38,0.06)' : 'transparent', padding: '5px 8px 5px 10px', marginBottom: 3 }}>
+                                                            <span style={{ textAlign: 'right', fontSize: 13, fontWeight: isWin ? 700 : 400, color: isWin ? '#166534' : isTie ? C.gray600 : C.gray400, lineHeight: 1, paddingRight: 8 }}>{fmtVal(cat.myValue, cat.label)}</span>
+                                                            <span style={{ textAlign: 'center', fontSize: 9, fontWeight: 800, color: C.gray400, letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1 }}>{cat.label}</span>
+                                                            <span style={{ textAlign: 'left', fontSize: 13, fontWeight: isLoss ? 700 : 400, color: isLoss ? '#991b1b' : isTie ? C.gray600 : C.gray400, lineHeight: 1, paddingLeft: 8 }}>{fmtVal(cat.oppValue, cat.label)}</span>
+                                                        </div>
+                                                    );
+                                                });
+                                                return <>{rows}</>;
+                                            })() : (
+                                                <div style={{ display: 'flex', justifyContent: 'center', gap: 10 }}>
+                                                    <span style={{ fontSize: 15, fontWeight: 800, color: C.green }}>{closeness.wins}W</span>
+                                                    {closeness.ties > 0 && <span style={{ fontSize: 15, fontWeight: 800, color: C.gray400 }}>{closeness.ties}T</span>}
+                                                    <span style={{ fontSize: 15, fontWeight: 800, color: C.red }}>{closeness.losses}L</span>
+                                                </div>
+                                            )
+                                        ) : (() => {
+                                            const myProj = parseFloat(lg.matchup.myProjected) || 0;
+                                            const oppProj = parseFloat(lg.matchup.oppProjected) || 0;
+                                            const myScore = parseFloat(lg.matchup.myScore) || 0;
+                                            const oppScore = parseFloat(lg.matchup.oppScore) || 0;
+                                            const projMargin = myProj - oppProj;
+                                            const total = myProj + oppProj;
+                                            const ratio = total > 0 ? projMargin / total : 0;
+                                            const ptWinProb = Math.round(100 / (1 + Math.exp(-8 * ratio)));
+                                            const ptProbColor = ptWinProb >= 60 ? C.green : ptWinProb <= 40 ? C.red : C.amber;
+                                            const lead = myScore - oppScore;
+                                            const leadLabel = lead > 0.01 ? 'Lead' : lead < -0.01 ? 'Deficit' : 'Tied';
+                                            const leadColor = lead > 0.01 ? C.green : lead < -0.01 ? C.red : C.gray600;
+                                            return (
+                                                <>
+                                                    <div style={{ marginBottom: 14 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+                                                            <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Win probability</span>
+                                                            <span style={{ fontSize: 18, fontWeight: 900, color: ptProbColor, lineHeight: 1, letterSpacing: '-0.03em' }}>{ptWinProb}%</span>
+                                                        </div>
+                                                        <div style={{ height: 6, borderRadius: 3, background: C.gray100, overflow: 'hidden' }}>
+                                                            <div style={{ height: '100%', width: `${ptWinProb}%`, borderRadius: 3, background: ptProbColor, transition: 'width 0.4s ease' }} />
+                                                        </div>
                                                     </div>
-                                                )
-                                            ) : (() => {
-                                                const myProj = parseFloat(lg.matchup.myProjected) || 0;
-                                                const oppProj = parseFloat(lg.matchup.oppProjected) || 0;
-                                                const myScore = parseFloat(lg.matchup.myScore) || 0;
-                                                const oppScore = parseFloat(lg.matchup.oppScore) || 0;
-                                                const projMargin = myProj - oppProj;
-                                                const total = myProj + oppProj;
-                                                const ratio = total > 0 ? projMargin / total : 0;
-                                                const ptWinProb = Math.round(100 / (1 + Math.exp(-8 * ratio)));
-                                                const ptProbColor = ptWinProb >= 60 ? C.green : ptWinProb <= 40 ? C.red : C.amber;
-                                                const lead = myScore - oppScore;
-                                                const leadLabel = lead > 0.01 ? 'Lead' : lead < -0.01 ? 'Deficit' : 'Tied';
-                                                const leadColor = lead > 0.01 ? C.green : lead < -0.01 ? C.red : C.gray600;
-                                                return (
-                                                    <>
-                                                        <div style={{ marginBottom: 14 }}>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
-                                                                <span style={{ fontSize: 10, fontWeight: 700, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Win probability</span>
-                                                                <span style={{ fontSize: 18, fontWeight: 900, color: ptProbColor, lineHeight: 1, letterSpacing: '-0.03em' }}>{ptWinProb}%</span>
+                                                    <div style={{ marginBottom: 12 }}>
+                                                        <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 6 }}>Projected Final</div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                            <div>
+                                                                <div style={{ fontSize: 22, fontWeight: 900, color: C.navy, lineHeight: 1, letterSpacing: '-0.03em' }}>{myProj.toFixed(1)}</div>
+                                                                <div style={{ fontSize: 10, fontWeight: 600, color: C.gray400, marginTop: 3 }}>My team</div>
                                                             </div>
-                                                            <div style={{ height: 6, borderRadius: 3, background: C.gray100, overflow: 'hidden' }}>
-                                                                <div style={{ height: '100%', width: `${ptWinProb}%`, borderRadius: 3, background: ptProbColor, transition: 'width 0.4s ease' }} />
+                                                            <div style={{ fontSize: 11, fontWeight: 700, color: C.gray300 }}>vs</div>
+                                                            <div style={{ textAlign: 'right' }}>
+                                                                <div style={{ fontSize: 22, fontWeight: 900, color: C.gray500, lineHeight: 1, letterSpacing: '-0.03em' }}>{oppProj.toFixed(1)}</div>
+                                                                <div style={{ fontSize: 10, fontWeight: 600, color: C.gray400, marginTop: 3 }}>Opponent</div>
                                                             </div>
                                                         </div>
-                                                        <div style={{ marginBottom: 12 }}>
-                                                            <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 6 }}>Projected Final</div>
-                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                                                <div>
-                                                                    <div style={{ fontSize: 22, fontWeight: 900, color: C.navy, lineHeight: 1, letterSpacing: '-0.03em' }}>{myProj.toFixed(1)}</div>
-                                                                    <div style={{ fontSize: 10, fontWeight: 600, color: C.gray400, marginTop: 3 }}>My team</div>
-                                                                </div>
-                                                                <div style={{ fontSize: 11, fontWeight: 700, color: C.gray300 }}>vs</div>
-                                                                <div style={{ textAlign: 'right' }}>
-                                                                    <div style={{ fontSize: 22, fontWeight: 900, color: C.gray500, lineHeight: 1, letterSpacing: '-0.03em' }}>{oppProj.toFixed(1)}</div>
-                                                                    <div style={{ fontSize: 10, fontWeight: 600, color: C.gray400, marginTop: 3 }}>Opponent</div>
-                                                                </div>
-                                                            </div>
+                                                    </div>
+                                                    <div style={{ borderTop: `1px solid ${C.gray100}`, paddingTop: 10 }}>
+                                                        <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 4 }}>Current {leadLabel}</div>
+                                                        <div style={{ fontSize: 20, fontWeight: 900, color: leadColor, lineHeight: 1, letterSpacing: '-0.03em' }}>
+                                                            {lead >= 0 ? '+' : ''}{lead.toFixed(2)}<span style={{ fontSize: 11, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
                                                         </div>
-                                                        <div style={{ borderTop: `1px solid ${C.gray100}`, paddingTop: 10 }}>
-                                                            <div style={{ fontSize: 9, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em', marginBottom: 4 }}>Current {leadLabel}</div>
-                                                            <div style={{ fontSize: 20, fontWeight: 900, color: leadColor, lineHeight: 1, letterSpacing: '-0.03em' }}>
-                                                                {lead >= 0 ? '+' : ''}{lead.toFixed(2)}<span style={{ fontSize: 11, fontWeight: 600, color: C.gray400, letterSpacing: 0 }}> pts</span>
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                );
-                                            })()}
-                                        </>
-                                    );
-                                })()}
-                            </div>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Footer: rank + record, with expand hint if applicable */}
                             <div style={{ borderTop: `1px solid ${C.gray100}`, background: '#f8fafc', display: 'flex' }}>
                                 {[
                                     { label: 'Rank', value: rankText },
@@ -3007,8 +3004,13 @@ export default function Dashboard({ api }) {
                                         <span style={{ fontSize: 15, fontWeight: 800, color: C.navy, lineHeight: 1, textAlign: 'center' }}>{value}</span>
                                     </div>
                                 ))}
+                                {hasDetails && (
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 14px', borderLeft: `1px solid ${C.gray100}` }}>
+                                        <span style={{ fontSize: 11, color: C.gray400, lineHeight: 1, transition: 'transform 0.2s', display: 'inline-block', transform: isExpanded ? 'rotate(-90deg)' : 'rotate(90deg)' }}>›</span>
+                                    </div>
+                                )}
                             </div>
-                        </a>
+                        </div>
                     )
                 })}
             </div>
