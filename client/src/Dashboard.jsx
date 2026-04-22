@@ -1394,56 +1394,60 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     const pillGames = showPrevDay ? [] : sortedTrackedGames
 
     const getEventTier = (event) => {
-        if (event.side === 'batter') {
-            if (event.eventType === 'home_run') return 'hr'
-            if (event.eventType === 'triple') return 'triple'
-            if (event.eventType === 'double') return 'double'
-            if (event.eventType === 'single') return 'single'
-        }
-        return 'default'
+        if (!event.impact || event.impact.length === 0) return 'neutral'
+
+        const isBad = event.impact.some(i =>
+            i.startsWith('-') ||
+            i.toLowerCase().includes('allowed') ||
+            i === 'CS' ||
+            (i === 'K' && event.side === 'batter')
+        )
+        if (isBad) return 'negative'
+
+        if (event.side === 'batter' && event.impact.includes('HR')) return 'epic'
+
+        return 'positive'
     }
 
     const TIER_STYLES = {
-        hr: {
-            bg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 60%, #fde68a 100%)',
-            border: '1px solid #fcd34d',
-            shadow: '0 4px 20px rgba(245,158,11,0.18)',
+        epic: {
+            bg: 'linear-gradient(to right, rgba(254,243,199,0.7), #ffffff)', // soft gold fade
+            borderLeft: '#f59e0b',
             badge: '⚡',
             badgeBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-            badgeColor: '#fff',
+            textColor: '#92400e',
             avatarSize: 40,
+            pillColor: '#d97706', pillBg: 'rgba(251,191,36,0.15)', pillBorder: 'rgba(251,191,36,0.3)',
+            isHR: true,
         },
-        triple: {
-            bg: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)',
-            border: `1px solid #c4b5fd`,
-            shadow: '0 3px 14px rgba(139,92,246,0.14)',
-            badge: '🔥',
-            badgeBg: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
-            badgeColor: '#fff',
+        positive: {
+            bg: 'linear-gradient(to right, rgba(220,252,231,0.5), #ffffff)', // soft green fade
+            borderLeft: '#22c55e',
+            badge: '📈',
+            badgeBg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
+            textColor: '#166534',
             avatarSize: 38,
+            pillColor: C.green, pillBg: 'rgba(34,197,94,0.12)', pillBorder: 'rgba(34,197,94,0.3)',
+            isHR: false,
         },
-        double: {
-            bg: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-            border: `1px solid #93c5fd`,
-            shadow: '0 3px 12px rgba(59,130,246,0.12)',
-            badge: '💥',
-            badgeBg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-            badgeColor: '#fff',
-            avatarSize: 36,
+        negative: {
+            bg: 'linear-gradient(to right, rgba(254,226,226,0.5), #ffffff)', // soft red fade
+            borderLeft: '#ef4444',
+            badge: '📉',
+            badgeBg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            textColor: '#991b1b',
+            avatarSize: 38,
+            pillColor: C.red, pillBg: 'rgba(239,68,68,0.12)', pillBorder: 'rgba(239,68,68,0.3)',
+            isHR: false,
         },
-        single: {
+        neutral: {
             bg: C.white,
-            border: `1px solid ${C.gray100}`,
-            shadow: 'none',
+            borderLeft: 'transparent',
             badge: null,
+            textColor: C.gray600,
             avatarSize: 36,
-        },
-        default: {
-            bg: C.white,
-            border: 'none',
-            shadow: 'none',
-            badge: null,
-            avatarSize: 36,
+            pillColor: C.gray500, pillBg: C.gray100, pillBorder: C.gray200,
+            isHR: false,
         },
     }
 
@@ -1454,17 +1458,17 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         const avatarUrl = event.imageUrl || imageMap[key1] || imageMap[key2] || imageMap[normName(event.playerName)]
         const game = gameByPk.get(String(event.gamePk))
         const tier = getEventTier(event)
-        const ts = TIER_STYLES[tier] || TIER_STYLES.default
-        const isHR = tier === 'hr'
+        const ts = TIER_STYLES[tier] || TIER_STYLES.neutral
+        const isHR = ts.isHR
 
         return (
             <div key={event.id} className="feed-event-row" style={{
                 animationDelay: `${Math.min(i * 35, 280)}ms`,
                 display: 'flex', alignItems: 'center', gap: 11,
-                padding: isHR ? '13px 14px' : '11px 14px',
+                padding: '11px 14px 11px 10px',
+                borderLeft: `4px solid ${ts.borderLeft}`,
                 borderTop: i > 0 ? `1px solid ${C.gray50}` : 'none',
                 background: ts.bg,
-                boxShadow: ts.shadow,
             }}>
                 {/* Avatar with optional tier badge */}
                 <div style={{ position: 'relative', flexShrink: 0 }}>
@@ -1475,7 +1479,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             width: 18, height: 18, borderRadius: '50%',
                             background: ts.badgeBg,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 10, border: '1.5px solid #fff',
+                            fontSize: 10, border: '1.5px solid #fff', color: '#fff',
                             boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
                         }}>{ts.badge}</span>
                     )}
@@ -1508,7 +1512,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                     </div>
                     {/* Summary */}
                     <div style={{ fontSize: isHR ? 13 : 12, fontWeight: isHR ? 700 : 600,
-                        color: isHR ? '#92400e' : C.gray700, lineHeight: 1.3 }}>
+                        color: ts.textColor, lineHeight: 1.3 }}>
                         {event.summary}
                     </div>
                 </div>
@@ -1517,19 +1521,16 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                 <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 52 }}>
                     {event.impact?.length > 0 && (() => {
                         const primary = event.impact[0]
-                        const bad = primary.startsWith('-') || primary.toLowerCase().includes('allowed')
-                        const statColor = bad ? C.red : (isHR ? '#d97706' : C.green)
-                        const statBg = bad ? C.redLight : (isHR ? 'rgba(251,191,36,0.15)' : C.greenLight)
                         return (
                             <div style={{ marginBottom: 3 }}>
                                 <span style={{
                                     display: 'inline-block',
                                     fontWeight: 900, fontSize: isHR ? 15 : 13,
-                                    color: statColor, letterSpacing: '-0.02em',
-                                    background: statBg,
+                                    color: ts.pillColor, letterSpacing: '-0.02em',
+                                    background: ts.pillBg,
                                     padding: isHR ? '3px 8px' : '2px 7px',
                                     borderRadius: 8,
-                                    border: `1.5px solid ${bad ? 'rgba(220,38,38,0.15)' : (isHR ? 'rgba(251,191,36,0.3)' : 'rgba(34,197,94,0.2)')}`,
+                                    border: `1.5px solid ${ts.pillBorder}`,
                                 }}>
                                     {primary}
                                 </span>
