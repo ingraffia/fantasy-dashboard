@@ -1443,49 +1443,49 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
 
     const TIER_STYLES = {
         mythic: {
-            bg: 'linear-gradient(to right, rgba(252,231,243,0.8), rgba(252,231,243,0.2) 65%, #ffffff)',
-            borderLeft: '#ec4899',
+            bg: 'linear-gradient(to right, rgba(167,243,208,0.7), rgba(209,250,229,0.3) 65%, #ffffff)', // heavy green fade
+            borderLeft: '#059669', // emerald-600
             badge: '🌟',
-            badgeBg: 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
-            textColor: '#831843',
+            badgeBg: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', // emerald-500 to emerald-700
+            textColor: '#064e3b', // emerald-900
             avatarSize: 36,
-            pillColor: '#be185d', pillBg: 'rgba(236,72,153,0.15)', pillBorder: 'rgba(236,72,153,0.3)',
+            pillColor: '#047857', pillBg: 'rgba(5,150,105,0.18)', pillBorder: 'rgba(5,150,105,0.4)',
         },
         legendary: {
-            bg: 'linear-gradient(to right, rgba(254,243,199,0.8), rgba(254,243,199,0.2) 60%, #ffffff)',
-            borderLeft: '#f59e0b',
+            bg: 'linear-gradient(to right, rgba(209,250,229,0.6), rgba(209,250,229,0.15) 60%, #ffffff)', // soft green fade
+            borderLeft: '#10b981', // emerald-500
             badge: '⚡',
-            badgeBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-            textColor: '#92400e',
+            badgeBg: 'linear-gradient(135deg, #34d399 0%, #059669 100%)', // emerald-400 to emerald-600
+            textColor: '#065f46', // emerald-800
             avatarSize: 36,
-            pillColor: '#d97706', pillBg: 'rgba(251,191,36,0.15)', pillBorder: 'rgba(251,191,36,0.3)',
+            pillColor: '#059669', pillBg: 'rgba(16,185,129,0.12)', pillBorder: 'rgba(16,185,129,0.3)',
         },
         epic: {
-            bg: 'linear-gradient(to right, rgba(243,232,255,0.7), rgba(243,232,255,0.2) 60%, #ffffff)',
-            borderLeft: '#a855f7',
+            bg: 'linear-gradient(to right, rgba(243,232,255,0.7), rgba(243,232,255,0.2) 60%, #ffffff)', // soft purple
+            borderLeft: '#a855f7', // purple-500
             badge: '🔥',
-            badgeBg: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)',
-            textColor: '#6b21a8',
+            badgeBg: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', // purple-500 to purple-700
+            textColor: '#6b21a8', // purple-800
             avatarSize: 36,
             pillColor: '#7e22ce', pillBg: 'rgba(168,85,247,0.12)', pillBorder: 'rgba(168,85,247,0.25)',
         },
         great: {
-            bg: 'linear-gradient(to right, rgba(224,242,254,0.6), rgba(224,242,254,0.15) 60%, #ffffff)',
-            borderLeft: '#3b82f6',
+            bg: 'linear-gradient(to right, rgba(219,234,254,0.6), rgba(219,234,254,0.15) 60%, #ffffff)', // soft blue
+            borderLeft: '#3b82f6', // blue-500
             badge: '💥',
-            badgeBg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-            textColor: '#1e40af',
+            badgeBg: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', // blue-500 to blue-700
+            textColor: '#1e3a8a', // blue-900
             avatarSize: 36,
-            pillColor: '#2563eb', pillBg: 'rgba(59,130,246,0.12)', pillBorder: 'rgba(59,130,246,0.25)',
+            pillColor: '#1d4ed8', pillBg: 'rgba(59,130,246,0.12)', pillBorder: 'rgba(59,130,246,0.25)',
         },
         good: {
-            bg: 'linear-gradient(to right, rgba(220,252,231,0.5), #ffffff)',
-            borderLeft: '#22c55e',
+            bg: 'linear-gradient(to right, rgba(224,242,254,0.5), #ffffff)', // soft cyan/sky
+            borderLeft: '#0ea5e9', // sky-500
             badge: '⬆',
-            badgeBg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-            textColor: '#166534',
+            badgeBg: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)', // sky-400 to sky-600
+            textColor: '#0c4a6e', // sky-900
             avatarSize: 36,
-            pillColor: C.green, pillBg: 'rgba(34,197,94,0.12)', pillBorder: 'rgba(34,197,94,0.3)',
+            pillColor: '#0284c7', pillBg: 'rgba(14,165,233,0.12)', pillBorder: 'rgba(14,165,233,0.3)',
         },
         bad: {
             bg: 'linear-gradient(to right, rgba(254,226,226,0.4), #ffffff)',
