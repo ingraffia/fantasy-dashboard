@@ -304,57 +304,47 @@ function RankBadge({ rank }) {
 }
 
 function PlayerAvatar({ imageUrl, name, size = 36 }) {
-    const [loaded, setLoaded] = useState(false)
     const [failed, setFailed] = useState(false)
+    const prevUrl = useRef(null)
 
-    useEffect(() => {
-        setLoaded(false)
-        setFailed(false)
-    }, [imageUrl])
-
-    const betterUrl = getHighResUrl(imageUrl);
+    const betterUrl = getHighResUrl(imageUrl)
+    if (prevUrl.current !== betterUrl) {
+        prevUrl.current = betterUrl
+        failed && setFailed(false)
+    }
 
     const initials = name?.trim()?.charAt(0)?.toUpperCase() || '?'
-    const fallback = (
-        <div style={{
-            width: size,
-            height: size,
-            borderRadius: '50%',
-            background: 'linear-gradient(145deg, rgba(226,232,240,0.95), rgba(203,213,225,0.82))',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: Math.max(12, Math.round(size * 0.34)),
-            color: C.gray600,
-            fontWeight: 700,
-            boxShadow: '0 6px 16px rgba(15,23,42,0.08)',
-            border: '1px solid rgba(255,255,255,0.85)',
-        }}>
-            {initials}
-        </div>
-    )
-
-    if (!betterUrl || failed) return fallback
 
     return (
-        <img
-            src={betterUrl}
-            alt={name || 'Player'}
-            onLoad={() => setLoaded(true)}
-            onError={() => setFailed(true)}
-            style={{
-                width: size,
-                height: size,
+        <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+            {/* Initials always visible — image loads over the top of it */}
+            <div style={{
+                position: 'absolute', inset: 0,
                 borderRadius: '50%',
-                objectFit: 'cover',
-                objectPosition: 'top center',
-                display: loaded ? 'block' : 'none',
-                background: C.gray50,
-                border: `1px solid ${C.gray200}`,
-                flexShrink: 0
-            }}
-        />
+                background: 'linear-gradient(145deg, rgba(226,232,240,0.95), rgba(203,213,225,0.82))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: Math.max(12, Math.round(size * 0.34)),
+                color: C.gray600, fontWeight: 700,
+                boxShadow: '0 6px 16px rgba(15,23,42,0.08)',
+                border: '1px solid rgba(255,255,255,0.85)',
+            }}>
+                {initials}
+            </div>
+            {betterUrl && !failed && (
+                <img
+                    src={betterUrl}
+                    alt={name || 'Player'}
+                    onError={() => setFailed(true)}
+                    style={{
+                        position: 'absolute', inset: 0,
+                        width: size, height: size,
+                        borderRadius: '50%',
+                        objectFit: 'cover', objectPosition: 'top center',
+                        border: `1px solid ${C.gray200}`,
+                    }}
+                />
+            )}
+        </div>
     )
 }
 
@@ -1262,6 +1252,8 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
 
 // ─── Live Feed ───────────────────────────────────────────────────────────────
 
+const FEED_CACHE_KEY = 'live_feed_cache_v2'
+
 const FEED_SAMPLE_EVENTS = (() => {
     const now = Date.now()
     const ago = (m) => new Date(now - m * 60000).toISOString()
@@ -1309,6 +1301,14 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     const [lastUpdated, setLastUpdated] = useState(null)
     const [groupBy, setGroupBy] = useState('all')
     const [filterGamePk, setFilterGamePk] = useState(null)
+    const [prevDayEvents, setPrevDayEvents] = useState(() => {
+        try {
+            const stored = JSON.parse(localStorage.getItem(FEED_CACHE_KEY) || 'null')
+            if (!stored?.events?.length) return null
+            if (stored.date === getLocalDateKey()) return null
+            return stored.events
+        } catch { return null }
+    })
 
     const trackedRosterPlayers = useMemo(() => {
         const seen = new Map()
@@ -1371,9 +1371,14 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                 gamePks: startedTrackedGames.map((game) => game.gamePk),
                 rosterPlayers: trackedRosterPlayers,
             }, { withCredentials: true })
-            setEvents(response.data?.events || [])
+            const fetched = response.data?.events || []
+            setEvents(fetched)
             setLastUpdated(new Date())
             setError(null)
+            if (fetched.length > 0) {
+                try { localStorage.setItem(FEED_CACHE_KEY, JSON.stringify({ date: getLocalDateKey(), events: fetched })) } catch {}
+                setPrevDayEvents(null)
+            }
         } catch (e) {
             setError(e.response?.data?.error || e.message)
         } finally {
@@ -1411,14 +1416,17 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
 
     const totalLiveGames = trackedGames.filter((game) => game.isLive).length
 
-    const isSampleMode = events.length === 0 && !loading
+    const showPrevDay = Boolean(prevDayEvents?.length && events.length === 0 && !loading && startedTrackedGames.length === 0)
+    const isSampleMode = !showPrevDay && events.length === 0 && !loading
 
     const sortedAllEvents = useMemo(() => {
-        const base = isSampleMode ? FEED_SAMPLE_EVENTS : [...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        let base
+        if (showPrevDay) base = prevDayEvents
+        else if (isSampleMode) base = FEED_SAMPLE_EVENTS
+        else base = [...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         return filterGamePk ? base.filter(e => String(e.gamePk) === String(filterGamePk)) : base
-    }, [events, isSampleMode, filterGamePk])
+    }, [events, showPrevDay, prevDayEvents, isSampleMode, filterGamePk])
 
-    // sample games for the pill row when in sample mode
     const sampleGames = useMemo(() => [
         { gamePk: 9001, awayTeam: 'SF', homeTeam: 'AZ', awayScore: 1, homeScore: 3, isLive: true, isFinal: false, inning: 6, inningHalf: 'Bottom', outs: 1 },
         { gamePk: 9002, awayTeam: 'NYY', homeTeam: 'ATL', awayScore: 4, homeScore: 2, isLive: true, isFinal: false, inning: 3, inningHalf: 'Top', outs: 0 },
@@ -1432,7 +1440,10 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         return m
     }, [games, isSampleMode, sampleGames])
 
-    const pillGames = isSampleMode ? sampleGames : sortedTrackedGames
+    // Prev day: no pills (we don't have game state for yesterday's games)
+    const pillGames = (showPrevDay || isSampleMode && !sortedTrackedGames.length)
+        ? (isSampleMode ? sampleGames : [])
+        : sortedTrackedGames
 
     const getEventTier = (event) => {
         if (event.side === 'batter') {
@@ -1760,10 +1771,19 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             )}
 
             {/* ── All-events flat feed ── */}
-            {groupBy === 'all' && (events.length > 0 || isSampleMode) && (
+            {groupBy === 'all' && (events.length > 0 || isSampleMode || showPrevDay) && (
                 <div style={{ background: C.white, borderRadius: 16,
                     border: `1px solid ${C.gray100}`, overflow: 'hidden',
                     boxShadow: '0 4px 20px rgba(15,23,42,0.05)' }}>
+                    {showPrevDay && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px',
+                            background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                            borderBottom: `1px solid #fde68a` }}>
+                            <span style={{ fontSize: 11 }}>📅</span>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>Yesterday</span>
+                            <span style={{ fontSize: 11, color: '#b45309' }}>— will update when today's games begin</span>
+                        </div>
+                    )}
                     {isSampleMode && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px',
                             background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
