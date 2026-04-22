@@ -695,25 +695,27 @@ input:focus, select:focus {
   from { opacity: 0; transform: translateX(-10px) scale(0.97); }
   to   { opacity: 1; transform: none; }
 }
-@keyframes liveGlowPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(5,150,105,0.55), 0 6px 20px rgba(15,23,42,0.12); }
-  55%       { box-shadow: 0 0 0 9px rgba(5,150,105,0), 0 6px 20px rgba(15,23,42,0.18); }
-}
 @keyframes refreshSpin {
   to { transform: rotate(360deg); }
 }
-@keyframes shimmerSweep {
-  0%   { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
+@keyframes btnShimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
 }
 .feed-event-row {
   animation: feedSlideIn 280ms var(--ease-out) both;
 }
 .refresh-btn--live {
-  animation: liveGlowPulse 2.2s ease-in-out infinite;
+  background: linear-gradient(105deg,
+    #d1fae5 0%, #6ee7b7 30%, #ffffff 50%, #6ee7b7 70%, #d1fae5 100%) !important;
+  background-size: 300% 100% !important;
+  animation: btnShimmer 2.8s linear infinite;
 }
 .refresh-btn--spinning .refresh-icon {
   animation: refreshSpin 0.65s linear infinite;
+}
+.refresh-btn--live:hover {
+  animation-duration: 1.4s;
 }
 
 @media (prefers-reduced-motion: reduce) {

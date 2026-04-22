@@ -632,13 +632,14 @@ function getFeedPlayer(feedPlayers = {}, playerId) {
     return feedPlayers[`ID${playerId}`] || feedPlayers[playerId] || null;
 }
 
-function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail, impact = [], variant, playerId }) {
+function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail, impact = [], variant, playerId, eventType, opponentName }) {
     if (!rosterPlayer || !summary) return null;
 
     const about = play?.about || {};
     const result = play?.result || {};
     const awayScore = result.awayScore ?? null;
     const homeScore = result.homeScore ?? null;
+    const side = variant?.startsWith('pitcher') ? 'pitcher' : 'batter';
 
     return {
         id: `${gamePk}-${about.atBatIndex ?? 0}-${playerId || rosterPlayer.playerKey || rosterPlayer.name}-${variant || 'event'}`,
@@ -656,6 +657,9 @@ function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail
         summary,
         detail: detail || result.description || null,
         impact,
+        eventType: eventType || null,
+        side,
+        opponentName: opponentName || null,
         awayTeam: game.awayTeam,
         homeTeam: game.homeTeam,
         gameStatus: game.detailedStatus || game.status || null,
@@ -741,26 +745,35 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
                 impact: batterImpact,
                 variant: `batter-${eventType || 'play'}`,
                 playerId: batterId,
+                eventType: eventType || null,
+                opponentName: pitcherFeedPlayer?.fullName || null,
             });
             if (batterEvent) events.push(batterEvent);
         }
 
         const pitcherImpact = [];
         let pitcherSummary = null;
+        const batterFullName = batterFeedPlayer?.fullName || null;
 
         if (eventType === 'strikeout') {
-            pitcherSummary = 'records a strikeout';
+            pitcherSummary = batterFullName ? `strikes out ${batterFullName}` : 'records a strikeout';
             pitcherImpact.push('+1 K');
         } else if (eventType === 'home_run') {
-            pitcherSummary = runsScored > 1 ? `allows a ${runsScored}-run homer` : 'allows a homer';
+            pitcherSummary = batterFullName
+                ? `allows a ${runsScored > 1 ? `${runsScored}-run ` : ''}homer to ${batterFullName}`
+                : runsScored > 1 ? `allows a ${runsScored}-run homer` : 'allows a homer';
             pitcherImpact.push('HR allowed');
-        } else if (eventType === 'single' || eventType === 'double' || eventType === 'triple') {
-            pitcherSummary = `allows a ${eventType}`;
+        } else if (eventType === 'single') {
+            pitcherSummary = batterFullName ? `allows a single to ${batterFullName}` : 'allows a single';
+        } else if (eventType === 'double') {
+            pitcherSummary = batterFullName ? `allows a double to ${batterFullName}` : 'allows a double';
+        } else if (eventType === 'triple') {
+            pitcherSummary = batterFullName ? `allows a triple to ${batterFullName}` : 'allows a triple';
         } else if (eventType === 'walk' || eventType === 'intent_walk') {
-            pitcherSummary = 'issues a walk';
+            pitcherSummary = batterFullName ? `walks ${batterFullName}` : 'issues a walk';
             pitcherImpact.push('BB allowed');
         } else if (eventType === 'hit_by_pitch') {
-            pitcherSummary = 'hits a batter';
+            pitcherSummary = batterFullName ? `hits ${batterFullName}` : 'hits a batter';
             pitcherImpact.push('HBP allowed');
         } else if (runsScored > 0) {
             pitcherSummary = `allows ${pluralize(runsScored, 'run')}`;
@@ -768,7 +781,7 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
 
         if (pitcherSummary) {
             if ((eventType === 'single' || eventType === 'double' || eventType === 'triple') && runsScored > 0) {
-                pitcherSummary = `${pitcherSummary} and ${pluralize(runsScored, 'run')}`;
+                pitcherSummary = `${pitcherSummary} (${pluralize(runsScored, 'run')} score)`;
             }
             if (earnedRuns > 0 && runsScored > 0) pitcherImpact.push(`-${earnedRuns} ER`);
 
@@ -782,6 +795,8 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
                 impact: pitcherImpact,
                 variant: `pitcher-${eventType || 'play'}`,
                 playerId: pitcherFeedPlayer?.id || play?.matchup?.pitcher?.id || null,
+                eventType: eventType || null,
+                opponentName: batterFullName,
             });
             if (pitcherEvent) events.push(pitcherEvent);
         }

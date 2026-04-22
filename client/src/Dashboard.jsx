@@ -1382,25 +1382,92 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         return m
     }, [games])
 
+    const getEventTier = (event) => {
+        if (event.side === 'batter') {
+            if (event.eventType === 'home_run') return 'hr'
+            if (event.eventType === 'triple') return 'triple'
+            if (event.eventType === 'double') return 'double'
+            if (event.eventType === 'single') return 'single'
+        }
+        return 'default'
+    }
+
+    const TIER_STYLES = {
+        hr: {
+            bg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 60%, #fde68a 100%)',
+            border: '1px solid #fcd34d',
+            shadow: '0 4px 20px rgba(245,158,11,0.18)',
+            badge: '⚡',
+            badgeBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            badgeColor: '#fff',
+            avatarSize: 40,
+        },
+        triple: {
+            bg: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)',
+            border: `1px solid #c4b5fd`,
+            shadow: '0 3px 14px rgba(139,92,246,0.14)',
+            badge: '🔥',
+            badgeBg: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+            badgeColor: '#fff',
+            avatarSize: 38,
+        },
+        double: {
+            bg: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+            border: `1px solid #93c5fd`,
+            shadow: '0 3px 12px rgba(59,130,246,0.12)',
+            badge: '💥',
+            badgeBg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+            badgeColor: '#fff',
+            avatarSize: 36,
+        },
+        single: {
+            bg: C.white,
+            border: `1px solid ${C.gray100}`,
+            shadow: 'none',
+            badge: null,
+            avatarSize: 36,
+        },
+        default: {
+            bg: C.white,
+            border: 'none',
+            shadow: 'none',
+            badge: null,
+            avatarSize: 36,
+        },
+    }
+
     const renderEventRow = (event, i, showTeam = true) => {
         const playerKey = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
         const avatarUrl = imageMap[playerKey] || imageMap[normName(event.playerName)] || event.imageUrl
         const game = gameByPk.get(String(event.gamePk))
-        const isBad = event.impact?.some(x => x.startsWith('-') || x === 'CS' || x.includes('allowed'))
-        const accentColor = isBad ? C.red : event.isScoringPlay ? C.accent : C.green
+        const tier = getEventTier(event)
+        const ts = TIER_STYLES[tier] || TIER_STYLES.default
+        const isHR = tier === 'hr'
+
         return (
             <div key={event.id} className="feed-event-row" style={{
                 animationDelay: `${Math.min(i * 35, 280)}ms`,
                 display: 'flex', alignItems: 'center', gap: 11,
-                padding: '11px 14px 11px 0',
-                marginLeft: 14,
+                padding: isHR ? '13px 14px' : '11px 14px',
                 borderTop: i > 0 ? `1px solid ${C.gray50}` : 'none',
-                borderLeft: `3px solid ${accentColor}`,
-                paddingLeft: 12,
-                background: C.white,
-                transition: 'background 0.15s ease',
+                background: ts.bg,
+                boxShadow: ts.shadow,
             }}>
-                <PlayerAvatar imageUrl={avatarUrl} name={event.playerName} size={36} />
+                {/* Avatar with optional tier badge */}
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <PlayerAvatar imageUrl={avatarUrl} name={event.playerName} size={ts.avatarSize} />
+                    {ts.badge && (
+                        <span style={{
+                            position: 'absolute', bottom: -3, right: -4,
+                            width: 18, height: 18, borderRadius: '50%',
+                            background: ts.badgeBg,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 10, border: '1.5px solid #fff',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+                        }}>{ts.badge}</span>
+                    )}
+                </div>
+
                 <div style={{ flex: 1, minWidth: 0 }}>
                     {/* Name row */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 2, flexWrap: 'wrap' }}>
@@ -1409,7 +1476,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             disabled={!event.playerKey}
                             style={{ border: 'none', background: 'transparent', padding: 0, margin: 0,
                                 cursor: event.playerKey ? 'pointer' : 'default',
-                                fontWeight: 800, fontSize: 13, color: C.navy, letterSpacing: '-0.01em' }}>
+                                fontWeight: 800, fontSize: isHR ? 14 : 13, color: C.navy, letterSpacing: '-0.01em' }}>
                             {event.playerName}
                         </button>
                         {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
@@ -1427,7 +1494,8 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                         )}
                     </div>
                     {/* Summary */}
-                    <div style={{ fontSize: 12, fontWeight: 600, color: C.gray700, lineHeight: 1.3,
+                    <div style={{ fontSize: isHR ? 13 : 12, fontWeight: isHR ? 700 : 600,
+                        color: isHR ? '#92400e' : C.gray700, lineHeight: 1.3,
                         marginBottom: event.impact?.length ? 5 : 0 }}>
                         {event.summary}
                     </div>
@@ -1435,7 +1503,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                     {event.impact?.length > 0 && (
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                             {event.impact.map((item) => {
-                                const bad = item.startsWith('-') || item === 'CS' || item.includes('allowed')
+                                const bad = item.startsWith('-') || item.includes('allowed')
                                 return (
                                     <span key={`${event.id}-${item}`} style={{ fontSize: 10, fontWeight: 800,
                                         color: bad ? C.red : C.green,
@@ -1449,10 +1517,12 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                         </div>
                     )}
                 </div>
+
                 {/* Right meta */}
                 <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 38 }}>
                     {event.inningLabel && (
-                        <div style={{ fontSize: 10, fontWeight: 700, color: accentColor, whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: C.gray500,
+                            whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
                             {event.inningLabel}
                         </div>
                     )}
