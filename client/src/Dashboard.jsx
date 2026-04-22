@@ -305,13 +305,11 @@ function RankBadge({ rank }) {
 
 function PlayerAvatar({ imageUrl, name, size = 36 }) {
     const [failed, setFailed] = useState(false)
-    const prevUrl = useRef(null)
-
     const betterUrl = getHighResUrl(imageUrl)
-    if (prevUrl.current !== betterUrl) {
-        prevUrl.current = betterUrl
-        failed && setFailed(false)
-    }
+
+    useEffect(() => {
+        setFailed(false)
+    }, [betterUrl])
 
     const initials = name?.trim()?.charAt(0)?.toUpperCase() || '?'
 
@@ -1500,8 +1498,10 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     }
 
     const renderEventRow = (event, i, showTeam = true) => {
-        const playerKey = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
-        const avatarUrl = imageMap[playerKey] || imageMap[normName(event.playerName)] || event.imageUrl
+        // Prefer imageUrl on the event (set directly from roster player); fall back to imageMap with both key forms
+        const key1 = playerIdentityKey({ name: event.playerName, proTeam: event.playerTeam })
+        const key2 = `${normName(event.playerName)}::${normalizeClientTeamAbbr(event.playerTeam)}`
+        const avatarUrl = event.imageUrl || imageMap[key1] || imageMap[key2] || imageMap[normName(event.playerName)]
         const game = gameByPk.get(String(event.gamePk))
         const tier = getEventTier(event)
         const ts = TIER_STYLES[tier] || TIER_STYLES.default
@@ -1558,31 +1558,40 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                     </div>
                     {/* Summary */}
                     <div style={{ fontSize: isHR ? 13 : 12, fontWeight: isHR ? 700 : 600,
-                        color: isHR ? '#92400e' : C.gray700, lineHeight: 1.3,
-                        marginBottom: event.impact?.length ? 5 : 0 }}>
+                        color: isHR ? '#92400e' : C.gray700, lineHeight: 1.3 }}>
                         {event.summary}
                     </div>
-                    {/* Impact pills */}
-                    {event.impact?.length > 0 && (
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                            {event.impact.map((item) => {
-                                const bad = item.startsWith('-') || item.includes('allowed')
-                                return (
-                                    <span key={`${event.id}-${item}`} style={{ fontSize: 10, fontWeight: 800,
-                                        color: bad ? C.red : C.green,
-                                        background: bad ? C.redLight : C.greenLight,
-                                        padding: '2px 7px', borderRadius: 999,
-                                        letterSpacing: '-0.01em' }}>
-                                        {item}
-                                    </span>
-                                )
-                            })}
-                        </div>
-                    )}
                 </div>
 
-                {/* Right meta */}
-                <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 38 }}>
+                {/* Right meta — primary stat + inning + time */}
+                <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 52 }}>
+                    {event.impact?.length > 0 && (() => {
+                        const primary = event.impact[0]
+                        const bad = primary.startsWith('-') || primary.toLowerCase().includes('allowed')
+                        const statColor = bad ? C.red : (isHR ? '#d97706' : C.green)
+                        const statBg = bad ? C.redLight : (isHR ? 'rgba(251,191,36,0.15)' : C.greenLight)
+                        return (
+                            <div style={{ marginBottom: 3 }}>
+                                <span style={{
+                                    display: 'inline-block',
+                                    fontWeight: 900, fontSize: isHR ? 15 : 13,
+                                    color: statColor, letterSpacing: '-0.02em',
+                                    background: statBg,
+                                    padding: isHR ? '3px 8px' : '2px 7px',
+                                    borderRadius: 8,
+                                    border: `1.5px solid ${bad ? 'rgba(220,38,38,0.15)' : (isHR ? 'rgba(251,191,36,0.3)' : 'rgba(34,197,94,0.2)')}`,
+                                }}>
+                                    {primary}
+                                </span>
+                                {event.impact.length > 1 && (
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: C.gray500,
+                                        marginTop: 2, lineHeight: 1.2 }}>
+                                        {event.impact.slice(1).join(' · ')}
+                                    </div>
+                                )}
+                            </div>
+                        )
+                    })()}
                     {event.inningLabel && (
                         <div style={{ fontSize: 10, fontWeight: 700, color: C.gray500,
                             whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
