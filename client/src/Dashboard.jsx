@@ -1433,9 +1433,8 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '⚡',
             badgeBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
             textColor: '#92400e',
-            avatarSize: 42,
+            avatarSize: 36,
             pillColor: '#d97706', pillBg: 'rgba(251,191,36,0.15)', pillBorder: 'rgba(251,191,36,0.3)',
-            isHighlight: true,
         },
         epic: {
             bg: 'linear-gradient(to right, rgba(243,232,255,0.7), rgba(243,232,255,0.2) 60%, #ffffff)',
@@ -1443,9 +1442,8 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '🔥',
             badgeBg: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)',
             textColor: '#6b21a8',
-            avatarSize: 40,
+            avatarSize: 36,
             pillColor: '#7e22ce', pillBg: 'rgba(168,85,247,0.12)', pillBorder: 'rgba(168,85,247,0.25)',
-            isHighlight: true,
         },
         great: {
             bg: 'linear-gradient(to right, rgba(224,242,254,0.6), rgba(224,242,254,0.15) 60%, #ffffff)',
@@ -1453,9 +1451,8 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '💥',
             badgeBg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
             textColor: '#1e40af',
-            avatarSize: 38,
+            avatarSize: 36,
             pillColor: '#2563eb', pillBg: 'rgba(59,130,246,0.12)', pillBorder: 'rgba(59,130,246,0.25)',
-            isHighlight: false,
         },
         good: {
             bg: 'linear-gradient(to right, rgba(220,252,231,0.5), #ffffff)',
@@ -1465,7 +1462,6 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             textColor: '#166534',
             avatarSize: 36,
             pillColor: C.green, pillBg: 'rgba(34,197,94,0.12)', pillBorder: 'rgba(34,197,94,0.3)',
-            isHighlight: false,
         },
         bad: {
             bg: 'linear-gradient(to right, rgba(254,226,226,0.4), #ffffff)',
@@ -1475,7 +1471,6 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             textColor: '#991b1b',
             avatarSize: 36,
             pillColor: C.red, pillBg: 'rgba(239,68,68,0.12)', pillBorder: 'rgba(239,68,68,0.3)',
-            isHighlight: false,
         },
         terrible: {
             bg: 'linear-gradient(to right, rgba(254,204,204,0.6), rgba(254,226,226,0.2) 60%, #ffffff)',
@@ -1483,9 +1478,8 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '⚠️',
             badgeBg: 'linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)',
             textColor: '#7f1d1d',
-            avatarSize: 38,
+            avatarSize: 36,
             pillColor: '#b91c1c', pillBg: 'rgba(239,68,68,0.25)', pillBorder: 'rgba(239,68,68,0.4)',
-            isHighlight: true,
         },
         neutral: {
             bg: C.white,
@@ -1494,7 +1488,6 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             textColor: C.gray600,
             avatarSize: 36,
             pillColor: C.gray500, pillBg: C.gray100, pillBorder: C.gray200,
-            isHighlight: false,
         },
     }
 
@@ -1506,7 +1499,6 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         const game = gameByPk.get(String(event.gamePk))
         const tier = getEventTier(event)
         const ts = TIER_STYLES[tier] || TIER_STYLES.neutral
-        const isHighlight = ts.isHighlight
 
         return (
             <div key={event.id} className="feed-event-row" style={{
@@ -1540,7 +1532,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             disabled={!event.playerKey}
                             style={{ border: 'none', background: 'transparent', padding: 0, margin: 0,
                                 cursor: event.playerKey ? 'pointer' : 'default',
-                                fontWeight: 800, fontSize: isHighlight ? 14 : 13, color: C.navy, letterSpacing: '-0.01em' }}>
+                                fontWeight: 800, fontSize: 13, color: C.navy, letterSpacing: '-0.01em' }}>
                             {event.playerName}
                         </button>
                         {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
@@ -1558,7 +1550,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                         )}
                     </div>
                     {/* Summary */}
-                    <div style={{ fontSize: isHighlight ? 13 : 12, fontWeight: isHighlight ? 700 : 600,
+                    <div style={{ fontSize: 12, fontWeight: 600,
                         color: ts.textColor, lineHeight: 1.3 }}>
                         {event.summary}
                     </div>
@@ -1572,10 +1564,10 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             <div style={{ marginBottom: 3 }}>
                                 <span style={{
                                     display: 'inline-block',
-                                    fontWeight: 900, fontSize: isHighlight ? 15 : 13,
+                                    fontWeight: 900, fontSize: 13,
                                     color: ts.pillColor, letterSpacing: '-0.02em',
                                     background: ts.pillBg,
-                                    padding: isHighlight ? '3px 8px' : '2px 7px',
+                                    padding: '2px 7px',
                                     borderRadius: 8,
                                     border: `1.5px solid ${ts.pillBorder}`,
                                 }}>
