@@ -727,6 +727,8 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
             batterSummary = 'reaches on an error';
         } else if (result.rbi > 0) {
             batterSummary = result.event ? String(result.event).toLowerCase() : 'drives in a run';
+        } else if (['field_out', 'force_out', 'grounded_into_dp', 'double_play', 'strikeout_double_play', 'fielders_choice', 'fielders_choice_out', 'triple_play', 'batter_interference', 'catcher_interf', 'fan_interference'].includes(eventType)) {
+            batterSummary = result.event ? String(result.event).toLowerCase() : 'makes an out';
         }
 
         if (batterSummary) {
@@ -777,6 +779,19 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
             pitcherImpact.push('HBP allowed');
         } else if (runsScored > 0) {
             pitcherSummary = `allows ${pluralize(runsScored, 'run')}`;
+        } else if (['field_out', 'force_out', 'grounded_into_dp', 'double_play', 'strikeout_double_play', 'fielders_choice', 'fielders_choice_out', 'triple_play', 'batter_interference', 'catcher_interf', 'fan_interference'].includes(eventType)) {
+            let action = 'an out';
+            if (result.event) {
+                const eventLower = String(result.event).toLowerCase();
+                if (eventLower.includes('groundout') || eventLower.includes('ground out')) action = 'a groundout';
+                else if (eventLower.includes('flyout') || eventLower.includes('fly out')) action = 'a flyout';
+                else if (eventLower.includes('pop out') || eventLower.includes('popout')) action = 'a pop out';
+                else if (eventLower.includes('lineout') || eventLower.includes('line out')) action = 'a lineout';
+                else if (eventLower.includes('double play') || eventLower.includes('dp')) action = 'a double play';
+                else if (eventLower.includes('interference')) action = 'interference';
+                else action = `a ${eventLower}`;
+            }
+            pitcherSummary = batterFullName ? `induces ${action} from ${batterFullName}` : `induces ${action}`;
         }
 
         if (pitcherSummary) {
