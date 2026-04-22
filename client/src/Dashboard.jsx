@@ -1614,7 +1614,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                 {/* Refresh button — large, animated */}
                 <button
                     onClick={() => loadFeed({ silent: events.length > 0 })}
-                    className={`${refreshing ? 'refresh-btn--spinning' : ''} ${totalLiveGames > 0 && !refreshing ? 'refresh-btn--live' : ''}`}
+                    className={refreshing ? 'refresh-btn--spinning' : ''}
                     title="Refresh feed"
                     style={{
                         width: 44, height: 44, borderRadius: '50%', border: 'none',

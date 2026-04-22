@@ -698,24 +698,11 @@ input:focus, select:focus {
 @keyframes refreshSpin {
   to { transform: rotate(360deg); }
 }
-@keyframes btnShimmer {
-  0%   { background-position: 200% center; }
-  100% { background-position: -200% center; }
-}
 .feed-event-row {
   animation: feedSlideIn 280ms var(--ease-out) both;
 }
-.refresh-btn--live {
-  background: linear-gradient(105deg,
-    #d1fae5 0%, #6ee7b7 30%, #ffffff 50%, #6ee7b7 70%, #d1fae5 100%) !important;
-  background-size: 300% 100% !important;
-  animation: btnShimmer 2.8s linear infinite;
-}
 .refresh-btn--spinning .refresh-icon {
   animation: refreshSpin 0.65s linear infinite;
-}
-.refresh-btn--live:hover {
-  animation-duration: 1.4s;
 }
 
 @media (prefers-reduced-motion: reduce) {
