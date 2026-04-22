@@ -1407,8 +1407,13 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         const isBad = event.impact.some(i => i.startsWith('-') || i.toLowerCase().includes('allowed') || i === 'CS' || (i === 'K' && event.side === 'batter'))
         if (isBad) return 'bad'
 
+        // Mythic (Grand Slams, 4+ RBI)
+        if (impactStr.includes('+4 RBI') || impactStr.includes('+5 RBI') || impactStr.includes('+6 RBI')) {
+            return 'mythic'
+        }
+
         // Legendary (Batter HR, 3+ RBI, Pitcher Win/Save if logged)
-        if ((event.side === 'batter' && event.impact.includes('HR')) || impactStr.includes('+3 RBI') || impactStr.includes('+4 RBI') || impactStr.includes(' W') || impactStr.includes(' SV')) {
+        if ((event.side === 'batter' && event.impact.includes('HR')) || impactStr.includes('+3 RBI') || impactStr.includes(' W') || impactStr.includes(' SV')) {
             return 'legendary'
         }
 
@@ -1427,6 +1432,15 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     }
 
     const TIER_STYLES = {
+        mythic: {
+            bg: 'linear-gradient(to right, rgba(252,231,243,0.8), rgba(252,231,243,0.2) 65%, #ffffff)',
+            borderLeft: '#ec4899',
+            badge: '🌟',
+            badgeBg: 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)',
+            textColor: '#831843',
+            avatarSize: 36,
+            pillColor: '#be185d', pillBg: 'rgba(236,72,153,0.15)', pillBorder: 'rgba(236,72,153,0.3)',
+        },
         legendary: {
             bg: 'linear-gradient(to right, rgba(254,243,199,0.8), rgba(254,243,199,0.2) 60%, #ffffff)',
             borderLeft: '#f59e0b',
