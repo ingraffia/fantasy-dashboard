@@ -1252,45 +1252,6 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
 
 const FEED_CACHE_KEY = 'live_feed_cache_v2'
 
-const FEED_SAMPLE_EVENTS = (() => {
-    const now = Date.now()
-    const ago = (m) => new Date(now - m * 60000).toISOString()
-    return [
-        { id: 's1', gamePk: 9001, timestamp: ago(2), inningLabel: '▼6', isScoringPlay: true, playerKey: null,
-          playerName: 'Corbin Carroll', playerTeam: 'AZ', selectedPosition: 'CF',
-          summary: 'crushes a 2-run homer', impact: ['HR', '+2 RBI'], eventType: 'home_run', side: 'batter',
-          awayTeam: 'SF', homeTeam: 'AZ' },
-        { id: 's2', gamePk: 9002, timestamp: ago(6), inningLabel: '▲3', isScoringPlay: false, playerKey: null,
-          playerName: 'Gerrit Cole', playerTeam: 'NYY', selectedPosition: 'SP',
-          summary: 'strikes out Rafael Devers', impact: ['+1 K'], eventType: 'strikeout', side: 'pitcher',
-          awayTeam: 'BOS', homeTeam: 'NYY' },
-        { id: 's3', gamePk: 9001, timestamp: ago(11), inningLabel: '▼4', isScoringPlay: false, playerKey: null,
-          playerName: 'Mookie Betts', playerTeam: 'LAD', selectedPosition: 'RF',
-          summary: 'triples down the line', impact: ['3B'], eventType: 'triple', side: 'batter',
-          awayTeam: 'LAD', homeTeam: 'SD' },
-        { id: 's4', gamePk: 9002, timestamp: ago(15), inningLabel: '▲3', isScoringPlay: false, playerKey: null,
-          playerName: 'Chris Sale', playerTeam: 'ATL', selectedPosition: 'SP',
-          summary: 'allows a homer to Aaron Judge', impact: ['HR allowed', '-1 ER'], eventType: 'home_run', side: 'pitcher',
-          awayTeam: 'NYY', homeTeam: 'ATL' },
-        { id: 's5', gamePk: 9003, timestamp: ago(19), inningLabel: '▼5', isScoringPlay: false, playerKey: null,
-          playerName: 'Jose Ramirez', playerTeam: 'CLE', selectedPosition: '3B',
-          summary: 'rips a double to left-center', impact: ['2B', '+1 RBI'], eventType: 'double', side: 'batter',
-          awayTeam: 'CLE', homeTeam: 'MIN' },
-        { id: 's6', gamePk: 9001, timestamp: ago(24), inningLabel: '▲2', isScoringPlay: false, playerKey: null,
-          playerName: 'Logan Webb', playerTeam: 'SF', selectedPosition: 'SP',
-          summary: 'strikes out Lourdes Gurriel Jr.', impact: ['+1 K'], eventType: 'strikeout', side: 'pitcher',
-          awayTeam: 'SF', homeTeam: 'AZ' },
-        { id: 's7', gamePk: 9003, timestamp: ago(30), inningLabel: '▼3', isScoringPlay: false, playerKey: null,
-          playerName: 'Byron Buxton', playerTeam: 'MIN', selectedPosition: 'CF',
-          summary: 'singles through the right side', impact: ['1B'], eventType: 'single', side: 'batter',
-          awayTeam: 'CLE', homeTeam: 'MIN' },
-        { id: 's8', gamePk: 9002, timestamp: ago(38), inningLabel: '▲2', isScoringPlay: false, playerKey: null,
-          playerName: 'Chris Sale', playerTeam: 'ATL', selectedPosition: 'SP',
-          summary: 'strikes out Giancarlo Stanton', impact: ['+1 K'], eventType: 'strikeout', side: 'pitcher',
-          awayTeam: 'NYY', homeTeam: 'ATL' },
-    ]
-})()
-
 function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMobile }) {
     const [events, setEvents] = useState([])
     const [loading, setLoading] = useState(false)
@@ -1415,33 +1376,22 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     const totalLiveGames = trackedGames.filter((game) => game.isLive).length
 
     const showPrevDay = Boolean(prevDayEvents?.length && events.length === 0 && !loading && startedTrackedGames.length === 0)
-    const isSampleMode = !showPrevDay && events.length === 0 && !loading
 
     const sortedAllEvents = useMemo(() => {
         let base
         if (showPrevDay) base = prevDayEvents
-        else if (isSampleMode) base = FEED_SAMPLE_EVENTS
         else base = [...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
         return filterGamePk ? base.filter(e => String(e.gamePk) === String(filterGamePk)) : base
-    }, [events, showPrevDay, prevDayEvents, isSampleMode, filterGamePk])
-
-    const sampleGames = useMemo(() => [
-        { gamePk: 9001, awayTeam: 'SF', homeTeam: 'AZ', awayScore: 1, homeScore: 3, isLive: true, isFinal: false, inning: 6, inningHalf: 'Bottom', outs: 1 },
-        { gamePk: 9002, awayTeam: 'NYY', homeTeam: 'ATL', awayScore: 4, homeScore: 2, isLive: true, isFinal: false, inning: 3, inningHalf: 'Top', outs: 0 },
-        { gamePk: 9003, awayTeam: 'CLE', homeTeam: 'MIN', awayScore: 2, homeScore: 2, isLive: false, isFinal: true },
-    ], [])
+    }, [events, showPrevDay, prevDayEvents, filterGamePk])
 
     const gameByPk = useMemo(() => {
         const m = new Map()
         games.forEach(g => m.set(String(g.gamePk), g))
-        if (isSampleMode) sampleGames.forEach(g => m.set(String(g.gamePk), g))
         return m
-    }, [games, isSampleMode, sampleGames])
+    }, [games])
 
     // Prev day: no pills (we don't have game state for yesterday's games)
-    const pillGames = (showPrevDay || isSampleMode && !sortedTrackedGames.length)
-        ? (isSampleMode ? sampleGames : [])
-        : sortedTrackedGames
+    const pillGames = showPrevDay ? [] : sortedTrackedGames
 
     const getEventTier = (event) => {
         if (event.side === 'batter') {
@@ -1740,7 +1690,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             )}
 
             {/* ── Empty / waiting states (only when no sample) ── */}
-            {!isSampleMode && trackedGames.length === 0 && (
+            {trackedGames.length === 0 && (
                 <div style={{ padding: '52px 20px', textAlign: 'center', background: C.white,
                     borderRadius: 16, border: `1px solid ${C.gray100}` }}>
                     <div style={{ fontSize: 36, marginBottom: 10, filter: 'grayscale(0.2)' }}>📡</div>
@@ -1751,7 +1701,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                 </div>
             )}
 
-            {!isSampleMode && trackedGames.length > 0 && startedTrackedGames.length === 0 && (
+            {trackedGames.length > 0 && startedTrackedGames.length === 0 && (
                 <div style={{ padding: '44px 20px', textAlign: 'center', background: C.white,
                     borderRadius: 16, border: `1px solid ${C.gray100}` }}>
                     <div style={{ fontSize: 36, marginBottom: 10 }}>⚾</div>
@@ -1760,7 +1710,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                 </div>
             )}
 
-            {!isSampleMode && startedTrackedGames.length > 0 && loading && events.length === 0 && (
+            {startedTrackedGames.length > 0 && loading && events.length === 0 && (
                 <div style={{ padding: '44px 20px', textAlign: 'center', background: C.white,
                     borderRadius: 16, border: `1px solid ${C.gray100}` }}>
                     <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2.5px solid rgba(37,99,235,0.18)',
@@ -1769,7 +1719,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                 </div>
             )}
 
-            {!isSampleMode && startedTrackedGames.length > 0 && !loading && events.length === 0 && !error && (
+            {startedTrackedGames.length > 0 && !loading && events.length === 0 && !error && (
                 <div style={{ padding: '44px 20px', textAlign: 'center', background: C.white,
                     borderRadius: 16, border: `1px solid ${C.gray100}` }}>
                     <div style={{ fontWeight: 800, fontSize: 15, color: C.gray700, marginBottom: 5 }}>No actions yet</div>
@@ -1780,7 +1730,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             )}
 
             {/* ── All-events flat feed ── */}
-            {groupBy === 'all' && (events.length > 0 || isSampleMode || showPrevDay) && (
+            {groupBy === 'all' && (events.length > 0 || showPrevDay) && (
                 <div style={{ background: C.white, borderRadius: 16,
                     border: `1px solid ${C.gray100}`, overflow: 'hidden',
                     boxShadow: '0 4px 20px rgba(15,23,42,0.05)' }}>
@@ -1791,15 +1741,6 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             <span style={{ fontSize: 11 }}>📅</span>
                             <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>Yesterday</span>
                             <span style={{ fontSize: 11, color: '#b45309' }}>— will update when today's games begin</span>
-                        </div>
-                    )}
-                    {isSampleMode && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px',
-                            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                            borderBottom: `1px solid #bfdbfe` }}>
-                            <span style={{ fontSize: 11 }}>👀</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#1e40af' }}>Preview</span>
-                            <span style={{ fontSize: 11, color: '#3b82f6' }}>— sample events showing what the feed looks like</span>
                         </div>
                     )}
                     {sortedAllEvents.map((ev, i) => renderEventRow(ev, i, true))}
