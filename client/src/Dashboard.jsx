@@ -1563,19 +1563,24 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             </span>
                         )}
                     </div>
-                    {/* Summary */}
-                    <div style={{ fontSize: 12, fontWeight: 600,
-                        color: ts.textColor, lineHeight: 1.3 }}>
-                        {event.summary}
+                    {/* Summary and Meta inline */}
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', marginTop: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: ts.textColor, lineHeight: 1.3 }}>
+                            {event.summary}
+                        </div>
+                        <div style={{ fontSize: 10, color: C.gray500, fontWeight: 500, letterSpacing: '0.01em' }}>
+                            {event.inningLabel ? `${event.inningLabel} · ` : ''}{formatRelativeTime(event.timestamp)}
+                            {showTeam && game ? ` · ${game.awayTeam} @ ${game.homeTeam}` : ''}
+                        </div>
                     </div>
                 </div>
 
-                {/* Right meta — primary stat + inning + time */}
+                {/* Right meta — ONLY impact stats now (guarantees uniform row height) */}
                 <div style={{ flexShrink: 0, textAlign: 'right', minWidth: 52 }}>
                     {event.impact?.length > 0 && (() => {
                         const primary = event.impact[0]
                         return (
-                            <div style={{ marginBottom: 3 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                                 <span style={{
                                     display: 'inline-block',
                                     fontWeight: 900, fontSize: 13,
@@ -1589,27 +1594,13 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                                 </span>
                                 {event.impact.length > 1 && (
                                     <div style={{ fontSize: 10, fontWeight: 700, color: C.gray500,
-                                        marginTop: 2, lineHeight: 1.2 }}>
+                                        marginTop: 3, lineHeight: 1 }}>
                                         {event.impact.slice(1).join(' · ')}
                                     </div>
                                 )}
                             </div>
                         )
                     })()}
-                    {event.inningLabel && (
-                        <div style={{ fontSize: 10, fontWeight: 700, color: C.gray500,
-                            whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
-                            {event.inningLabel}
-                        </div>
-                    )}
-                    <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap', marginTop: 2 }}>
-                        {formatRelativeTime(event.timestamp)}
-                    </div>
-                    {showTeam && game && (
-                        <div style={{ fontSize: 9, color: C.gray300, whiteSpace: 'nowrap', marginTop: 2, fontWeight: 600 }}>
-                            {game.awayTeam} · {game.homeTeam}
-                        </div>
-                    )}
                 </div>
             </div>
         )
