@@ -1260,6 +1260,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     const [lastUpdated, setLastUpdated] = useState(null)
     const [groupBy, setGroupBy] = useState('all')
     const [filterGamePk, setFilterGamePk] = useState(null)
+    const [showHighlights, setShowHighlights] = useState(false)
     const [prevDayEvents, setPrevDayEvents] = useState(() => {
         try {
             const stored = JSON.parse(localStorage.getItem(FEED_CACHE_KEY) || 'null')
@@ -1377,22 +1378,6 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
 
     const showPrevDay = Boolean(prevDayEvents?.length && events.length === 0 && !loading && startedTrackedGames.length === 0)
 
-    const sortedAllEvents = useMemo(() => {
-        let base
-        if (showPrevDay) base = prevDayEvents
-        else base = [...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        return filterGamePk ? base.filter(e => String(e.gamePk) === String(filterGamePk)) : base
-    }, [events, showPrevDay, prevDayEvents, filterGamePk])
-
-    const gameByPk = useMemo(() => {
-        const m = new Map()
-        games.forEach(g => m.set(String(g.gamePk), g))
-        return m
-    }, [games])
-
-    // Prev day: no pills (we don't have game state for yesterday's games)
-    const pillGames = showPrevDay ? [] : sortedTrackedGames
-
     const getEventTier = (event) => {
         if (!event.impact || event.impact.length === 0) return 'neutral'
 
@@ -1430,6 +1415,31 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         // Good (1B, BB, Pitcher K)
         return 'good'
     }
+
+    const sortedAllEvents = useMemo(() => {
+        let base
+        if (showPrevDay) base = prevDayEvents
+        else base = [...events].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        if (filterGamePk) {
+            base = base.filter(e => String(e.gamePk) === String(filterGamePk))
+        }
+        if (showHighlights) {
+            base = base.filter(e => {
+                const tr = getEventTier(e)
+                return tr === 'mythic' || tr === 'legendary' || tr === 'epic' || tr === 'great' || tr === 'good'
+            })
+        }
+        return base
+    }, [events, showPrevDay, prevDayEvents, filterGamePk, showHighlights])
+
+    const gameByPk = useMemo(() => {
+        const m = new Map()
+        games.forEach(g => m.set(String(g.gamePk), g))
+        return m
+    }, [games])
+
+    // Prev day: no pills (we don't have game state for yesterday's games)
+    const pillGames = showPrevDay ? [] : sortedTrackedGames
 
     const TIER_STYLES = {
         mythic: {
@@ -1636,23 +1646,39 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                     )}
                 </div>
 
-                {/* Segmented toggle */}
-                <div style={{ marginLeft: 'auto', position: 'relative', display: 'inline-flex',
-                    background: C.gray100, borderRadius: 10, padding: 3, gap: 0 }}>
-                    {[['all', 'All'], ['game', 'By Game']].map(([v, label]) => (
-                        <button key={v} onClick={() => setGroupBy(v)} style={{
-                            fontSize: 11, fontWeight: groupBy === v ? 800 : 600,
-                            padding: '5px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                            background: groupBy === v
-                                ? 'linear-gradient(135deg, #0f2040 0%, #1e4272 60%, #2563eb 100%)'
-                                : 'transparent',
-                            color: groupBy === v ? '#fff' : C.gray500,
-                            boxShadow: groupBy === v ? '0 4px 12px rgba(15,32,64,0.25), inset 0 1px 0 rgba(255,255,255,0.12)' : 'none',
-                            transition: 'all 0.2s var(--ease-out)',
-                            letterSpacing: '-0.01em' }}>
-                            {label}
-                        </button>
-                    ))}
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button onClick={() => setShowHighlights(!showHighlights)} style={{
+                        fontSize: 11, fontWeight: showHighlights ? 800 : 600,
+                        padding: '5px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                        background: showHighlights
+                            ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                            : C.gray100,
+                        color: showHighlights ? '#fff' : C.gray500,
+                        boxShadow: showHighlights ? '0 4px 12px rgba(217,119,6,0.25), inset 0 1px 0 rgba(255,255,255,0.12)' : 'none',
+                        transition: 'all 0.2s var(--ease-out)',
+                        letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <span>Highlights</span>
+                        {showHighlights && <span style={{ fontSize: 10 }}>🌟</span>}
+                    </button>
+
+                    {/* Segmented toggle */}
+                    <div style={{ position: 'relative', display: 'inline-flex',
+                        background: C.gray100, borderRadius: 10, padding: 3, gap: 0 }}>
+                        {[['all', 'All'], ['game', 'By Game']].map(([v, label]) => (
+                            <button key={v} onClick={() => setGroupBy(v)} style={{
+                                fontSize: 11, fontWeight: groupBy === v ? 800 : 600,
+                                padding: '5px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                                background: groupBy === v
+                                    ? 'linear-gradient(135deg, #0f2040 0%, #1e4272 60%, #2563eb 100%)'
+                                    : 'transparent',
+                                color: groupBy === v ? '#fff' : C.gray500,
+                                boxShadow: groupBy === v ? '0 4px 12px rgba(15,32,64,0.25), inset 0 1px 0 rgba(255,255,255,0.12)' : 'none',
+                                transition: 'all 0.2s var(--ease-out)',
+                                letterSpacing: '-0.01em' }}>
+                                {label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Refresh button — large, animated */}
