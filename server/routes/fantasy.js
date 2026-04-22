@@ -718,7 +718,6 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
             batterImpact.push('HBP');
         } else if (eventType === 'strikeout') {
             batterSummary = 'strikes out';
-            batterImpact.push('K');
         } else if (eventType === 'sac_fly') {
             batterSummary = 'lifts a sacrifice fly';
         } else if (eventType === 'sac_bunt') {
