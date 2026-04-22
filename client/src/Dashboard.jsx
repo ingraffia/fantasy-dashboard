@@ -1396,49 +1396,96 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     const getEventTier = (event) => {
         if (!event.impact || event.impact.length === 0) return 'neutral'
 
-        const isBad = event.impact.some(i =>
-            i.startsWith('-') ||
-            i.toLowerCase().includes('allowed') ||
-            i === 'CS' ||
-            (i === 'K' && event.side === 'batter')
-        )
-        if (isBad) return 'negative'
+        const impactStr = event.impact.join(' ')
 
-        if (event.side === 'batter' && event.impact.includes('HR')) return 'epic'
+        // Terrible: HR allowed, many earned runs
+        if (impactStr.includes('HR allowed') || impactStr.includes('-2 ER') || impactStr.includes('-3 ER') || impactStr.includes('-4 ER') || impactStr.includes('Error')) {
+            return 'terrible'
+        }
 
-        return 'positive'
+        // Bad
+        const isBad = event.impact.some(i => i.startsWith('-') || i.toLowerCase().includes('allowed') || i === 'CS' || (i === 'K' && event.side === 'batter'))
+        if (isBad) return 'bad'
+
+        // Legendary (Batter HR, 3+ RBI, Pitcher Win/Save if logged)
+        if ((event.side === 'batter' && event.impact.includes('HR')) || impactStr.includes('+3 RBI') || impactStr.includes('+4 RBI') || impactStr.includes(' W') || impactStr.includes(' SV')) {
+            return 'legendary'
+        }
+
+        // Epic (3B, 2+ RBI, Stolen Base)
+        if (event.impact.includes('3B') || impactStr.includes('+2 RBI') || impactStr.includes('SB')) {
+            return 'epic'
+        }
+
+        // Great (2B, 1 RBI, 1 Run)
+        if (event.impact.includes('2B') || impactStr.includes('+1 RBI') || event.impact.includes('+1 R')) {
+            return 'great'
+        }
+
+        // Good (1B, BB, Pitcher K)
+        return 'good'
     }
 
     const TIER_STYLES = {
-        epic: {
-            bg: 'linear-gradient(to right, rgba(254,243,199,0.7), #ffffff)', // soft gold fade
+        legendary: {
+            bg: 'linear-gradient(to right, rgba(254,243,199,0.8), rgba(254,243,199,0.2) 60%, #ffffff)',
             borderLeft: '#f59e0b',
             badge: '⚡',
             badgeBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
             textColor: '#92400e',
-            avatarSize: 40,
+            avatarSize: 42,
             pillColor: '#d97706', pillBg: 'rgba(251,191,36,0.15)', pillBorder: 'rgba(251,191,36,0.3)',
-            isHR: true,
+            isHighlight: true,
         },
-        positive: {
-            bg: 'linear-gradient(to right, rgba(220,252,231,0.5), #ffffff)', // soft green fade
+        epic: {
+            bg: 'linear-gradient(to right, rgba(243,232,255,0.7), rgba(243,232,255,0.2) 60%, #ffffff)',
+            borderLeft: '#a855f7',
+            badge: '🔥',
+            badgeBg: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)',
+            textColor: '#6b21a8',
+            avatarSize: 40,
+            pillColor: '#7e22ce', pillBg: 'rgba(168,85,247,0.12)', pillBorder: 'rgba(168,85,247,0.25)',
+            isHighlight: true,
+        },
+        great: {
+            bg: 'linear-gradient(to right, rgba(224,242,254,0.6), rgba(224,242,254,0.15) 60%, #ffffff)',
+            borderLeft: '#3b82f6',
+            badge: '💥',
+            badgeBg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+            textColor: '#1e40af',
+            avatarSize: 38,
+            pillColor: '#2563eb', pillBg: 'rgba(59,130,246,0.12)', pillBorder: 'rgba(59,130,246,0.25)',
+            isHighlight: false,
+        },
+        good: {
+            bg: 'linear-gradient(to right, rgba(220,252,231,0.5), #ffffff)',
             borderLeft: '#22c55e',
-            badge: '📈',
+            badge: '⬆',
             badgeBg: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
             textColor: '#166534',
-            avatarSize: 38,
+            avatarSize: 36,
             pillColor: C.green, pillBg: 'rgba(34,197,94,0.12)', pillBorder: 'rgba(34,197,94,0.3)',
-            isHR: false,
+            isHighlight: false,
         },
-        negative: {
-            bg: 'linear-gradient(to right, rgba(254,226,226,0.5), #ffffff)', // soft red fade
+        bad: {
+            bg: 'linear-gradient(to right, rgba(254,226,226,0.4), #ffffff)',
             borderLeft: '#ef4444',
-            badge: '📉',
+            badge: '⬇',
             badgeBg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
             textColor: '#991b1b',
-            avatarSize: 38,
+            avatarSize: 36,
             pillColor: C.red, pillBg: 'rgba(239,68,68,0.12)', pillBorder: 'rgba(239,68,68,0.3)',
-            isHR: false,
+            isHighlight: false,
+        },
+        terrible: {
+            bg: 'linear-gradient(to right, rgba(254,204,204,0.6), rgba(254,226,226,0.2) 60%, #ffffff)',
+            borderLeft: '#dc2626',
+            badge: '⚠️',
+            badgeBg: 'linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)',
+            textColor: '#7f1d1d',
+            avatarSize: 38,
+            pillColor: '#b91c1c', pillBg: 'rgba(239,68,68,0.25)', pillBorder: 'rgba(239,68,68,0.4)',
+            isHighlight: true,
         },
         neutral: {
             bg: C.white,
@@ -1447,7 +1494,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             textColor: C.gray600,
             avatarSize: 36,
             pillColor: C.gray500, pillBg: C.gray100, pillBorder: C.gray200,
-            isHR: false,
+            isHighlight: false,
         },
     }
 
@@ -1459,7 +1506,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         const game = gameByPk.get(String(event.gamePk))
         const tier = getEventTier(event)
         const ts = TIER_STYLES[tier] || TIER_STYLES.neutral
-        const isHR = ts.isHR
+        const isHighlight = ts.isHighlight
 
         return (
             <div key={event.id} className="feed-event-row" style={{
@@ -1493,7 +1540,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             disabled={!event.playerKey}
                             style={{ border: 'none', background: 'transparent', padding: 0, margin: 0,
                                 cursor: event.playerKey ? 'pointer' : 'default',
-                                fontWeight: 800, fontSize: isHR ? 14 : 13, color: C.navy, letterSpacing: '-0.01em' }}>
+                                fontWeight: 800, fontSize: isHighlight ? 14 : 13, color: C.navy, letterSpacing: '-0.01em' }}>
                             {event.playerName}
                         </button>
                         {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
@@ -1511,7 +1558,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                         )}
                     </div>
                     {/* Summary */}
-                    <div style={{ fontSize: isHR ? 13 : 12, fontWeight: isHR ? 700 : 600,
+                    <div style={{ fontSize: isHighlight ? 13 : 12, fontWeight: isHighlight ? 700 : 600,
                         color: ts.textColor, lineHeight: 1.3 }}>
                         {event.summary}
                     </div>
@@ -1525,10 +1572,10 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             <div style={{ marginBottom: 3 }}>
                                 <span style={{
                                     display: 'inline-block',
-                                    fontWeight: 900, fontSize: isHR ? 15 : 13,
+                                    fontWeight: 900, fontSize: isHighlight ? 15 : 13,
                                     color: ts.pillColor, letterSpacing: '-0.02em',
                                     background: ts.pillBg,
-                                    padding: isHR ? '3px 8px' : '2px 7px',
+                                    padding: isHighlight ? '3px 8px' : '2px 7px',
                                     borderRadius: 8,
                                     border: `1.5px solid ${ts.pillBorder}`,
                                 }}>
