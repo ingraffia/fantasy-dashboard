@@ -1581,6 +1581,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                         <div style={{ fontSize: 10, color: C.gray500, fontWeight: 500, letterSpacing: '0.01em' }}>
                             {event.inningLabel ? `${event.inningLabel} · ` : ''}{formatRelativeTime(event.timestamp)}
                             {showTeam && game ? ` · ${game.awayTeam} @ ${game.homeTeam}` : ''}
+                            {event.gameStats && <span style={{ fontWeight: 700, color: '#475569' }}> · {event.gameStats}</span>}
                         </div>
                     </div>
                 </div>
@@ -2726,22 +2727,34 @@ export default function Dashboard({ api }) {
                 const daysLeft = 7 - daysIntoWeek
                 const DAY_LABELS = ['M','T','W','T','F','S','S']
                 return (
-                    <div style={{ padding: `16px ${isMobile ? '20px' : px} 10px`, marginBottom: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                            {matchupWeek && <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Week {matchupWeek}</span>}
-                            <span style={{ fontSize: 11, fontWeight: 500, color: C.gray400 }}>{matchupWeek ? 'Matchups' : 'Matchups'}</span>
-                            <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 600, color: C.gray400 }}>{daysLeft === 0 ? 'Final day' : `${daysLeft}d left`}</span>
+                    <div style={{ padding: `20px ${isMobile ? '20px' : px} 12px`, marginBottom: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {matchupWeek && <span style={{ fontSize: 13, fontWeight: 900, color: C.navy, letterSpacing: '-0.02em' }}>WEEK {matchupWeek}</span>}
+                                <span style={{ fontSize: 13, fontWeight: 700, color: C.gray400 }}>MATCHUPS</span>
+                            </div>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: daysLeft === 0 ? C.red : '#2563eb', background: daysLeft === 0 ? '#fee2e2' : '#dbeafe', padding: '4px 8px', borderRadius: 6, letterSpacing: '0.04em' }}>
+                                {daysLeft === 0 ? 'FINAL DAY' : `${daysLeft} DAYS LEFT`}
+                            </span>
                         </div>
-                        <div style={{ display: 'flex', marginBottom: 5 }}>
-                            {DAY_LABELS.map((d, i) => (
-                                <span key={i} style={{ flex: 1, fontSize: 9, fontWeight: 700, color: i === daysIntoWeek - 1 ? C.accent : C.gray400, textAlign: 'center' }}>{d}</span>
-                            ))}
-                        </div>
-                        <div style={{ display: 'flex', gap: 2 }}>
-                            {DAY_LABELS.map((_, i) => {
+                        <div style={{ display: 'flex', gap: 6 }}>
+                            {DAY_LABELS.map((d, i) => {
                                 const isPlayed = i < daysIntoWeek - 1
                                 const isToday = i === daysIntoWeek - 1
-                                return <div key={i} style={{ flex: 1, height: 7, borderRadius: 3, background: isToday ? C.accent : isPlayed ? C.navy : C.gray100 }} />
+                                return (
+                                    <div key={i} style={{ 
+                                        flex: 1, height: 34, borderRadius: 8,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        background: isToday ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'
+                                                    : isPlayed ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
+                                                    : C.gray50,
+                                        boxShadow: isToday ? '0 4px 12px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.2)' : isPlayed ? 'inset 0 2px 4px rgba(0,0,0,0.1)' : 'none',
+                                        border: isToday ? '1px solid #60a5fa' : isPlayed ? '1px solid #0f172a' : `1px dashed ${C.gray300}`,
+                                        color: (isToday || isPlayed) ? '#ffffff' : C.gray400,
+                                        fontSize: 13,
+                                        fontWeight: isToday ? 900 : isPlayed ? 800 : 600,
+                                    }}>{d}</div>
+                                )
                             })}
                         </div>
                     </div>

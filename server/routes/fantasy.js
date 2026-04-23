@@ -632,7 +632,7 @@ function getFeedPlayer(feedPlayers = {}, playerId) {
     return feedPlayers[`ID${playerId}`] || feedPlayers[playerId] || null;
 }
 
-function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail, impact = [], variant, playerId, eventType, opponentName }) {
+function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail, impact = [], variant, playerId, eventType, opponentName, gameStats }) {
     if (!rosterPlayer || !summary) return null;
 
     const about = play?.about || {};
@@ -664,12 +664,33 @@ function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail
         homeTeam: game.homeTeam,
         gameStatus: game.detailedStatus || game.status || null,
         scoreText: awayScore == null || homeScore == null ? null : `${game.awayTeam} ${awayScore}-${homeScore} ${game.homeTeam}`,
+        gameStats: gameStats || null,
     };
 }
 
 function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
     const plays = feed?.liveData?.plays?.allPlays || [];
     const feedPlayers = feed?.gameData?.players || {};
+    const boxscoreTeams = feed?.liveData?.boxscore?.teams || {};
+
+    const getGameStats = (playerId, isPitcher) => {
+        if (!playerId) return null;
+        const playerObj = boxscoreTeams?.away?.players?.[`ID${playerId}`] || boxscoreTeams?.away?.players?.[playerId] ||
+                          boxscoreTeams?.home?.players?.[`ID${playerId}`] || boxscoreTeams?.home?.players?.[playerId];
+        if (!playerObj || !playerObj.stats) return null;
+
+        if (isPitcher) {
+            const st = playerObj.stats.pitching;
+            if (!st) return null;
+            return `${st.inningsPitched || '0.0'} IP, ${st.earnedRuns || 0} ER, ${st.strikeOuts || 0} K`;
+        } else {
+            const st = playerObj.stats.batting;
+            if (!st) return null;
+            if (st.summary) return st.summary;
+            return `${st.hits || 0}-for-${st.atBats || 0}`;
+        }
+    };
+
     const awayTeam = normalizeTeamAbbr(game.awayTeam);
     const homeTeam = normalizeTeamAbbr(game.homeTeam);
     const events = [];
@@ -748,6 +769,7 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
                 playerId: batterId,
                 eventType: eventType || null,
                 opponentName: pitcherFeedPlayer?.fullName || null,
+                gameStats: getGameStats(batterId, false),
             });
             if (batterEvent) events.push(batterEvent);
         }
@@ -799,6 +821,7 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
             }
             if (earnedRuns > 0 && runsScored > 0) pitcherImpact.push(`-${earnedRuns} ER`);
 
+            const pitcherId = pitcherFeedPlayer?.id || play?.matchup?.pitcher?.id || null;
             const pitcherEvent = createLiveFeedEvent({
                 gamePk: game.gamePk,
                 game,
@@ -808,9 +831,10 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
                 detail: result.description,
                 impact: pitcherImpact,
                 variant: `pitcher-${eventType || 'play'}`,
-                playerId: pitcherFeedPlayer?.id || play?.matchup?.pitcher?.id || null,
+                playerId: pitcherId,
                 eventType: eventType || null,
                 opponentName: batterFullName,
+                gameStats: getGameStats(pitcherId, true),
             });
             if (pitcherEvent) events.push(pitcherEvent);
         }
