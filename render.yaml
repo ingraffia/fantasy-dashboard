@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: fantasy-dashboard
+    runtime: node
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: YAHOO_CLIENT_ID
+        sync: false
+      - key: YAHOO_CLIENT_SECRET
+        sync: false
+      - key: YAHOO_REDIRECT_URI
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
