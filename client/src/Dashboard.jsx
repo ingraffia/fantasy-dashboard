@@ -1,22 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import axios from 'axios'
-
-function DugoutMark({ size = 44, style, className }) {
-    return (
-        <svg width={size} height={size} viewBox="0 0 44 44" fill="none"
-            xmlns="http://www.w3.org/2000/svg" style={style} className={className}>
-            <rect width="44" height="44" rx="11" fill="#0D1117" />
-            {/* D — outer shape: stem + semicircular bowl, radius 14, center (19,22) */}
-            <path d="M10 8L19 8A14 14 0 0 1 19 36L10 36Z" fill="white" />
-            {/* D — inner cutout: radius 8, center (19,22), gives 5px stem + 6px ring */}
-            <path d="M16 14L19 14A8 8 0 0 1 19 30L16 30Z" fill="#0D1117" />
-            {/* Baseball seam arcs — subtle white traces on dark bg */}
-            <path d="M24.5 9Q31 13 33 22" stroke="rgba(255,255,255,0.22)" strokeWidth="1.6" strokeLinecap="round" />
-            <path d="M24.5 35Q31 31 33 22" stroke="rgba(255,255,255,0.22)" strokeWidth="1.6" strokeLinecap="round" />
-        </svg>
-    )
-}
-
 const POSITIONS = ['All', 'SP', 'RP', 'C', '1B', '2B', '3B', 'SS', 'OF', 'DH', 'Util']
 const IL_SLOTS = ['IL', 'IL10', 'IL15', 'IL60', 'NA']
 
@@ -1794,7 +1777,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             {trackedGames.length > 0 && startedTrackedGames.length === 0 && (
                 <div style={{ padding: '44px 20px', textAlign: 'center', background: C.white,
                     borderRadius: 16, border: `1px solid ${C.gray100}` }}>
-                    <div style={{ fontSize: 36, marginBottom: 10 }}><DugoutMark size={42} /></div>
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>⚾</div>
                     <div style={{ fontWeight: 800, fontSize: 15, color: C.gray700, marginBottom: 5 }}>Waiting for first pitch</div>
                     <div style={{ fontSize: 12, color: C.gray400, lineHeight: 1.5 }}>Your feed lights up when a game starts.</div>
                 </div>
@@ -1974,12 +1957,15 @@ function DashboardLoadingScreen({ targetProgress, phase, isDataReady, onFinished
         }}>
             <div style={{
                 width: 72, height: 72, borderRadius: 22, marginBottom: 20,
-                display: 'grid', placeItems: 'center',
-            }}><DugoutMark size={52} /></div>
+                background: 'rgba(255,255,255,0.10)',
+                border: '1px solid rgba(255,255,255,0.18)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 24px 50px rgba(5,10,25,0.4)',
+                display: 'grid', placeItems: 'center', fontSize: 34,
+            }}>⚾</div>
             
             <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.05em', color: '#fff', lineHeight: 1, display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 6 }}>
                 Dugout
-                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.6)', marginLeft: 2, marginBottom: 2 }} />
+                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#2d7ff9', marginLeft: 2, marginBottom: 2, boxShadow: '0 0 12px rgba(45,127,249,0.8)' }} />
             </div>
 
             <div style={{ position: 'relative', height: 18, marginBottom: 28, display: 'flex', justifyContent: 'center', width: '100%' }}>
@@ -2674,7 +2660,7 @@ export default function Dashboard({ api }) {
                 <div className="topbar-hero-bg" style={{ opacity: isScrolled ? 0 : 1 }} />
                 <div className="dashboard-brand" style={{ position: 'relative', zIndex: 1 }}>
                     <div className="dashboard-brand-mark">
-                        <DugoutMark size={26} />
+                        <span style={{ fontSize: 18 }}>⚾</span>
                     </div>
                     <div>
                         <div className="brand-wordmark" style={{ fontSize: isMobile ? 17 : 20 }}>
@@ -3055,9 +3041,9 @@ export default function Dashboard({ api }) {
                         borderRadius: 18,
                         width: isMobile ? '100%' : 'auto',
                         transition: 'background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease',
-                        background: tabScrolled ? 'rgba(255,255,255,0.10)' : '#ffffff',
-                        border: tabScrolled ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(0,0,0,0.09)',
-                        boxShadow: tabScrolled ? 'none' : '0 2px 12px rgba(0,0,0,0.07)',
+                        background: tabScrolled ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.66)',
+                        border: tabScrolled ? '1px solid rgba(255,255,255,0.1)' : undefined,
+                        boxShadow: tabScrolled ? 'inset 0 1px 0 rgba(255,255,255,0.08)' : undefined,
                     }}
                 >
                     {[{ id: 'activity', label: 'Live Feed' }, { id: 'feed', label: 'Players' }, { id: 'lineup', label: 'Lineups' }, { id: 'waiver', label: 'Waivers' }].map(tab => {
