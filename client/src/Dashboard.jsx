@@ -7,8 +7,9 @@ const C = {
     navy: '#1e3a5f', navyLight: '#2d5282', accent: '#3b82f6', accentLight: '#eff6ff',
     green: '#16a34a', greenLight: '#dcfce7', red: '#dc2626', redLight: '#fef2f2',
     amber: '#d97706', amberLight: '#fffbeb',
-    gray50: '#f9fafb', gray100: '#f3f4f6', gray200: '#e5e7eb',
-    gray400: '#9ca3af', gray600: '#4b5563', gray800: '#1f2937', white: '#ffffff',
+    gray50: '#f9fafb', gray100: '#f3f4f6', gray200: '#e5e7eb', gray300: '#d1d5db',
+    gray400: '#9ca3af', gray500: '#6b7280', gray600: '#4b5563', gray700: '#374151',
+    gray800: '#1f2937', white: '#ffffff',
 }
 
 const STATUS_COLOR = { DTD: C.amber, IL: C.red, IL10: C.red, IL60: C.red, IL15: C.red, NA: C.gray400 }
@@ -169,7 +170,7 @@ function formatRelativeTime(timestamp) {
 }
 
 function Tag({ text, bg = C.gray100, color = C.gray600 }) {
-    return <span className="premium-badge" style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: bg, color, lineHeight: '18px', letterSpacing: '-0.01em' }}>{text}</span>
+    return <span className="premium-badge" style={{ display: 'inline-block', padding: '3px 9px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: bg, color, lineHeight: '18px', letterSpacing: '-0.01em' }}>{text}</span>
 }
 
 function StatusBadge({ status }) {
@@ -1448,7 +1449,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '🌟',
             badgeBg: 'linear-gradient(135deg, #10b981 0%, #047857 100%)', // emerald-500 to emerald-700
             textColor: '#064e3b', // emerald-900
-            avatarSize: 36,
+            avatarSize: 38,
             pillColor: '#047857', pillBg: 'rgba(5,150,105,0.18)', pillBorder: 'rgba(5,150,105,0.4)',
         },
         legendary: {
@@ -1457,7 +1458,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '⚡',
             badgeBg: 'linear-gradient(135deg, #34d399 0%, #059669 100%)', // emerald-400 to emerald-600
             textColor: '#065f46', // emerald-800
-            avatarSize: 36,
+            avatarSize: 38,
             pillColor: '#059669', pillBg: 'rgba(16,185,129,0.12)', pillBorder: 'rgba(16,185,129,0.3)',
         },
         epic: {
@@ -1466,7 +1467,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '🔥',
             badgeBg: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', // purple-500 to purple-700
             textColor: '#6b21a8', // purple-800
-            avatarSize: 36,
+            avatarSize: 38,
             pillColor: '#7e22ce', pillBg: 'rgba(168,85,247,0.12)', pillBorder: 'rgba(168,85,247,0.25)',
         },
         great: {
@@ -1475,7 +1476,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '💥',
             badgeBg: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', // blue-500 to blue-700
             textColor: '#1e3a8a', // blue-900
-            avatarSize: 36,
+            avatarSize: 38,
             pillColor: '#1d4ed8', pillBg: 'rgba(59,130,246,0.12)', pillBorder: 'rgba(59,130,246,0.25)',
         },
         good: {
@@ -1484,7 +1485,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '⬆',
             badgeBg: 'linear-gradient(135deg, #38bdf8 0%, #0284c7 100%)', // sky-400 to sky-600
             textColor: '#0c4a6e', // sky-900
-            avatarSize: 36,
+            avatarSize: 38,
             pillColor: '#0284c7', pillBg: 'rgba(14,165,233,0.12)', pillBorder: 'rgba(14,165,233,0.3)',
         },
         bad: {
@@ -1493,7 +1494,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '⬇',
             badgeBg: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
             textColor: '#991b1b',
-            avatarSize: 36,
+            avatarSize: 38,
             pillColor: C.red, pillBg: 'rgba(239,68,68,0.12)', pillBorder: 'rgba(239,68,68,0.3)',
         },
         terrible: {
@@ -1502,7 +1503,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '⚠️',
             badgeBg: 'linear-gradient(135deg, #b91c1c 0%, #991b1b 100%)',
             textColor: '#7f1d1d',
-            avatarSize: 36,
+            avatarSize: 38,
             pillColor: '#b91c1c', pillBg: 'rgba(239,68,68,0.25)', pillBorder: 'rgba(239,68,68,0.4)',
         },
         neutral: {
@@ -1510,7 +1511,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             borderLeft: 'transparent',
             badge: null,
             textColor: C.gray600,
-            avatarSize: 36,
+            avatarSize: 38,
             pillColor: C.gray500, pillBg: C.gray100, pillBorder: C.gray200,
         },
     }
@@ -1527,8 +1528,8 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         return (
             <div key={event.id} className="feed-event-row" style={{
                 animationDelay: `${Math.min(i * 35, 280)}ms`,
-                display: 'flex', alignItems: 'center', gap: 11,
-                padding: '11px 14px 11px 10px',
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '13px 14px 13px 10px',
                 borderLeft: `4px solid ${ts.borderLeft}`,
                 borderTop: i > 0 ? `1px solid ${C.gray50}` : 'none',
                 background: ts.bg,
@@ -1556,7 +1557,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             disabled={!event.playerKey}
                             style={{ border: 'none', background: 'transparent', padding: 0, margin: 0,
                                 cursor: event.playerKey ? 'pointer' : 'default',
-                                fontWeight: 800, fontSize: 13, color: C.navy, letterSpacing: '-0.01em' }}>
+                                fontWeight: 800, fontSize: 14, color: C.navy, letterSpacing: '-0.01em' }}>
                             {event.playerName}
                         </button>
                         {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
@@ -1575,7 +1576,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                     </div>
                     {/* Summary and Meta inline */}
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', marginTop: 1 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: ts.textColor, lineHeight: 1.3 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: ts.textColor, lineHeight: 1.3 }}>
                             {event.summary}
                         </div>
                         <div style={{ fontSize: 10, color: C.gray500, fontWeight: 500, letterSpacing: '0.01em' }}>
@@ -1594,17 +1595,17 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                                 <span style={{
                                     display: 'inline-block',
-                                    fontWeight: 900, fontSize: 13,
+                                    fontWeight: 900, fontSize: 14,
                                     color: ts.pillColor, letterSpacing: '-0.02em',
                                     background: ts.pillBg,
-                                    padding: '2px 7px',
+                                    padding: '3px 8px',
                                     borderRadius: 8,
                                     border: `1.5px solid ${ts.pillBorder}`,
                                 }}>
                                     {primary}
                                 </span>
                                 {event.impact.length > 1 && (
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: C.gray500,
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: C.gray500,
                                         marginTop: 3, lineHeight: 1 }}>
                                         {event.impact.slice(1).join(' · ')}
                                     </div>
@@ -1618,7 +1619,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* ── Control bar ── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1873,7 +1874,7 @@ function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
     return (
         <div className="row-premium"
             onClick={() => openPlayer(p.primaryPlayerKey, p.primaryName)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: `1px solid ${C.gray100}`, background: C.white, cursor: 'pointer', active: { background: C.gray50 } }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: `1px solid ${C.gray100}`, background: C.white, cursor: 'pointer', active: { background: C.gray50 } }}
             onMouseEnter={e => e.currentTarget.style.background = C.gray50}
             onMouseLeave={e => e.currentTarget.style.background = C.white}>
             <PlayerAvatar imageUrl={getResImg(p)} name={p.primaryName} size={40} />
@@ -1907,7 +1908,7 @@ function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
 
 const sectionLabelRow = (text, isMobile, colSpan, color = C.gray600) => (
     <tr>
-        <td colSpan={isMobile ? 3 : colSpan} style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.08em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
+        <td colSpan={isMobile ? 3 : colSpan} style={{ padding: '9px 18px', fontSize: 11, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.07em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
             {text}
         </td>
     </tr>
@@ -2500,7 +2501,7 @@ export default function Dashboard({ api }) {
 
         // Stat values — today or season depending on game activity
         const numTd = (v, bold = false) => (
-            <td style={{ ...tdStyle, fontSize: 12, textAlign: 'right', fontWeight: bold ? 700 : 400, color: C.gray800 }}>{v ?? '—'}</td>
+            <td style={{ ...tdStyle, fontSize: 13, textAlign: 'right', fontWeight: bold ? 700 : 500, color: bold ? C.gray800 : C.gray600 }}>{v ?? '—'}</td>
         )
 
         let statCells = null
@@ -2555,17 +2556,17 @@ export default function Dashboard({ api }) {
                     onClick={() => openPlayer(player.playerKey, player.name)}
                     onMouseEnter={e => e.currentTarget.style.background = isIL ? C.redLight : C.gray50}
                     onMouseLeave={e => e.currentTarget.style.background = rowBg}>
-                    <td style={{ padding: '8px 10px', verticalAlign: 'middle', width: 44 }}><SlotPill slot={player.selectedPosition} /></td>
-                    <td style={{ padding: '8px 6px', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <PlayerAvatar imageUrl={getResImg(player)} name={player.name} size={34} />
+                    <td style={{ padding: '12px 10px', verticalAlign: 'middle', width: 50 }}><SlotPill slot={player.selectedPosition} /></td>
+                    <td style={{ padding: '12px 8px', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <PlayerAvatar imageUrl={getResImg(player)} name={player.name} size={38} />
                             <div>
-                                <div style={{ fontWeight: 600, fontSize: 13 }}>{player.name}</div>
-                                <div style={{ fontSize: 11, color: C.gray400, display: 'flex', alignItems: 'center', gap: 4 }}><MlbLogo team={player.proTeam} size={14} showText={true} /> · {player.position}</div>
+                                <div style={{ fontWeight: 700, fontSize: 14 }}>{player.name}</div>
+                                <div style={{ fontSize: 12, color: C.gray500, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}><MlbLogo team={player.proTeam} size={14} showText={true} /> · {player.position}</div>
                             </div>
                         </div>
                     </td>
-                    <td style={{ padding: '8px 10px', verticalAlign: 'middle', textAlign: 'right' }}>{statusCell}</td>
+                    <td style={{ padding: '12px 10px', verticalAlign: 'middle', textAlign: 'right' }}>{statusCell}</td>
                 </tr>
             )
         }
@@ -2580,13 +2581,13 @@ export default function Dashboard({ api }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <PlayerAvatar imageUrl={getResImg(player)} name={player.name} size={38} />
                         <div>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: C.gray800 }}>{player.name}</div>
-                            <div style={{ fontSize: 11, color: C.gray400, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}><MlbLogo team={player.proTeam} size={14} showText={true} /> · {player.position}</div>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: C.gray800 }}>{player.name}</div>
+                            <div style={{ fontSize: 12, color: C.gray500, marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}><MlbLogo team={player.proTeam} size={14} showText={true} /> · {player.position}</div>
                         </div>
                     </div>
                 </td>
-                <td style={{ ...tdStyle, fontSize: 12, fontWeight: 600, color: C.gray600 }}>{oppDisplay}</td>
-                <td style={{ ...tdStyle, fontSize: 12 }}>{statusCell}</td>
+                <td style={{ ...tdStyle, fontSize: 13, fontWeight: 600, color: C.gray600 }}>{oppDisplay}</td>
+                <td style={{ ...tdStyle, fontSize: 13 }}>{statusCell}</td>
                 {statCells}
             </tr>
         )
@@ -2607,7 +2608,7 @@ export default function Dashboard({ api }) {
     const pullOffset = isMobile ? (pullState.refreshing ? 56 : pullState.distance) : 0
 
     return (
-        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Manrope", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 13, color: C.gray800 }}>
+        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Manrope", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 14, color: C.gray800 }}>
 
             {isMobile && (
                 <div style={{
@@ -3078,12 +3079,12 @@ export default function Dashboard({ api }) {
                 </div>
             </div>
 
-            <div className="section-stack animate-tab-content" style={{ padding: `14px ${px} 24px` }}>
+            <div className="section-stack animate-tab-content" style={{ padding: `20px ${px} 48px` }}>
 
                 {/* ALL PLAYERS */}
                 {activeTab === 'feed' && (
                     <>
-                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', padding: 14 }}>
+                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', padding: '16px 18px' }}>
                             <input placeholder="Search players..." value={search} onChange={e => setSearch(e.target.value)}
                                 style={{ ...inputStyle, flex: isMobile ? 1 : 'none', width: isMobile ? 'auto' : 200 }} />
                             <select value={posFilter} onChange={e => setPosFilter(e.target.value)} style={selStyle}>
@@ -3225,8 +3226,8 @@ export default function Dashboard({ api }) {
                         <div className="surface-card scrollbar-hidden" style={{ display: 'flex', gap: 10, marginBottom: 14, overflowX: 'auto', WebkitOverflowScrolling: 'touch', padding: '10px 12px', alignItems: 'center', background: 'rgba(255,255,255,0.76)' }}>
                             {data.map(lg => (
                                 <button className={`league-pill${activeLeague === lg.leagueKey ? ' is-active' : ''}`} key={lg.leagueKey} onClick={() => setActiveLeague(lg.leagueKey)} style={{
-                                    minHeight: 42,
-                                    padding: '10px 16px', fontSize: 11, borderRadius: 999, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
+                                    minHeight: 44,
+                                    padding: '10px 20px', fontSize: 12, borderRadius: 999, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
                                     background: activeLeague === lg.leagueKey ? C.navy : C.white,
                                     color: activeLeague === lg.leagueKey ? C.white : C.gray600,
                                     border: `1px solid ${activeLeague === lg.leagueKey ? C.navy : C.gray200}`,
@@ -3338,7 +3339,7 @@ export default function Dashboard({ api }) {
                 {/* WAIVER WIRE */}
                 {activeTab === 'waiver' && (
                     <>
-                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', padding: 14 }}>
+                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', padding: '16px 18px' }}>
                             <select value={faLeague || ''} onChange={e => { setFaLeague(e.target.value); fetchFreeAgents(e.target.value, faPos, faSearch) }} style={{ ...selStyle, flex: isMobile ? 1 : 'none' }}>
                                 {yahooLeagues.map(lg => <option key={lg.leagueKey} value={lg.leagueKey}>{lg.leagueName}</option>)}
                             </select>
@@ -3450,8 +3451,8 @@ export default function Dashboard({ api }) {
 
 const tableCard = { background: 'rgba(255,255,255,0.88)', borderRadius: 16, border: `1px solid rgba(148,163,184,0.18)`, overflow: 'hidden', boxShadow: '0 16px 40px rgba(15,23,42,0.05)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
-const thStyle = { padding: '12px 16px', textAlign: 'left', fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em' }
-const tdStyle = { padding: '12px 16px', fontSize: 13, verticalAlign: 'middle', background: 'inherit' }
-const inputStyle = { padding: '10px 12px', minHeight: 40, border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 13, outline: 'none', color: C.gray800, background: 'rgba(255,255,255,0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
-const selStyle = { padding: '10px 12px', minHeight: 40, border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 12, background: 'rgba(255,255,255,0.84)', outline: 'none', cursor: 'pointer', color: C.gray800, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
-const btnStyle = { padding: '9px 16px', borderRadius: 12, border: `1px solid rgba(148,163,184,0.24)`, background: 'rgba(255,255,255,0.84)', cursor: 'pointer', fontSize: 13, color: C.gray600, fontWeight: 700, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
+const thStyle = { padding: '14px 18px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: C.gray500, textTransform: 'uppercase', letterSpacing: '0.07em' }
+const tdStyle = { padding: '14px 18px', fontSize: 14, verticalAlign: 'middle', background: 'inherit' }
+const inputStyle = { padding: '10px 14px', minHeight: 42, border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 14, outline: 'none', color: C.gray800, background: 'rgba(255,255,255,0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
+const selStyle = { padding: '10px 14px', minHeight: 42, border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 13, background: 'rgba(255,255,255,0.84)', outline: 'none', cursor: 'pointer', color: C.gray800, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
+const btnStyle = { padding: '10px 18px', borderRadius: 12, border: `1px solid rgba(148,163,184,0.24)`, background: 'rgba(255,255,255,0.84)', cursor: 'pointer', fontSize: 13, color: C.gray600, fontWeight: 700, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }

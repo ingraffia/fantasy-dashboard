@@ -142,7 +142,7 @@ body {
 }
 
 .surface-card-header {
-  padding: 15px 17px;
+  padding: 18px 20px;
   border-bottom: 1px solid var(--border);
 }
 
@@ -328,7 +328,7 @@ input:focus, select:focus {
 }
 
 /* ── Layout ─────────────────────────────────────────────── */
-.section-stack { display: flex; flex-direction: column; gap: 14px; }
+.section-stack { display: flex; flex-direction: column; gap: 20px; }
 
 /* ── Matchup card ───────────────────────────────────────── */
 .matchup-card {
