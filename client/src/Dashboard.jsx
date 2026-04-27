@@ -7,8 +7,9 @@ const C = {
     navy: '#1e3a5f', navyLight: '#2d5282', accent: '#3b82f6', accentLight: '#eff6ff',
     green: '#16a34a', greenLight: '#dcfce7', red: '#dc2626', redLight: '#fef2f2',
     amber: '#d97706', amberLight: '#fffbeb',
-    gray50: '#f9fafb', gray100: '#f3f4f6', gray200: '#e5e7eb',
-    gray400: '#9ca3af', gray600: '#4b5563', gray800: '#1f2937', white: '#ffffff',
+    gray50: '#f9fafb', gray100: '#f3f4f6', gray200: '#e5e7eb', gray300: '#d1d5db',
+    gray400: '#9ca3af', gray500: '#6b7280', gray600: '#4b5563', gray700: '#374151',
+    gray800: '#1f2937', white: '#ffffff',
 }
 
 const STATUS_COLOR = { DTD: C.amber, IL: C.red, IL10: C.red, IL60: C.red, IL15: C.red, NA: C.gray400 }
@@ -169,7 +170,7 @@ function formatRelativeTime(timestamp) {
 }
 
 function Tag({ text, bg = C.gray100, color = C.gray600 }) {
-    return <span className="premium-badge" style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: bg, color, lineHeight: '18px', letterSpacing: '-0.01em' }}>{text}</span>
+    return <span className="premium-badge" style={{ display: 'inline-block', padding: '3px 9px', borderRadius: 999, fontSize: 11, fontWeight: 700, background: bg, color, lineHeight: '18px', letterSpacing: '-0.01em' }}>{text}</span>
 }
 
 function StatusBadge({ status }) {
@@ -1461,7 +1462,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '⚡',
             badgeBg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
             badgeColor: '#fff',
-            avatarSize: 40,
+            avatarSize: 44,
         },
         triple: {
             bg: 'linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%)',
@@ -1470,7 +1471,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '🔥',
             badgeBg: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
             badgeColor: '#fff',
-            avatarSize: 38,
+            avatarSize: 42,
         },
         double: {
             bg: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
@@ -1479,21 +1480,21 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             badge: '💥',
             badgeBg: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
             badgeColor: '#fff',
-            avatarSize: 36,
+            avatarSize: 40,
         },
         single: {
             bg: C.white,
             border: `1px solid ${C.gray100}`,
             shadow: 'none',
             badge: null,
-            avatarSize: 36,
+            avatarSize: 38,
         },
         default: {
             bg: C.white,
             border: 'none',
             shadow: 'none',
             badge: null,
-            avatarSize: 36,
+            avatarSize: 38,
         },
     }
 
@@ -1510,8 +1511,8 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         return (
             <div key={event.id} className="feed-event-row" style={{
                 animationDelay: `${Math.min(i * 35, 280)}ms`,
-                display: 'flex', alignItems: 'center', gap: 11,
-                padding: isHR ? '13px 14px' : '11px 14px',
+                display: 'flex', alignItems: 'center', gap: 13,
+                padding: isHR ? '16px 16px' : '13px 16px',
                 borderTop: i > 0 ? `1px solid ${C.gray50}` : 'none',
                 background: ts.bg,
                 boxShadow: ts.shadow,
@@ -1539,7 +1540,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             disabled={!event.playerKey}
                             style={{ border: 'none', background: 'transparent', padding: 0, margin: 0,
                                 cursor: event.playerKey ? 'pointer' : 'default',
-                                fontWeight: 800, fontSize: isHR ? 14 : 13, color: C.navy, letterSpacing: '-0.01em' }}>
+                                fontWeight: 800, fontSize: isHR ? 15 : 14, color: C.navy, letterSpacing: '-0.01em' }}>
                             {event.playerName}
                         </button>
                         {event.selectedPosition && <SlotPill slot={event.selectedPosition} />}
@@ -1550,15 +1551,15 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                                 borderRadius: 7, padding: '2px 7px 2px 4px',
                                 boxShadow: '0 1px 2px rgba(15,23,42,0.06)' }}>
                                 <MlbLogo team={event.playerTeam} size={13} showText={false} />
-                                <span style={{ fontSize: 10, fontWeight: 900, color: C.gray700, letterSpacing: '0.03em' }}>
+                                <span style={{ fontSize: 11, fontWeight: 800, color: C.gray700, letterSpacing: '0.02em' }}>
                                     {normalizeClientTeamAbbr(event.playerTeam)}
                                 </span>
                             </span>
                         )}
                     </div>
                     {/* Summary */}
-                    <div style={{ fontSize: isHR ? 13 : 12, fontWeight: isHR ? 700 : 600,
-                        color: isHR ? '#92400e' : C.gray700, lineHeight: 1.3 }}>
+                    <div style={{ fontSize: isHR ? 14 : 13, fontWeight: isHR ? 700 : 500,
+                        color: isHR ? '#92400e' : C.gray600, lineHeight: 1.35, marginTop: 2 }}>
                         {event.summary}
                     </div>
                 </div>
@@ -1574,7 +1575,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             <div style={{ marginBottom: 3 }}>
                                 <span style={{
                                     display: 'inline-block',
-                                    fontWeight: 900, fontSize: isHR ? 15 : 13,
+                                    fontWeight: 900, fontSize: isHR ? 17 : 14,
                                     color: statColor, letterSpacing: '-0.02em',
                                     background: statBg,
                                     padding: isHR ? '3px 8px' : '2px 7px',
@@ -1584,8 +1585,8 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                                     {primary}
                                 </span>
                                 {event.impact.length > 1 && (
-                                    <div style={{ fontSize: 10, fontWeight: 700, color: C.gray500,
-                                        marginTop: 2, lineHeight: 1.2 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: C.gray500,
+                                        marginTop: 3, lineHeight: 1.2 }}>
                                         {event.impact.slice(1).join(' · ')}
                                     </div>
                                 )}
@@ -1593,16 +1594,16 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                         )
                     })()}
                     {event.inningLabel && (
-                        <div style={{ fontSize: 10, fontWeight: 700, color: C.gray500,
+                        <div style={{ fontSize: 11, fontWeight: 700, color: C.gray500,
                             whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
                             {event.inningLabel}
                         </div>
                     )}
-                    <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap', marginTop: 2 }}>
+                    <div style={{ fontSize: 11, color: C.gray400, whiteSpace: 'nowrap', marginTop: 2 }}>
                         {formatRelativeTime(event.timestamp)}
                     </div>
                     {showTeam && game && (
-                        <div style={{ fontSize: 9, color: C.gray300, whiteSpace: 'nowrap', marginTop: 2, fontWeight: 600 }}>
+                        <div style={{ fontSize: 10, color: C.gray400, whiteSpace: 'nowrap', marginTop: 2, fontWeight: 600 }}>
                             {game.awayTeam} · {game.homeTeam}
                         </div>
                     )}
@@ -1612,30 +1613,30 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
     }
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
             {/* ── Control bar ── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
 
                 {/* Live status chip */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {totalLiveGames > 0 ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6,
                             background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
                             border: '1px solid #86efac', borderRadius: 20,
-                            padding: '4px 10px 4px 8px',
+                            padding: '5px 12px 5px 9px',
                             boxShadow: '0 1px 4px rgba(5,150,105,0.15)' }}>
-                            <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.green,
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: C.green,
                                 display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />
-                            <span style={{ fontSize: 11, fontWeight: 800, color: '#065f46', letterSpacing: '-0.01em' }}>
+                            <span style={{ fontSize: 12, fontWeight: 800, color: '#065f46', letterSpacing: '-0.01em' }}>
                                 {totalLiveGames} LIVE
                             </span>
                         </span>
                     ) : (
-                        <span style={{ fontSize: 12, fontWeight: 700, color: C.gray500 }}>Today&apos;s Feed</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: C.gray600 }}>Today&apos;s Feed</span>
                     )}
                     {lastUpdated && (
-                        <span style={{ fontSize: 10, color: C.gray400, paddingLeft: 2 }}>
+                        <span style={{ fontSize: 11, color: C.gray400, paddingLeft: 2 }}>
                             Updated {lastUpdated.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                         </span>
                     )}
@@ -1646,8 +1647,8 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                     background: C.gray100, borderRadius: 10, padding: 3, gap: 0 }}>
                     {[['all', 'All'], ['game', 'By Game']].map(([v, label]) => (
                         <button key={v} onClick={() => setGroupBy(v)} style={{
-                            fontSize: 11, fontWeight: groupBy === v ? 800 : 600,
-                            padding: '5px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                            fontSize: 12, fontWeight: groupBy === v ? 800 : 600,
+                            padding: '6px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
                             background: groupBy === v
                                 ? 'linear-gradient(135deg, #0f2040 0%, #1e4272 60%, #2563eb 100%)'
                                 : 'transparent',
@@ -1692,8 +1693,8 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                 <div className="scrollbar-hidden" style={{ display: 'flex', gap: 6, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
                     {filterGamePk && (
                         <button onClick={() => setFilterGamePk(null)} style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px',
-                            background: C.navy, border: 'none', borderRadius: 20, fontSize: 11,
+                            display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 12px',
+                            background: C.navy, border: 'none', borderRadius: 20, fontSize: 12,
                             fontWeight: 700, color: '#fff', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap',
                         }}>All ×</button>
                     )}
@@ -1704,25 +1705,25 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             <button key={game.gamePk}
                                 onClick={() => setFilterGamePk(prev => String(prev) === String(game.gamePk) ? null : game.gamePk)}
                                 style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px',
+                                    display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px',
                                     background: active
                                         ? C.navy
                                         : game.isLive ? C.greenLight : C.gray50,
                                     border: `1px solid ${active ? C.navy : game.isLive ? '#86efac' : C.gray200}`,
-                                    borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                    borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                                     color: active ? '#fff' : game.isLive ? C.green : C.gray600,
                                     flexShrink: 0, whiteSpace: 'nowrap',
                                     transition: 'all 0.15s ease',
                                     boxShadow: active ? '0 2px 8px rgba(15,32,64,0.2)' : 'none',
                                 }}>
                                 {game.isLive && !active && (
-                                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: C.green,
+                                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green,
                                         display: 'inline-block', animation: 'pulse 1.5s infinite', flexShrink: 0 }} />
                                 )}
                                 <span style={{ fontWeight: 700 }}>{game.awayTeam}</span>
                                 {started
                                     ? <span style={{ fontWeight: 800 }}>{game.awayScore}–{game.homeScore}</span>
-                                    : <span style={{ opacity: 0.5, fontSize: 10 }}>vs</span>}
+                                    : <span style={{ opacity: 0.5, fontSize: 11 }}>vs</span>}
                                 <span style={{ fontWeight: 700 }}>{game.homeTeam}</span>
                             </button>
                         )
@@ -1785,21 +1786,21 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                     border: `1px solid ${C.gray100}`, overflow: 'hidden',
                     boxShadow: '0 4px 20px rgba(15,23,42,0.05)' }}>
                     {showPrevDay && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px',
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px',
                             background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
                             borderBottom: `1px solid #fde68a` }}>
-                            <span style={{ fontSize: 11 }}>📅</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#92400e' }}>Yesterday</span>
-                            <span style={{ fontSize: 11, color: '#b45309' }}>— will update when today's games begin</span>
+                            <span style={{ fontSize: 13 }}>📅</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#92400e' }}>Yesterday</span>
+                            <span style={{ fontSize: 12, color: '#b45309' }}>— will update when today's games begin</span>
                         </div>
                     )}
                     {isSampleMode && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px',
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '11px 16px',
                             background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
                             borderBottom: `1px solid #bfdbfe` }}>
-                            <span style={{ fontSize: 11 }}>👀</span>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: '#1e40af' }}>Preview</span>
-                            <span style={{ fontSize: 11, color: '#3b82f6' }}>— sample events showing what the feed looks like</span>
+                            <span style={{ fontSize: 13 }}>👀</span>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#1e40af' }}>Preview</span>
+                            <span style={{ fontSize: 12, color: '#3b82f6' }}>— sample events showing what the feed looks like</span>
                         </div>
                     )}
                     {sortedAllEvents.map((ev, i) => renderEventRow(ev, i, true))}
@@ -1817,30 +1818,30 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             : '0 4px 20px rgba(15,23,42,0.05)' }}>
                         {/* Game header */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                            padding: '10px 14px',
+                            padding: '12px 16px',
                             background: game.isLive
                                 ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'
                                 : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
                             borderBottom: `1px solid ${game.isLive ? '#bbf7d0' : C.gray100}` }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                                <MlbLogo team={game.awayTeam} size={15} showText={false} />
-                                <span style={{ fontSize: 12, fontWeight: 800, color: C.navy }}>{game.awayTeam}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                <MlbLogo team={game.awayTeam} size={16} showText={false} />
+                                <span style={{ fontSize: 13, fontWeight: 800, color: C.navy }}>{game.awayTeam}</span>
                                 {(game.isLive || game.isFinal) && (
-                                    <span style={{ fontSize: 13, fontWeight: 900, color: C.gray800,
-                                        background: C.white, borderRadius: 6, padding: '1px 6px',
+                                    <span style={{ fontSize: 14, fontWeight: 900, color: C.gray800,
+                                        background: C.white, borderRadius: 6, padding: '2px 8px',
                                         border: `1px solid ${C.gray200}`, letterSpacing: '-0.02em' }}>
                                         {game.awayScore}–{game.homeScore}
                                     </span>
                                 )}
-                                <span style={{ fontSize: 11, color: C.gray400, fontWeight: 600 }}>@</span>
-                                <MlbLogo team={game.homeTeam} size={15} showText={false} />
-                                <span style={{ fontSize: 12, fontWeight: 800, color: C.navy }}>{game.homeTeam}</span>
+                                <span style={{ fontSize: 12, color: C.gray400, fontWeight: 600 }}>@</span>
+                                <MlbLogo team={game.homeTeam} size={16} showText={false} />
+                                <span style={{ fontSize: 13, fontWeight: 800, color: C.navy }}>{game.homeTeam}</span>
                             </div>
                             <GameStatusBadge game={game} />
                         </div>
                         {/* Events */}
                         {gameEvents.length === 0 ? (
-                            <div style={{ padding: '14px 14px', color: C.gray400, fontSize: 12, fontStyle: 'italic' }}>
+                            <div style={{ padding: '16px 16px', color: C.gray400, fontSize: 13, fontStyle: 'italic' }}>
                                 No fantasy actions in this game yet.
                             </div>
                         ) : gameEvents.map((ev, i) => renderEventRow(ev, i, false))}
@@ -1860,7 +1861,7 @@ function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
     return (
         <div className="row-premium"
             onClick={() => openPlayer(p.primaryPlayerKey, p.primaryName)}
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', borderBottom: `1px solid ${C.gray100}`, background: C.white, cursor: 'pointer', active: { background: C.gray50 } }}
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: `1px solid ${C.gray100}`, background: C.white, cursor: 'pointer', active: { background: C.gray50 } }}
             onMouseEnter={e => e.currentTarget.style.background = C.gray50}
             onMouseLeave={e => e.currentTarget.style.background = C.white}>
             <PlayerAvatar imageUrl={getResImg(p)} name={p.primaryName} size={40} />
@@ -1894,7 +1895,7 @@ function MobilePlayerCard({ p, data, rankMap, getResImg, openPlayer }) {
 
 const sectionLabelRow = (text, isMobile, colSpan, color = C.gray600) => (
     <tr>
-        <td colSpan={isMobile ? 3 : colSpan} style={{ padding: '7px 14px', fontSize: 10, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.08em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
+        <td colSpan={isMobile ? 3 : colSpan} style={{ padding: '9px 18px', fontSize: 11, fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.07em', background: C.gray50, borderBottom: `1px solid ${C.gray200}`, borderTop: `1px solid ${C.gray200}` }}>
             {text}
         </td>
     </tr>
@@ -2487,7 +2488,7 @@ export default function Dashboard({ api }) {
 
         // Stat values — today or season depending on game activity
         const numTd = (v, bold = false) => (
-            <td style={{ ...tdStyle, fontSize: 12, textAlign: 'right', fontWeight: bold ? 700 : 400, color: C.gray800 }}>{v ?? '—'}</td>
+            <td style={{ ...tdStyle, fontSize: 13, textAlign: 'right', fontWeight: bold ? 700 : 500, color: bold ? C.gray800 : C.gray600 }}>{v ?? '—'}</td>
         )
 
         let statCells = null
@@ -2542,17 +2543,17 @@ export default function Dashboard({ api }) {
                     onClick={() => openPlayer(player.playerKey, player.name)}
                     onMouseEnter={e => e.currentTarget.style.background = isIL ? C.redLight : C.gray50}
                     onMouseLeave={e => e.currentTarget.style.background = rowBg}>
-                    <td style={{ padding: '8px 10px', verticalAlign: 'middle', width: 44 }}><SlotPill slot={player.selectedPosition} /></td>
-                    <td style={{ padding: '8px 6px', verticalAlign: 'middle' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <PlayerAvatar imageUrl={getResImg(player)} name={player.name} size={34} />
+                    <td style={{ padding: '12px 10px', verticalAlign: 'middle', width: 50 }}><SlotPill slot={player.selectedPosition} /></td>
+                    <td style={{ padding: '12px 8px', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <PlayerAvatar imageUrl={getResImg(player)} name={player.name} size={38} />
                             <div>
-                                <div style={{ fontWeight: 600, fontSize: 13 }}>{player.name}</div>
-                                <div style={{ fontSize: 11, color: C.gray400, display: 'flex', alignItems: 'center', gap: 4 }}><MlbLogo team={player.proTeam} size={14} showText={true} /> · {player.position}</div>
+                                <div style={{ fontWeight: 700, fontSize: 14 }}>{player.name}</div>
+                                <div style={{ fontSize: 12, color: C.gray500, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}><MlbLogo team={player.proTeam} size={14} showText={true} /> · {player.position}</div>
                             </div>
                         </div>
                     </td>
-                    <td style={{ padding: '8px 10px', verticalAlign: 'middle', textAlign: 'right' }}>{statusCell}</td>
+                    <td style={{ padding: '12px 10px', verticalAlign: 'middle', textAlign: 'right' }}>{statusCell}</td>
                 </tr>
             )
         }
@@ -2567,13 +2568,13 @@ export default function Dashboard({ api }) {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <PlayerAvatar imageUrl={getResImg(player)} name={player.name} size={38} />
                         <div>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: C.gray800 }}>{player.name}</div>
-                            <div style={{ fontSize: 11, color: C.gray400, marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}><MlbLogo team={player.proTeam} size={14} showText={true} /> · {player.position}</div>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: C.gray800 }}>{player.name}</div>
+                            <div style={{ fontSize: 12, color: C.gray500, marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}><MlbLogo team={player.proTeam} size={14} showText={true} /> · {player.position}</div>
                         </div>
                     </div>
                 </td>
-                <td style={{ ...tdStyle, fontSize: 12, fontWeight: 600, color: C.gray600 }}>{oppDisplay}</td>
-                <td style={{ ...tdStyle, fontSize: 12 }}>{statusCell}</td>
+                <td style={{ ...tdStyle, fontSize: 13, fontWeight: 600, color: C.gray600 }}>{oppDisplay}</td>
+                <td style={{ ...tdStyle, fontSize: 13 }}>{statusCell}</td>
                 {statCells}
             </tr>
         )
@@ -2594,7 +2595,7 @@ export default function Dashboard({ api }) {
     const pullOffset = isMobile ? (pullState.refreshing ? 56 : pullState.distance) : 0
 
     return (
-        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Manrope", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 13, color: C.gray800 }}>
+        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Manrope", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 14, color: C.gray800 }}>
 
             {isMobile && (
                 <div style={{
@@ -3053,12 +3054,12 @@ export default function Dashboard({ api }) {
                 </div>
             </div>
 
-            <div className="section-stack animate-tab-content" style={{ padding: `14px ${px} 24px` }}>
+            <div className="section-stack animate-tab-content" style={{ padding: `20px ${px} 48px` }}>
 
                 {/* ALL PLAYERS */}
                 {activeTab === 'feed' && (
                     <>
-                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', padding: 14 }}>
+                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', padding: '16px 18px' }}>
                             <input placeholder="Search players..." value={search} onChange={e => setSearch(e.target.value)}
                                 style={{ ...inputStyle, flex: isMobile ? 1 : 'none', width: isMobile ? 'auto' : 200 }} />
                             <select value={posFilter} onChange={e => setPosFilter(e.target.value)} style={selStyle}>
@@ -3197,11 +3198,11 @@ export default function Dashboard({ api }) {
                 {/* LINEUPS */}
                 {activeTab === 'lineup' && (
                     <>
-                        <div className="surface-card scrollbar-hidden" style={{ display: 'flex', gap: 10, marginBottom: 14, overflowX: 'auto', WebkitOverflowScrolling: 'touch', padding: '10px 12px', alignItems: 'center', background: 'rgba(255,255,255,0.76)' }}>
+                        <div className="surface-card scrollbar-hidden" style={{ display: 'flex', gap: 10, marginBottom: 14, overflowX: 'auto', WebkitOverflowScrolling: 'touch', padding: '12px 14px', alignItems: 'center', background: 'rgba(255,255,255,0.76)' }}>
                             {data.map(lg => (
                                 <button className={`league-pill${activeLeague === lg.leagueKey ? ' is-active' : ''}`} key={lg.leagueKey} onClick={() => setActiveLeague(lg.leagueKey)} style={{
-                                    minHeight: 42,
-                                    padding: '10px 16px', fontSize: 11, borderRadius: 999, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
+                                    minHeight: 44,
+                                    padding: '10px 20px', fontSize: 12, borderRadius: 999, cursor: 'pointer', fontWeight: 700, flexShrink: 0,
                                     background: activeLeague === lg.leagueKey ? C.navy : C.white,
                                     color: activeLeague === lg.leagueKey ? C.white : C.gray600,
                                     border: `1px solid ${activeLeague === lg.leagueKey ? C.navy : C.gray200}`,
@@ -3313,7 +3314,7 @@ export default function Dashboard({ api }) {
                 {/* WAIVER WIRE */}
                 {activeTab === 'waiver' && (
                     <>
-                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', padding: 14 }}>
+                        <div className="surface-card surface-card--strong" style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center', padding: '16px 18px' }}>
                             <select value={faLeague || ''} onChange={e => { setFaLeague(e.target.value); fetchFreeAgents(e.target.value, faPos, faSearch) }} style={{ ...selStyle, flex: isMobile ? 1 : 'none' }}>
                                 {yahooLeagues.map(lg => <option key={lg.leagueKey} value={lg.leagueKey}>{lg.leagueName}</option>)}
                             </select>
@@ -3337,13 +3338,13 @@ export default function Dashboard({ api }) {
                                         ? <div style={{ padding: '2rem', textAlign: 'center', color: C.gray400 }}>No players found</div>
                                         : visibleFreeAgents.map(p => (
                                             <div key={p.playerKey} onClick={() => openPlayer(p.playerKey, p.name)}
-                                                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer' }}
+                                                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 16px', borderBottom: `1px solid ${C.gray100}`, cursor: 'pointer' }}
                                                 onMouseEnter={e => e.currentTarget.style.background = C.gray50}
                                                 onMouseLeave={e => e.currentTarget.style.background = C.white}>
                                                 <PlayerAvatar imageUrl={getResImg(p)} name={p.name} size={38} />
                                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div>
-                                                    <div style={{ display: 'flex', gap: 4, marginTop: 3, alignItems: 'center' }}>
+                                                    <div style={{ fontWeight: 700, fontSize: 14 }}>{p.name}</div>
+                                                    <div style={{ display: 'flex', gap: 4, marginTop: 4, alignItems: 'center' }}>
                                                         <Tag text={p.position || '—'} />
                                                         <span style={{ fontSize: 11, color: C.gray400 }}><MlbLogo team={p.proTeam} size={13} showText={true} /></span>
                                                     </div>
@@ -3425,8 +3426,8 @@ export default function Dashboard({ api }) {
 
 const tableCard = { background: 'rgba(255,255,255,0.88)', borderRadius: 16, border: `1px solid rgba(148,163,184,0.18)`, overflow: 'hidden', boxShadow: '0 16px 40px rgba(15,23,42,0.05)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }
 const tableStyle = { width: '100%', borderCollapse: 'collapse' }
-const thStyle = { padding: '12px 16px', textAlign: 'left', fontSize: 10, fontWeight: 800, color: C.gray400, textTransform: 'uppercase', letterSpacing: '0.09em' }
-const tdStyle = { padding: '12px 16px', fontSize: 13, verticalAlign: 'middle', background: 'inherit' }
-const inputStyle = { padding: '10px 12px', minHeight: 40, border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 13, outline: 'none', color: C.gray800, background: 'rgba(255,255,255,0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
-const selStyle = { padding: '10px 12px', minHeight: 40, border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 12, background: 'rgba(255,255,255,0.84)', outline: 'none', cursor: 'pointer', color: C.gray800, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
-const btnStyle = { padding: '9px 16px', borderRadius: 12, border: `1px solid rgba(148,163,184,0.24)`, background: 'rgba(255,255,255,0.84)', cursor: 'pointer', fontSize: 13, color: C.gray600, fontWeight: 700, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
+const thStyle = { padding: '14px 18px', textAlign: 'left', fontSize: 11, fontWeight: 800, color: C.gray500, textTransform: 'uppercase', letterSpacing: '0.07em' }
+const tdStyle = { padding: '14px 18px', fontSize: 14, verticalAlign: 'middle', background: 'inherit' }
+const inputStyle = { padding: '10px 14px', minHeight: 42, border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 14, outline: 'none', color: C.gray800, background: 'rgba(255,255,255,0.84)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
+const selStyle = { padding: '10px 14px', minHeight: 42, border: `1px solid rgba(148,163,184,0.24)`, borderRadius: 12, fontSize: 13, background: 'rgba(255,255,255,0.84)', outline: 'none', cursor: 'pointer', color: C.gray800, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
+const btnStyle = { padding: '10px 18px', borderRadius: 12, border: `1px solid rgba(148,163,184,0.24)`, background: 'rgba(255,255,255,0.84)', cursor: 'pointer', fontSize: 13, color: C.gray600, fontWeight: 700, boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.65), 0 6px 16px rgba(15,23,42,0.03)' }
