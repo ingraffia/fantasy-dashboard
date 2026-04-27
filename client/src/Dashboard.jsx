@@ -1,15 +1,15 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import axios from 'axios'
+import { BrandMark } from './BrandLogo'
 const POSITIONS = ['All', 'SP', 'RP', 'C', '1B', '2B', '3B', 'SS', 'OF', 'DH', 'Util']
 const IL_SLOTS = ['IL', 'IL10', 'IL15', 'IL60', 'NA']
 
 const C = {
-    navy: '#1e3a5f', navyLight: '#2d5282', accent: '#3b82f6', accentLight: '#eff6ff',
+    navy: '#111111', navyLight: '#242424', accent: '#111111', accentLight: '#f3f3f3',
     green: '#16a34a', greenLight: '#dcfce7', red: '#dc2626', redLight: '#fef2f2',
     amber: '#d97706', amberLight: '#fffbeb',
-    gray50: '#f9fafb', gray100: '#f3f4f6', gray200: '#e5e7eb', gray300: '#d1d5db',
-    gray400: '#9ca3af', gray500: '#6b7280', gray600: '#4b5563', gray700: '#374151',
-    gray800: '#1f2937', white: '#ffffff',
+    gray50: '#fafafa', gray100: '#f4f4f5', gray200: '#e4e4e7', gray300: '#d4d4d8',
+    gray400: '#a1a1aa', gray500: '#71717a', gray600: '#52525b', gray700: '#3f3f46', gray800: '#18181b', white: '#ffffff',
 }
 
 const STATUS_COLOR = { DTD: C.amber, IL: C.red, IL10: C.red, IL60: C.red, IL15: C.red, NA: C.gray400 }
@@ -191,7 +191,6 @@ function PlatformLogo({ source, size = 16 }) {
         ? 'https://a.espncdn.com/favicon.ico'
         : 'https://s.yimg.com/cv/apiv2/default/icons/favicon_y19_32x32_custom.svg'
     const alt = isEspn ? 'ESPN' : 'Yahoo'
-    const bg = isEspn ? '#fff1ef' : '#edf4ff'
 
     return (
         <span style={{
@@ -201,9 +200,9 @@ function PlatformLogo({ source, size = 16 }) {
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: bg,
-            border: `1px solid ${isEspn ? '#ffd8d2' : '#dbe7ff'}`,
-            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.7)',
+            background: '#ffffff',
+            border: `1px solid ${C.gray200}`,
+            boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.72)',
         }}>
             <img src={src} width={size} height={size} alt={alt} style={{ display: 'block' }} />
         </span>
@@ -396,7 +395,7 @@ function GameStatusBadge({ game }) {
     const timeStr = game.startTime
         ? new Date(game.startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
         : '—'
-    return <span style={{ ...BADGE_SX, color: '#dbe7ff', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>{timeStr}</span>
+    return <span style={{ ...BADGE_SX, color: 'rgba(255,255,255,0.72)', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>{timeStr}</span>
 }
 
 function CompactGamePill({ game }) {
@@ -480,21 +479,16 @@ function MyPlayerStatRow({ bsPlayer, rosterPlayer, leagueCount = 1, imageMap, on
                             {[...Array(Math.min(leagueCount, 4))].map((_, i) => (
                                 <span key={i} style={{
                                     width: 9, height: 9, borderRadius: '50%',
-                                    background: [
-                                        'linear-gradient(135deg,#6366f1,#818cf8)',
-                                        'linear-gradient(135deg,#8b5cf6,#a78bfa)',
-                                        'linear-gradient(135deg,#a855f7,#c084fc)',
-                                        'linear-gradient(135deg,#ec4899,#f472b6)',
-                                    ][i],
+                                    background: ['#111111', '#3f3f46', '#71717a', '#a1a1aa'][i],
                                     marginLeft: i === 0 ? 0 : -3,
                                     border: '1.5px solid #ffffff',
-                                    boxShadow: '0 1px 3px rgba(99,102,241,0.35)',
+                                    boxShadow: '0 1px 3px rgba(10,10,10,0.18)',
                                     display: 'inline-block',
                                     flexShrink: 0,
                                 }} />
                             ))}
                             {leagueCount > 4 && (
-                                <span style={{ fontSize: 7, fontWeight: 900, color: '#6366f1', marginLeft: 3 }}>+{leagueCount - 4}</span>
+                                <span style={{ fontSize: 7, fontWeight: 900, color: C.gray600, marginLeft: 3 }}>+{leagueCount - 4}</span>
                             )}
                         </span>
                     )}
@@ -555,15 +549,15 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
     const bodyPadding = '12px'
     const bodyMinHeight = 220
     const cardWidth = isMobile ? 'calc(100vw - 48px)' : 300
-    const cardBorder = game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : isRosterGame ? '#bfdbfe' : '#dbe7ff'
-    const cardShadow = isRosterGame ? '0 16px 36px rgba(37,99,235,0.12)' : '0 12px 28px rgba(15,23,42,0.08)'
+    const cardBorder = game.isLive ? '#86efac' : game.isPostponed ? '#fcd34d' : isRosterGame ? '#d4d4d8' : C.gray200
+    const cardShadow = isRosterGame ? '0 16px 36px rgba(10,10,10,0.12)' : '0 12px 28px rgba(15,23,42,0.08)'
     const headerBg = game.isLive
         ? 'linear-gradient(180deg, #0f3b2d 0%, #14532d 100%)'
         : game.isPostponed
             ? 'linear-gradient(180deg, #5b3b10 0%, #7c4a12 100%)'
             : game.isFinal
                 ? 'linear-gradient(180deg, #1e293b 0%, #334155 100%)'
-                : 'linear-gradient(180deg, #0f2040 0%, #16324f 100%)'
+                : 'linear-gradient(180deg, #090909 0%, #1b1b1b 100%)'
     
     const showBody = loading || hasRosterPlayers
 
@@ -585,11 +579,11 @@ function BoxScoreCard({ game, boxscore, myPlayerNames, rosterPlayers, imageMap, 
             <div style={{ padding: headerPadding, borderBottom: `1px solid ${C.gray100}`, background: headerBg }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(219,231,255,0.72)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
+                        <div style={{ fontSize: 10, fontWeight: 800, color: 'rgba(255,255,255,0.66)', textTransform: 'uppercase', letterSpacing: '0.09em' }}>
                             MLB Today
                         </div>
                         {withRoster.length > 0 && (
-                            <span style={{ fontSize: 9, fontWeight: 800, color: '#bfdbfe', background: 'rgba(37,99,235,0.15)', padding: '2px 6px', borderRadius: 999, border: '1px solid rgba(37,99,235,0.25)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            <span style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.78)', background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 999, border: '1px solid rgba(255,255,255,0.16)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                                 {withRoster.length} Player{withRoster.length !== 1 ? 's' : ''}
                             </span>
                         )}
@@ -715,7 +709,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
         <div className="animate-fade-up">
         <div className="surface-card surface-card--strong" style={{ background: 'rgba(255,255,255,0.92)', borderBottom: `1px solid ${C.gray100}`, paddingTop: 14, paddingBottom: 4, borderRadius: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingLeft: px, paddingRight: px, marginBottom: 12 }}>
-                <span style={{ fontSize: 11, fontWeight: 800, color: C.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <span style={{ fontSize: 11, fontWeight: 800, color: C.gray800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {new Date().toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })}
                 </span>
                 {liveCount > 0 && (
@@ -777,7 +771,7 @@ function LiveBoxScores({ games, boxscores, myTeams, myPlayerNames, rosterPlayers
                             width: i === activeIdx ? 20 : 8,
                             height: 8,
                             borderRadius: 4,
-                            background: i === activeIdx ? C.accent : C.gray400,
+                            background: i === activeIdx ? C.gray800 : C.gray400,
                             border: 'none', padding: 0, cursor: 'pointer',
                             transition: 'width 200ms ease, background 200ms ease',
                             flexShrink: 0,
@@ -1183,7 +1177,7 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                                     <span style={{ fontSize: 16, fontWeight: 900, color: C.navy }}>{detail.percentOwned}%</span>
                                 </div>
                                 <div style={{ background: C.gray100, borderRadius: 99, height: 8, overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.04)' }}>
-                                    <div style={{ width: `${detail.percentOwned}%`, background: 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)', height: '100%', borderRadius: 99 }} />
+                                    <div style={{ width: `${detail.percentOwned}%`, background: 'linear-gradient(90deg, #111111 0%, #52525b 100%)', height: '100%', borderRadius: 99 }} />
                                 </div>
                             </div>
                         </div>
@@ -1202,7 +1196,7 @@ function PlayerPanel({ playerKey, playerName, leagues, rankMap, onClose, api, ow
                                     let rowBg = 'transparent'
 
                                     if (onRoster) {
-                                        rowBg = 'rgba(37, 99, 235, 0.05)'
+                                        rowBg = 'rgba(17,17,17,0.05)'
                                         statusNode = <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><SlotPill slot={slot} /></div>
                                     } else if (lg.leagueKey.startsWith('espn') || playerKey.startsWith('espn.')) {
                                         statusNode = <span style={{ fontSize: 12, color: C.gray400 }}>Not on roster</span>
@@ -1671,10 +1665,10 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                                 fontSize: 11, fontWeight: groupBy === v ? 800 : 600,
                                 padding: '5px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
                                 background: groupBy === v
-                                    ? 'linear-gradient(135deg, #0f2040 0%, #1e4272 60%, #2563eb 100%)'
+                                    ? 'linear-gradient(135deg, #0a0a0a 0%, #2a2a2a 100%)'
                                     : 'transparent',
                                 color: groupBy === v ? '#fff' : C.gray500,
-                                boxShadow: groupBy === v ? '0 4px 12px rgba(15,32,64,0.25), inset 0 1px 0 rgba(255,255,255,0.12)' : 'none',
+                                boxShadow: groupBy === v ? '0 4px 12px rgba(10,10,10,0.18), inset 0 1px 0 rgba(255,255,255,0.12)' : 'none',
                                 transition: 'all 0.2s var(--ease-out)',
                                 letterSpacing: '-0.01em' }}>
                                 {label}
@@ -1692,12 +1686,12 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                         width: 44, height: 44, borderRadius: '50%', border: 'none',
                         cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
                         background: refreshing
-                            ? 'linear-gradient(135deg, #0f2040 0%, #2563eb 100%)'
+                            ? 'linear-gradient(135deg, #0a0a0a 0%, #2f2f2f 100%)'
                             : totalLiveGames > 0
                                 ? 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)'
                                 : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
                         boxShadow: refreshing
-                            ? '0 6px 20px rgba(37,99,235,0.35), inset 0 1px 0 rgba(255,255,255,0.15)'
+                            ? '0 6px 20px rgba(10,10,10,0.28), inset 0 1px 0 rgba(255,255,255,0.15)'
                             : '0 4px 14px rgba(15,23,42,0.10), inset 0 1px 0 rgba(255,255,255,0.9)',
                         border: refreshing ? 'none' : `1.5px solid ${totalLiveGames > 0 ? '#86efac' : C.gray200}`,
                         transition: 'all 0.22s var(--ease-out)',
@@ -1777,7 +1771,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             {trackedGames.length > 0 && startedTrackedGames.length === 0 && (
                 <div style={{ padding: '44px 20px', textAlign: 'center', background: C.white,
                     borderRadius: 16, border: `1px solid ${C.gray100}` }}>
-                    <div style={{ fontSize: 36, marginBottom: 10 }}>⚾</div>
+                    <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'center' }}><BrandMark size={42} tone="dark" /></div>
                     <div style={{ fontWeight: 800, fontSize: 15, color: C.gray700, marginBottom: 5 }}>Waiting for first pitch</div>
                     <div style={{ fontSize: 12, color: C.gray400, lineHeight: 1.5 }}>Your feed lights up when a game starts.</div>
                 </div>
@@ -1786,7 +1780,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
             {startedTrackedGames.length > 0 && loading && events.length === 0 && (
                 <div style={{ padding: '44px 20px', textAlign: 'center', background: C.white,
                     borderRadius: 16, border: `1px solid ${C.gray100}` }}>
-                    <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2.5px solid rgba(37,99,235,0.18)',
+                    <div style={{ width: 28, height: 28, borderRadius: '50%', border: '2.5px solid rgba(17,17,17,0.14)',
                         borderTopColor: C.accent, animation: 'refreshSpin 0.7s linear infinite', margin: '0 auto 12px' }} />
                     <div style={{ fontSize: 13, color: C.gray400 }}>Listening for player actions…</div>
                 </div>
@@ -1952,21 +1946,14 @@ function DashboardLoadingScreen({ targetProgress, phase, isDataReady, onFinished
         <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             height: '100vh', flexDirection: 'column', gap: 0,
-            background: 'linear-gradient(160deg, #0d1f3c 0%, #16324f 50%, #1a4068 100%)',
+            background: 'radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 34%), linear-gradient(160deg, #050505 0%, #101010 52%, #1c1c1c 100%)',
             opacity, transition: 'opacity 0.3s ease'
         }}>
-            <div style={{
-                width: 72, height: 72, borderRadius: 22, marginBottom: 20,
-                background: 'rgba(255,255,255,0.10)',
-                border: '1px solid rgba(255,255,255,0.18)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.22), 0 24px 50px rgba(5,10,25,0.4)',
-                display: 'grid', placeItems: 'center', fontSize: 34,
-            }}>⚾</div>
-            
-            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.05em', color: '#fff', lineHeight: 1, display: 'flex', alignItems: 'baseline', gap: 2, marginBottom: 6 }}>
-                Dugout
-                <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#2d7ff9', marginLeft: 2, marginBottom: 2, boxShadow: '0 0 12px rgba(45,127,249,0.8)' }} />
+            <div style={{ marginBottom: 20 }}>
+                <BrandMark size={72} tone="light" framed />
             </div>
+            
+            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: '-0.05em', color: '#fff', lineHeight: 1, marginBottom: 6 }}>Dugout</div>
 
             <div style={{ position: 'relative', height: 18, marginBottom: 28, display: 'flex', justifyContent: 'center', width: '100%' }}>
                 <div key={phase} style={{ 
@@ -1981,8 +1968,8 @@ function DashboardLoadingScreen({ targetProgress, phase, isDataReady, onFinished
             <div style={{ width: 180, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 99, overflow: 'hidden' }}>
                 <div style={{
                     height: '100%', borderRadius: 99,
-                    background: 'linear-gradient(90deg, #2d7ff9, #6ba8e0)',
-                    boxShadow: '0 0 12px rgba(45,127,249,0.6)',
+                    background: 'linear-gradient(90deg, #ffffff, #a1a1aa)',
+                    boxShadow: '0 0 12px rgba(255,255,255,0.16)',
                     width: `${displayProgress}%`,
                     transition: 'width 0.16s linear'
                 }} />
@@ -2608,7 +2595,7 @@ export default function Dashboard({ api }) {
     const pullOffset = isMobile ? (pullState.refreshing ? 56 : pullState.distance) : 0
 
     return (
-        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Manrope", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 14, color: C.gray800 }}>
+        <div className="app-shell" style={{ minHeight: '100vh', background: 'transparent', fontFamily: '"Space Grotesk", "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif', fontSize: 14, color: C.gray800 }}>
 
             {isMobile && (
                 <div style={{
@@ -2660,13 +2647,10 @@ export default function Dashboard({ api }) {
                 <div className="topbar-hero-bg" style={{ opacity: isScrolled ? 0 : 1 }} />
                 <div className="dashboard-brand" style={{ position: 'relative', zIndex: 1 }}>
                     <div className="dashboard-brand-mark">
-                        <span style={{ fontSize: 18 }}>⚾</span>
+                        <BrandMark size={38} tone="light" />
                     </div>
                     <div>
-                        <div className="brand-wordmark" style={{ fontSize: isMobile ? 17 : 20 }}>
-                            Dugout
-                            <span className="brand-dot" />
-                        </div>
+                        <div className="brand-wordmark" style={{ fontSize: isMobile ? 17 : 20 }}>Dugout</div>
                         <div className="brand-sub">
                             {data.length} leagues · 2026
                             {ranksLoading && ' · Ranking…'}
@@ -2734,7 +2718,7 @@ export default function Dashboard({ api }) {
                                 {matchupWeek && <span style={{ fontSize: 13, fontWeight: 900, color: C.navy, letterSpacing: '-0.02em' }}>WEEK {matchupWeek}</span>}
                                 <span style={{ fontSize: 13, fontWeight: 700, color: C.gray400 }}>MATCHUPS</span>
                             </div>
-                            <span style={{ fontSize: 10, fontWeight: 800, color: daysLeft === 0 ? C.red : '#2563eb', background: daysLeft === 0 ? '#fee2e2' : '#dbeafe', padding: '4px 8px', borderRadius: 6, letterSpacing: '0.04em' }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: daysLeft === 0 ? C.red : C.gray800, background: daysLeft === 0 ? '#fee2e2' : C.gray100, padding: '4px 8px', borderRadius: 6, letterSpacing: '0.04em' }}>
                                 {daysLeft === 0 ? 'FINAL DAY' : `${daysLeft} DAYS LEFT`}
                             </span>
                         </div>
@@ -2746,11 +2730,11 @@ export default function Dashboard({ api }) {
                                     <div key={i} style={{ 
                                         flex: 1, height: 34, borderRadius: 8,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        background: isToday ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'
-                                                    : isPlayed ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)'
+                                        background: isToday ? 'linear-gradient(135deg, #111111 0%, #2f2f2f 100%)'
+                                                    : isPlayed ? 'linear-gradient(135deg, #27272a 0%, #111111 100%)'
                                                     : C.gray50,
-                                        boxShadow: isToday ? '0 4px 12px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.2)' : isPlayed ? 'inset 0 2px 4px rgba(0,0,0,0.1)' : 'none',
-                                        border: isToday ? '1px solid #60a5fa' : isPlayed ? '1px solid #0f172a' : `1px dashed ${C.gray300}`,
+                                        boxShadow: isToday ? '0 4px 12px rgba(10,10,10,0.24), inset 0 1px 0 rgba(255,255,255,0.16)' : isPlayed ? 'inset 0 2px 4px rgba(0,0,0,0.1)' : 'none',
+                                        border: isToday ? '1px solid #52525b' : isPlayed ? '1px solid #111111' : `1px dashed ${C.gray300}`,
                                         color: (isToday || isPlayed) ? '#ffffff' : C.gray400,
                                         fontSize: 13,
                                         fontWeight: isToday ? 900 : isPlayed ? 800 : 600,
@@ -2786,8 +2770,8 @@ export default function Dashboard({ api }) {
                     const hasDetails = !!(lg.matchup && computeMatchupCloseness(lg))
                     const isExpanded = expandedMatchup === lg.leagueKey
                     const cardWidth = isMobile ? 'calc(100vw - 48px)' : undefined
-                    const borderColor = isWinning ? '#86efac' : isLosing ? '#fca5a5' : '#bfdbfe'
-                    const platformBg = lg.source === 'espn' ? 'rgba(240,72,62,0.12)' : 'rgba(96,1,210,0.12)'
+                    const borderColor = isWinning ? '#86efac' : isLosing ? '#fca5a5' : C.gray200
+                    const platformBg = C.gray50
                     const href = lg.source === 'espn'
                         ? `https://fantasy.espn.com/baseball/league?leagueId=${lg.leagueKey.split('.l.')[1]}`
                         : `https://baseball.fantasysports.yahoo.com/b1/${lg.leagueKey.split('.l.')[1]}`
@@ -2829,7 +2813,7 @@ export default function Dashboard({ api }) {
                                 background: '#ffffff',
                                 borderRadius: 18,
                                 border: `1px solid ${borderColor}`,
-                                boxShadow: isWinning || isLosing ? '0 18px 40px rgba(15,23,42,0.10)' : '0 14px 32px rgba(15,23,42,0.08)',
+                                boxShadow: isWinning || isLosing ? '0 18px 40px rgba(15,23,42,0.10)' : '0 14px 32px rgba(10,10,10,0.08)',
                                 cursor: hasDetails ? 'pointer' : 'default',
                                 overflow: 'hidden',
                                 ...(isMobile ? { width: cardWidth, minWidth: cardWidth, maxWidth: cardWidth, flex: '0 0 auto', scrollSnapAlign: 'start' } : { flex: '1 1 0', minWidth: 0 }),
@@ -3025,9 +3009,9 @@ export default function Dashboard({ api }) {
                     zIndex: 30,
                     transition: 'background 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease',
                     background: tabScrolled
-                        ? 'linear-gradient(135deg, rgba(17,38,63,0.97) 0%, rgba(30,67,112,0.95) 52%, rgba(45,100,180,0.93) 100%)'
+                        ? 'linear-gradient(135deg, rgba(10,10,10,0.97) 0%, rgba(24,24,27,0.95) 52%, rgba(39,39,42,0.93) 100%)'
                         : undefined,
-                    boxShadow: tabScrolled ? '0 4px 24px rgba(10,20,40,0.22)' : undefined,
+                    boxShadow: tabScrolled ? '0 4px 24px rgba(10,10,10,0.22)' : undefined,
                     borderBottom: tabScrolled ? '1px solid rgba(255,255,255,0.08)' : undefined,
                     backdropFilter: tabScrolled ? 'blur(24px) saturate(1.4)' : undefined,
                     WebkitBackdropFilter: tabScrolled ? 'blur(24px) saturate(1.4)' : undefined,
@@ -3160,7 +3144,7 @@ export default function Dashboard({ api }) {
                                                     }}
                                                 >
                                                     <span>Roster Share</span>
-                                                    <span style={{ fontSize: 11, color: playerSort === 'rosterShare' ? C.accent : C.gray400 }}>
+                                                    <span style={{ fontSize: 11, color: playerSort === 'rosterShare' ? C.gray800 : C.gray400 }}>
                                                         {playerSort === 'rosterShare' ? '↓' : '↕'}
                                                     </span>
                                                 </button>
@@ -3278,7 +3262,7 @@ export default function Dashboard({ api }) {
                                         <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <div>
                                                 <div style={{ fontWeight: 800, fontSize: 15, color: C.navy }}>{activeLeagueData.teamName}</div>
-                                                <a href={activeLeagueData.leagueUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.accent, textDecoration: 'none' }}>
+                                                <a href={activeLeagueData.leagueUrl} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.gray700, textDecoration: 'none' }}>
                                                     Open in {src === 'espn' ? 'ESPN' : 'Yahoo'} ↗
                                                 </a>
                                             </div>

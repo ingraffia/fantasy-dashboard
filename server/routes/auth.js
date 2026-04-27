@@ -223,9 +223,9 @@ function renderAuthErrorPage(details) {
     <style>
       body {
         margin: 0;
-        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        background: linear-gradient(180deg, #eef3f8 0%, #e4ebf3 100%);
-        color: #102033;
+        font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: linear-gradient(180deg, #ffffff 0%, #f1f1f1 100%);
+        color: #111111;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -235,9 +235,9 @@ function renderAuthErrorPage(details) {
       .card {
         width: min(620px, 100%);
         background: rgba(255,255,255,0.94);
-        border: 1px solid rgba(148,163,184,0.18);
+        border: 1px solid rgba(17,17,17,0.08);
         border-radius: 24px;
-        box-shadow: 0 24px 70px rgba(15,23,42,0.12);
+        box-shadow: 0 24px 70px rgba(10,10,10,0.12);
         padding: 32px 30px;
       }
       .eyebrow {
@@ -245,7 +245,7 @@ function renderAuthErrorPage(details) {
         font-weight: 800;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        color: #d14b5d;
+        color: #52525b;
         margin-bottom: 10px;
       }
       h1 {
@@ -257,14 +257,14 @@ function renderAuthErrorPage(details) {
         margin: 0;
         font-size: 15px;
         line-height: 1.65;
-        color: #5f7389;
+        color: #52525b;
       }
       .hint {
         margin-top: 18px;
         padding: 14px 16px;
-        background: #f8fafc;
+        background: #f5f5f5;
         border-radius: 16px;
-        color: #445468;
+        color: #3f3f46;
         font-size: 14px;
       }
       .actions {
@@ -275,7 +275,7 @@ function renderAuthErrorPage(details) {
       }
       .diagnostics {
         margin-top: 18px;
-        border-top: 1px solid rgba(148,163,184,0.16);
+        border-top: 1px solid rgba(17,17,17,0.08);
         padding-top: 16px;
         display: grid;
         gap: 8px;
@@ -288,11 +288,11 @@ function renderAuthErrorPage(details) {
         line-height: 1.45;
       }
       .diag-label {
-        color: #5f7389;
+        color: #71717a;
         font-weight: 700;
       }
       .diag-value {
-        color: #22354d;
+        color: #18181b;
         word-break: break-word;
       }
       a {
@@ -305,13 +305,13 @@ function renderAuthErrorPage(details) {
         font-weight: 700;
       }
       .primary {
-        background: linear-gradient(135deg, #16324f 0%, #2d7ff9 100%);
+        background: linear-gradient(135deg, #0a0a0a 0%, #2a2a2a 100%);
         color: white;
       }
       .secondary {
-        background: #f8fafc;
-        color: #445468;
-        border: 1px solid rgba(148,163,184,0.2);
+        background: #f5f5f5;
+        color: #3f3f46;
+        border: 1px solid rgba(17,17,17,0.08);
       }
     </style>
   </head>

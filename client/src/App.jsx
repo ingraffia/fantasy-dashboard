@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 import Dashboard from './Dashboard'
+import { BrandMark } from './BrandLogo'
 
 const API = import.meta.env.DEV ? 'https://localhost:3001' : ''
 const AUTH_HEADER_NAME = 'x-auth-token'
@@ -25,10 +26,8 @@ function LoginScreen({ api }) {
       <div className="login-hero">
         <div className="login-hero-noise" />
         <div className="login-hero-content">
-          <div className="login-hero-icon">⚾</div>
-          <div className="login-hero-wordmark">
-            Dugout<span className="login-hero-dot" />
-          </div>
+          <div className="login-hero-icon"><BrandMark size={64} tone="light" framed /></div>
+          <div className="login-hero-wordmark">Dugout</div>
           <p className="login-hero-sub">
             Multi-league fantasy intelligence for serious managers.
           </p>
@@ -138,7 +137,7 @@ export default function App() {
   return (
     <>
       {authed === null && (
-        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d1f3c' }}>
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#050505' }}>
           <div className="auth-spinner" />
         </div>
       )}
