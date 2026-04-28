@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command') && echo \"$cmd\" | grep -q 'git commit' && git push -u origin HEAD 2>&1 || true"
+            "command": "cmd=$(jq -r '.tool_input.command') && echo \"$cmd\" | grep -q 'git commit' && { branch=$(git rev-parse --abbrev-ref HEAD); git push -u origin \"$branch\" 2>&1; git checkout main 2>&1; git merge \"$branch\" --no-edit 2>&1; git push origin main 2>&1; git checkout \"$branch\" 2>&1; } || true"
           }
         ]
       }
