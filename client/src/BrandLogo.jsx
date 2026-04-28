@@ -18,18 +18,9 @@ const TONES = {
 function LogoArt({ primary, secondary }) {
   return (
     <svg viewBox="0 0 64 64" width="100%" height="100%" fill="none" aria-hidden="true">
-      <path
-        d="M32 4L50 17.5V42.5L32 60L14 42.5V17.5L32 4Z"
-        fill={primary}
-      />
-      <path
-        d="M32 11L42.5 18.75V37.75L32 47.5L21.5 37.75V18.75L32 11Z"
-        fill={secondary}
-      />
-      <path
-        d="M26 23.5H38V27.5H26V23.5ZM24 31H40V35H24V31ZM22.25 38.5H41.75V42.5H22.25V38.5Z"
-        fill={primary}
-      />
+      <circle cx="32" cy="32" r="26" fill={primary} />
+      <path d="M21 8C7 22 7 42 21 56" stroke={secondary} strokeWidth="3.5" strokeLinecap="round" fill="none" />
+      <path d="M43 8C57 22 57 42 43 56" stroke={secondary} strokeWidth="3.5" strokeLinecap="round" fill="none" />
     </svg>
   )
 }
