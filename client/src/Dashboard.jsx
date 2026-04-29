@@ -2580,12 +2580,14 @@ export default function Dashboard({ api }) {
         )
     }
 
+    const handleLoadingFinished = useCallback(() => setShowLoadingScreen(false), [])
+
     if (showLoadingScreen) return (
-        <DashboardLoadingScreen 
+        <DashboardLoadingScreen
             targetProgress={bootState.progress}
             phase={bootState.phase}
             isDataReady={!loading && bootState.progress >= 100}
-            onFinished={() => setShowLoadingScreen(false)} 
+            onFinished={handleLoadingFinished}
         />
     )
     if (error) return <div style={{ padding: '2rem', color: C.red }}>Error: {error} <button onClick={loadDashboard} style={btnStyle}>Retry</button></div>
