@@ -15,19 +15,21 @@ const TONES = {
   },
 }
 
-function LogoArt({ primary, secondary }) {
+function LogoArt({ primary }) {
   return (
     <svg viewBox="0 0 64 64" width="100%" height="100%" fill="none" aria-hidden="true">
-      <circle cx="32" cy="32" r="26" fill={primary} />
-      <path d="M21 8C7 22 7 42 21 56" stroke={secondary} strokeWidth="3.5" strokeLinecap="round" fill="none" />
-      <path d="M43 8C57 22 57 42 43 56" stroke={secondary} strokeWidth="3.5" strokeLinecap="round" fill="none" />
+      <path
+        fillRule="evenodd"
+        d="M14 8H26A24 24 0 0 1 26 56H14ZM22 16H26A16 16 0 0 1 26 48H22Z"
+        fill={primary}
+      />
     </svg>
   )
 }
 
 export function BrandMark({ size = 40, tone = 'dark', framed = false }) {
   const palette = TONES[tone] || TONES.dark
-  const art = <LogoArt primary={palette.primary} secondary={palette.secondary} />
+  const art = <LogoArt primary={palette.primary} />
 
   if (!framed) {
     return (
