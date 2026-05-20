@@ -1597,7 +1597,7 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                                 {event.exitVelocityMph && (
                                     <span style={isHR ? hrChip : grayChip}>{event.exitVelocityMph} mph EV</span>
                                 )}
-                                {parkCount != null && (
+                                {parkCount != null && event.hitDistanceFt > 300 && (
                                     <span style={parkChipStyle}>HR in {parkCount}/30 parks</span>
                                 )}
                             </div>
