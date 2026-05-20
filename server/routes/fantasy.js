@@ -563,6 +563,71 @@ const MLB_TEAM_ABBR_MAP = {
     LAD: 'LAD',
 };
 
+// [LF_line, LCF, CF, RCF, RF_line] fence distances in feet, at spray angles [-45°, -22.5°, 0°, +22.5°, +45°]
+const MLB_PARK_DIMS = {
+    ARI: [330, 376, 407, 376, 334],  // Chase Field
+    ATL: [335, 380, 400, 375, 325],  // Truist Park
+    BAL: [333, 364, 400, 373, 318],  // Camden Yards
+    BOS: [310, 379, 390, 380, 302],  // Fenway Park
+    CHC: [355, 368, 400, 368, 353],  // Wrigley Field
+    CIN: [328, 365, 404, 370, 325],  // Great American Ball Park
+    CLE: [325, 370, 405, 375, 325],  // Progressive Field
+    COL: [347, 390, 415, 375, 350],  // Coors Field
+    DET: [345, 370, 420, 365, 330],  // Comerica Park
+    HOU: [315, 362, 409, 373, 326],  // Minute Maid Park
+    KC:  [330, 387, 410, 387, 330],  // Kauffman Stadium
+    LAA: [333, 390, 396, 370, 330],  // Angel Stadium
+    LAD: [330, 375, 395, 375, 330],  // Dodger Stadium
+    MIA: [344, 386, 407, 392, 335],  // loanDepot Park
+    MIL: [344, 371, 400, 374, 345],  // American Family Field
+    MIN: [339, 377, 411, 365, 328],  // Target Field
+    NYM: [335, 379, 408, 383, 330],  // Citi Field
+    NYY: [318, 399, 408, 385, 314],  // Yankee Stadium
+    OAK: [330, 375, 403, 375, 325],  // Sutter Health Park (Sacramento)
+    PHI: [329, 374, 401, 369, 330],  // Citizens Bank Park
+    PIT: [325, 383, 399, 375, 320],  // PNC Park
+    SD:  [334, 367, 396, 391, 322],  // Petco Park
+    SEA: [331, 390, 401, 381, 326],  // T-Mobile Park
+    SF:  [339, 364, 399, 421, 309],  // Oracle Park
+    STL: [336, 375, 400, 375, 335],  // Busch Stadium
+    TB:  [315, 370, 404, 370, 322],  // Tropicana Field
+    TEX: [330, 390, 407, 374, 325],  // Globe Life Field
+    TOR: [328, 375, 400, 375, 328],  // Rogers Centre
+    CHW: [330, 375, 400, 375, 335],  // Guaranteed Rate Field
+    WSH: [336, 377, 402, 370, 335],  // Nationals Park
+};
+const MLB_PARK_COUNT = Object.keys(MLB_PARK_DIMS).length;
+
+// MLB hit coordinate origin: home plate ≈ (125.42, 204.5) in the 250×250 field grid.
+// Spray angle: 0° = CF, negative = LF side, positive = RF side.
+function calcSprayAngle(coordX, coordY) {
+    const dx = coordX - 125.42;
+    const dy = 204.5 - coordY;
+    if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) return 0;
+    return Math.atan2(dx, dy) * (180 / Math.PI);
+}
+
+function interpolateFenceDist(dims, sprayAngle) {
+    const keyAngles = [-45, -22.5, 0, 22.5, 45];
+    const clamped = Math.max(-45, Math.min(45, sprayAngle));
+    for (let i = 0; i < keyAngles.length - 1; i++) {
+        if (clamped <= keyAngles[i + 1]) {
+            const t = (clamped - keyAngles[i]) / (keyAngles[i + 1] - keyAngles[i]);
+            return dims[i] + t * (dims[i + 1] - dims[i]);
+        }
+    }
+    return dims[dims.length - 1];
+}
+
+function countHRParks(hitDistance, sprayAngle) {
+    if (!hitDistance || sprayAngle == null) return null;
+    let count = 0;
+    for (const dims of Object.values(MLB_PARK_DIMS)) {
+        if (hitDistance > interpolateFenceDist(dims, sprayAngle)) count++;
+    }
+    return count;
+}
+
 function normalizeTeamAbbr(team) {
     const value = String(team || '').trim().toUpperCase();
     return MLB_TEAM_ABBR_MAP[value] || value;
@@ -632,7 +697,7 @@ function getFeedPlayer(feedPlayers = {}, playerId) {
     return feedPlayers[`ID${playerId}`] || feedPlayers[playerId] || null;
 }
 
-function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail, impact = [], variant, playerId, eventType, opponentName, gameStats, hitDistanceFt = null }) {
+function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail, impact = [], variant, playerId, eventType, opponentName, gameStats, hitDistanceFt = null, exitVelocityMph = null, launchAngleDeg = null, parkCount = null }) {
     if (!rosterPlayer || !summary) return null;
 
     const about = play?.about || {};
@@ -666,6 +731,9 @@ function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail
         scoreText: awayScore == null || homeScore == null ? null : `${game.awayTeam} ${awayScore}-${homeScore} ${game.homeTeam}`,
         gameStats: gameStats || null,
         hitDistanceFt: hitDistanceFt || null,
+        exitVelocityMph: exitVelocityMph || null,
+        launchAngleDeg: launchAngleDeg ?? null,
+        parkCount: parkCount ?? null,
     };
 }
 
@@ -719,6 +787,12 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
         const hitData = play?.result?.hitData || lastPlayEvent?.hitData || null;
         const hitDistanceFt = hitData?.totalDistance ? Math.round(hitData.totalDistance) : null;
         const hitTrajectory = (hitData?.trajectory || '').toLowerCase();
+        const exitVelocityMph = hitData?.launchSpeed != null ? Math.round(hitData.launchSpeed * 10) / 10 : null;
+        const launchAngleDeg = hitData?.launchAngle != null ? Math.round(hitData.launchAngle) : null;
+        const hitCoordX = hitData?.coordinates?.coordX ?? null;
+        const hitCoordY = hitData?.coordinates?.coordY ?? null;
+        const sprayAngle = (hitCoordX != null && hitCoordY != null) ? calcSprayAngle(hitCoordX, hitCoordY) : null;
+        const parkCount = hitDistanceFt && sprayAngle != null ? countHRParks(hitDistanceFt, sprayAngle) : null;
         const isFlyBallOut = hitTrajectory === 'fly_ball' || hitTrajectory === 'popup'
             || (result.event && (String(result.event).toLowerCase().includes('flyout') || String(result.event).toLowerCase().includes('fly out')));
 
@@ -766,7 +840,7 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
                 batterImpact.push('+1 R');
             }
 
-            const batterHitDistanceFt = (eventType === 'home_run' || eventType === 'sac_fly' || isFlyBallOut) ? hitDistanceFt : null;
+            const showHitStats = eventType === 'home_run' || eventType === 'sac_fly' || isFlyBallOut;
             const batterEvent = createLiveFeedEvent({
                 gamePk: game.gamePk,
                 game,
@@ -780,7 +854,10 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
                 eventType: eventType || null,
                 opponentName: pitcherFeedPlayer?.fullName || null,
                 gameStats: getGameStats(batterId, false),
-                hitDistanceFt: batterHitDistanceFt,
+                hitDistanceFt: showHitStats ? hitDistanceFt : null,
+                exitVelocityMph: showHitStats ? exitVelocityMph : null,
+                launchAngleDeg: showHitStats ? launchAngleDeg : null,
+                parkCount: showHitStats ? parkCount : null,
             });
             if (batterEvent) events.push(batterEvent);
         }
@@ -833,7 +910,6 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
             if (earnedRuns > 0 && runsScored > 0) pitcherImpact.push(`-${earnedRuns} ER`);
 
             const pitcherId = pitcherFeedPlayer?.id || play?.matchup?.pitcher?.id || null;
-            const pitcherHitDistanceFt = (eventType === 'home_run' || eventType === 'sac_fly' || isFlyBallOut) ? hitDistanceFt : null;
             const pitcherEvent = createLiveFeedEvent({
                 gamePk: game.gamePk,
                 game,
@@ -847,7 +923,10 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
                 eventType: eventType || null,
                 opponentName: batterFullName,
                 gameStats: getGameStats(pitcherId, true),
-                hitDistanceFt: pitcherHitDistanceFt,
+                hitDistanceFt: showHitStats ? hitDistanceFt : null,
+                exitVelocityMph: showHitStats ? exitVelocityMph : null,
+                launchAngleDeg: showHitStats ? launchAngleDeg : null,
+                parkCount: showHitStats ? parkCount : null,
             });
             if (pitcherEvent) events.push(pitcherEvent);
         }

@@ -1568,27 +1568,47 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                             </span>
                         )}
                     </div>
-                    {/* Summary and Meta inline */}
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', marginTop: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: ts.textColor, lineHeight: 1.3 }}>
-                            {event.summary}
-                        </div>
-                        {event.hitDistanceFt && (
-                            <span style={{
-                                fontSize: 11, fontWeight: 700,
-                                color: event.eventType === 'home_run' ? '#ea580c' : C.gray500,
-                                background: event.eventType === 'home_run' ? 'rgba(234,88,12,0.08)' : C.gray100,
-                                border: `1px solid ${event.eventType === 'home_run' ? 'rgba(234,88,12,0.2)' : C.gray200}`,
-                                borderRadius: 5, padding: '1px 5px', lineHeight: 1.5,
-                            }}>
-                                {event.hitDistanceFt} ft
-                            </span>
-                        )}
-                        <div style={{ fontSize: 10, color: C.gray500, fontWeight: 500, letterSpacing: '0.01em' }}>
-                            {event.inningLabel ? `${event.inningLabel} · ` : ''}{formatRelativeTime(event.timestamp)}
-                            {showTeam && game ? ` · ${game.awayTeam} @ ${game.homeTeam}` : ''}
-                            {event.gameStats && <span style={{ fontWeight: 700, color: '#475569' }}> · {event.gameStats}</span>}
-                        </div>
+                    {/* Summary */}
+                    <div style={{ fontSize: 13, fontWeight: 600, color: ts.textColor, lineHeight: 1.3, marginTop: 1 }}>
+                        {event.summary}
+                    </div>
+
+                    {/* Statcast strip — distance, exit velocity, park count */}
+                    {(event.hitDistanceFt || event.exitVelocityMph || event.parkCount != null) && (() => {
+                        const isHR = event.eventType === 'home_run'
+                        const chipBase = {
+                            display: 'inline-flex', alignItems: 'center',
+                            fontSize: 11, fontWeight: 700, borderRadius: 5,
+                            padding: '2px 6px', lineHeight: 1.5,
+                        }
+                        const hrChip = { ...chipBase, color: '#c2410c', background: 'rgba(234,88,12,0.09)', border: '1px solid rgba(234,88,12,0.22)' }
+                        const grayChip = { ...chipBase, color: C.gray600, background: C.gray100, border: `1px solid ${C.gray200}` }
+                        const parkCount = event.parkCount
+                        const parkChipStyle = isHR
+                            ? (parkCount >= 28 ? { ...chipBase, color: '#b45309', background: 'rgba(217,119,6,0.1)', border: '1px solid rgba(217,119,6,0.25)' }
+                                : { ...chipBase, color: '#92400e', background: 'rgba(234,88,12,0.07)', border: '1px solid rgba(234,88,12,0.18)' })
+                            : (parkCount >= 20 ? { ...chipBase, color: '#b45309', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)' }
+                                : grayChip)
+                        return (
+                            <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                                {event.hitDistanceFt && (
+                                    <span style={isHR ? hrChip : grayChip}>{event.hitDistanceFt} ft</span>
+                                )}
+                                {event.exitVelocityMph && (
+                                    <span style={isHR ? hrChip : grayChip}>{event.exitVelocityMph} mph EV</span>
+                                )}
+                                {parkCount != null && (
+                                    <span style={parkChipStyle}>HR in {parkCount}/30 parks</span>
+                                )}
+                            </div>
+                        )
+                    })()}
+
+                    {/* Meta line */}
+                    <div style={{ fontSize: 10, color: C.gray500, fontWeight: 500, letterSpacing: '0.01em', marginTop: 3 }}>
+                        {event.inningLabel ? `${event.inningLabel} · ` : ''}{formatRelativeTime(event.timestamp)}
+                        {showTeam && game ? ` · ${game.awayTeam} @ ${game.homeTeam}` : ''}
+                        {event.gameStats && <span style={{ fontWeight: 700, color: '#475569' }}> · {event.gameStats}</span>}
                     </div>
                 </div>
 
