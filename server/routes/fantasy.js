@@ -834,13 +834,13 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
             batterSummary = result.event ? String(result.event).toLowerCase() : 'makes an out';
         }
 
+        const showHitStats = eventType === 'home_run' || eventType === 'sac_fly' || isFlyBallOut;
+
         if (batterSummary) {
             if (result.rbi > 0) batterImpact.push(`+${result.rbi} RBI`);
             if (scoringRunners.some((runner) => String(runner?.details?.runner?.id || runner?.movement?.runner?.id || '') === String(batterId))) {
                 batterImpact.push('+1 R');
             }
-
-            const showHitStats = eventType === 'home_run' || eventType === 'sac_fly' || isFlyBallOut;
             const batterEvent = createLiveFeedEvent({
                 gamePk: game.gamePk,
                 game,
