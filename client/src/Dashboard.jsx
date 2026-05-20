@@ -1573,6 +1573,17 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                         <div style={{ fontSize: 13, fontWeight: 600, color: ts.textColor, lineHeight: 1.3 }}>
                             {event.summary}
                         </div>
+                        {event.hitDistanceFt && (
+                            <span style={{
+                                fontSize: 11, fontWeight: 700,
+                                color: event.eventType === 'home_run' ? '#ea580c' : C.gray500,
+                                background: event.eventType === 'home_run' ? 'rgba(234,88,12,0.08)' : C.gray100,
+                                border: `1px solid ${event.eventType === 'home_run' ? 'rgba(234,88,12,0.2)' : C.gray200}`,
+                                borderRadius: 5, padding: '1px 5px', lineHeight: 1.5,
+                            }}>
+                                {event.hitDistanceFt} ft
+                            </span>
+                        )}
                         <div style={{ fontSize: 10, color: C.gray500, fontWeight: 500, letterSpacing: '0.01em' }}>
                             {event.inningLabel ? `${event.inningLabel} · ` : ''}{formatRelativeTime(event.timestamp)}
                             {showTeam && game ? ` · ${game.awayTeam} @ ${game.homeTeam}` : ''}

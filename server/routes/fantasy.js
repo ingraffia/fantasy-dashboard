@@ -632,7 +632,7 @@ function getFeedPlayer(feedPlayers = {}, playerId) {
     return feedPlayers[`ID${playerId}`] || feedPlayers[playerId] || null;
 }
 
-function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail, impact = [], variant, playerId, eventType, opponentName, gameStats }) {
+function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail, impact = [], variant, playerId, eventType, opponentName, gameStats, hitDistanceFt = null }) {
     if (!rosterPlayer || !summary) return null;
 
     const about = play?.about || {};
@@ -665,6 +665,7 @@ function createLiveFeedEvent({ gamePk, game, play, rosterPlayer, summary, detail
         gameStatus: game.detailedStatus || game.status || null,
         scoreText: awayScore == null || homeScore == null ? null : `${game.awayTeam} ${awayScore}-${homeScore} ${game.homeTeam}`,
         gameStats: gameStats || null,
+        hitDistanceFt: hitDistanceFt || null,
     };
 }
 
@@ -713,6 +714,14 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
         const earnedRuns = scoringRunners.filter((runner) => runner?.details?.earned !== false).length || (runsScored > 0 ? runsScored : 0);
         const batterId = batterFeedPlayer?.id || play?.matchup?.batter?.id || null;
 
+        const lastPlayEvent = Array.isArray(play?.playEvents) && play.playEvents.length > 0
+            ? play.playEvents[play.playEvents.length - 1] : null;
+        const hitData = play?.result?.hitData || lastPlayEvent?.hitData || null;
+        const hitDistanceFt = hitData?.totalDistance ? Math.round(hitData.totalDistance) : null;
+        const hitTrajectory = (hitData?.trajectory || '').toLowerCase();
+        const isFlyBallOut = hitTrajectory === 'fly_ball' || hitTrajectory === 'popup'
+            || (result.event && (String(result.event).toLowerCase().includes('flyout') || String(result.event).toLowerCase().includes('fly out')));
+
         const batterImpact = [];
         let batterSummary = null;
 
@@ -757,6 +766,7 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
                 batterImpact.push('+1 R');
             }
 
+            const batterHitDistanceFt = (eventType === 'home_run' || eventType === 'sac_fly' || isFlyBallOut) ? hitDistanceFt : null;
             const batterEvent = createLiveFeedEvent({
                 gamePk: game.gamePk,
                 game,
@@ -770,6 +780,7 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
                 eventType: eventType || null,
                 opponentName: pitcherFeedPlayer?.fullName || null,
                 gameStats: getGameStats(batterId, false),
+                hitDistanceFt: batterHitDistanceFt,
             });
             if (batterEvent) events.push(batterEvent);
         }
@@ -822,6 +833,7 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
             if (earnedRuns > 0 && runsScored > 0) pitcherImpact.push(`-${earnedRuns} ER`);
 
             const pitcherId = pitcherFeedPlayer?.id || play?.matchup?.pitcher?.id || null;
+            const pitcherHitDistanceFt = (eventType === 'home_run' || eventType === 'sac_fly' || isFlyBallOut) ? hitDistanceFt : null;
             const pitcherEvent = createLiveFeedEvent({
                 gamePk: game.gamePk,
                 game,
@@ -835,6 +847,7 @@ function buildLiveFeedEventsForGame(game, feed, rosterLookup) {
                 eventType: eventType || null,
                 opponentName: batterFullName,
                 gameStats: getGameStats(pitcherId, true),
+                hitDistanceFt: pitcherHitDistanceFt,
             });
             if (pitcherEvent) events.push(pitcherEvent);
         }
