@@ -1265,6 +1265,60 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
         } catch { return null }
     })
 
+    const notifSupported = typeof window !== 'undefined' && 'Notification' in window
+    const notifiedIds = useRef(new Set((() => { try { return JSON.parse(localStorage.getItem('hr_notif_ids') || '[]') } catch { return [] } })()))
+    const isFirstLoad = useRef(true)
+    const notifEnabledRef = useRef(false)
+    const [notifEnabled, setNotifEnabled] = useState(() => {
+        if (!notifSupported) return false
+        return localStorage.getItem('hr_notif_enabled') === 'true' && Notification.permission === 'granted'
+    })
+    useEffect(() => { notifEnabledRef.current = notifEnabled }, [notifEnabled])
+
+    const toggleNotifications = async () => {
+        if (!notifSupported) return
+        if (notifEnabled) {
+            setNotifEnabled(false)
+            localStorage.setItem('hr_notif_enabled', 'false')
+            return
+        }
+        if (Notification.permission === 'denied') return
+        const permission = await Notification.requestPermission()
+        if (permission === 'granted') {
+            setNotifEnabled(true)
+            localStorage.setItem('hr_notif_enabled', 'true')
+        }
+    }
+
+    useEffect(() => {
+        if (events.length === 0) return
+        const hrEvents = events.filter(e => e.eventType === 'home_run' && e.side === 'batter')
+        if (isFirstLoad.current) {
+            hrEvents.forEach(e => notifiedIds.current.add(e.id))
+            isFirstLoad.current = false
+            return
+        }
+        if (!notifEnabledRef.current || Notification.permission !== 'granted') return
+        const newHRs = hrEvents.filter(e => !notifiedIds.current.has(e.id))
+        newHRs.forEach(event => {
+            notifiedIds.current.add(event.id)
+            const parts = [
+                event.hitDistanceFt ? `${event.hitDistanceFt} ft` : null,
+                event.exitVelocityMph ? `${event.exitVelocityMph} mph EV` : null,
+            ].filter(Boolean)
+            try {
+                new Notification(`${event.playerName} goes deep!`, {
+                    body: parts.length ? parts.join(' · ') : (event.detail || ''),
+                    icon: event.imageUrl || '/icon-192.png',
+                    tag: event.id,
+                })
+            } catch {}
+        })
+        if (newHRs.length > 0) {
+            try { localStorage.setItem('hr_notif_ids', JSON.stringify([...notifiedIds.current].slice(-500))) } catch {}
+        }
+    }, [events])
+
     const trackedRosterPlayers = useMemo(() => {
         const seen = new Map()
         rosterPlayers.forEach((player) => {
@@ -1674,6 +1728,22 @@ function LiveFeedPanel({ api, games, rosterPlayers, imageMap, onOpenPlayer, isMo
                 </div>
 
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {notifSupported && Notification.permission !== 'denied' && (
+                        <button onClick={toggleNotifications} title={notifEnabled ? 'Disable HR notifications' : 'Enable HR notifications'} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 30, height: 30, borderRadius: 8, border: 'none', cursor: 'pointer',
+                            background: notifEnabled
+                                ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'
+                                : C.gray100,
+                            color: notifEnabled ? '#fff' : C.gray400,
+                            boxShadow: notifEnabled ? '0 2px 8px rgba(59,130,246,0.3)' : 'none',
+                            transition: 'all 0.2s var(--ease-out)', flexShrink: 0 }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                            </svg>
+                        </button>
+                    )}
                     <button onClick={() => setShowHighlights(!showHighlights)} style={{
                         fontSize: 11, fontWeight: showHighlights ? 800 : 600,
                         padding: '5px 12px', borderRadius: 7, border: 'none', cursor: 'pointer',
