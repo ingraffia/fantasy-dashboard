@@ -26,6 +26,11 @@ function didYahooDashboardAuthFail(response) {
   return /yahoo/i.test(warning) && /status 403/i.test(warning)
 }
 
+function isYahooDashboardResponse(response) {
+  const url = response?.config?.url || ''
+  return /\/api\/dashboard(?:$|\?)/.test(url)
+}
+
 function markYahooReauthAttempted() {
   sessionStorage.setItem(YAHOO_REAUTH_GUARD_KEY, '1')
 }
@@ -38,17 +43,8 @@ function hasYahooReauthAttempted() {
   return sessionStorage.getItem(YAHOO_REAUTH_GUARD_KEY) === '1'
 }
 
-function beginYahooReauth(setAuthed) {
-  if (hasYahooReauthAttempted()) return
-  markYahooReauthAttempted()
-  clearStoredToken()
-  delete axios.defaults.headers.common['Authorization']
-  setAuthed(false)
-  window.location.assign(`${API}/auth/login`)
-}
-
 /* ── Login — dark full-bleed hero ───────────────────────── */
-function LoginScreen({ api }) {
+function LoginScreen({ api, yahooNeedsReconnect = false }) {
   return (
     <div className="login-page">
       {/* Left panel — brand hero */}
@@ -88,6 +84,21 @@ function LoginScreen({ api }) {
             Connect your Yahoo account to pull in your leagues, rosters, and rankings automatically.
           </p>
 
+          {yahooNeedsReconnect && (
+            <div style={{
+              marginBottom: 16,
+              padding: '12px 14px',
+              borderRadius: 16,
+              background: '#fff7ed',
+              border: '1px solid rgba(234, 88, 12, 0.18)',
+              color: '#9a3412',
+              fontSize: 13,
+              lineHeight: 1.45,
+            }}>
+              Yahoo accepted the login redirect, but it still rejected fantasy data access on August 1, 2026. Try signing in again below.
+            </div>
+          )}
+
           <a className="login-yahoo-btn" href={`${api}/auth/login`}>
             <svg width="22" height="22" viewBox="0 0 32 32" fill="none" aria-hidden>
               <circle cx="16" cy="16" r="16" fill="#6001D2" />
@@ -118,12 +129,34 @@ function LoginScreen({ api }) {
 /* ── Root App ───────────────────────────────────────────── */
 export default function App() {
   const [authed, setAuthed] = useState(null)
+  const [yahooNeedsReconnect, setYahooNeedsReconnect] = useState(false)
 
   useEffect(() => {
     const id = axios.interceptors.response.use(
       r => {
         syncTokenFromResponse(r)
-        if (didYahooDashboardAuthFail(r)) beginYahooReauth(setAuthed)
+
+        if (isYahooDashboardResponse(r) && !didYahooDashboardAuthFail(r)) {
+          clearYahooReauthAttempted()
+          setYahooNeedsReconnect(false)
+        }
+
+        if (didYahooDashboardAuthFail(r)) {
+          clearStoredToken()
+          delete axios.defaults.headers.common['Authorization']
+
+          if (hasYahooReauthAttempted()) {
+            setYahooNeedsReconnect(true)
+            setAuthed(false)
+            return r
+          }
+
+          markYahooReauthAttempted()
+          setYahooNeedsReconnect(false)
+          setAuthed(false)
+          window.location.assign(`${API}/auth/login`)
+        }
+
         return r
       },
       err => {
@@ -143,7 +176,6 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     const authToken = params.get('auth')
     if (authToken) {
-      clearYahooReauthAttempted()
       setStoredToken(authToken)
       setupAxiosAuth(authToken)
       window.history.replaceState({}, '', '/')
@@ -157,7 +189,6 @@ export default function App() {
         .then(r => {
           syncTokenFromResponse(r)
           if (r.data.authenticated) {
-            clearYahooReauthAttempted()
             setAuthed(true)
           } else {
             clearStoredToken()
@@ -167,6 +198,7 @@ export default function App() {
         .catch(() => { clearStoredToken(); setAuthed(false) })
     } else {
       clearYahooReauthAttempted()
+      setYahooNeedsReconnect(false)
       setAuthed(false)
     }
   }, [])
@@ -174,6 +206,7 @@ export default function App() {
   const handleLogout = () => {
     axios.get(`${API}/auth/logout`).catch(() => { })
     clearYahooReauthAttempted()
+    setYahooNeedsReconnect(false)
     clearStoredToken()
     delete axios.defaults.headers.common['Authorization']
     setAuthed(false)
@@ -186,7 +219,7 @@ export default function App() {
           <div className="auth-spinner" />
         </div>
       )}
-      {authed === false && <LoginScreen api={API} />}
+      {authed === false && <LoginScreen api={API} yahooNeedsReconnect={yahooNeedsReconnect} />}
       {authed === true && <Dashboard api={API} onLogout={handleLogout} />}
     </>
   )
