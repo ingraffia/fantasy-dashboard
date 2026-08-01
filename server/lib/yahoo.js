@@ -3,7 +3,7 @@ const https = require('https');
 const dns = require('dns');
 
 const BASE_URL = 'https://fantasysports.yahooapis.com/fantasy/v2';
-const DEFAULT_MLB_GAME_KEY = process.env.YAHOO_MLB_GAME_KEY || '469';
+const DEFAULT_MLB_GAME_KEY = process.env.YAHOO_MLB_GAME_KEY || 'mlb';
 const RETRYABLE_CODES = new Set(['ECONNABORTED', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED']);
 
 function lookupIpv4(hostname, options, callback) {
@@ -25,6 +25,49 @@ const yahooHttpsAgent = new https.Agent({
     lookup: lookupIpv4,
 });
 
+function getYahooErrorStatus(err) {
+    return err?.response?.status || err?.status || null;
+}
+
+function getYahooErrorData(err) {
+    return err?.response?.data || err?.data || null;
+}
+
+function formatYahooErrorDetails(err) {
+    const data = getYahooErrorData(err);
+    if (!data) return err?.message || 'Unknown Yahoo API error';
+    if (typeof data === 'string') return data;
+
+    try {
+        return JSON.stringify(data);
+    } catch (_) {
+        return err?.message || 'Unknown Yahoo API error';
+    }
+}
+
+function wrapYahooError(err, path) {
+    const status = getYahooErrorStatus(err);
+    const wrapped = new Error(
+        status
+            ? `Yahoo API ${path} failed with status ${status}`
+            : `Yahoo API ${path} failed`
+    );
+
+    wrapped.code = err?.code;
+    wrapped.status = status;
+    wrapped.path = path;
+    wrapped.data = getYahooErrorData(err);
+
+    if (err?.response) {
+        wrapped.response = err.response;
+    } else if (status || wrapped.data) {
+        wrapped.response = { status, data: wrapped.data };
+    }
+
+    if (err) wrapped.cause = err;
+    return wrapped;
+}
+
 async function yahooGet(session, path) {
     const url = `${BASE_URL}${path}?format=json`;
     let lastErr;
@@ -39,16 +82,16 @@ async function yahooGet(session, path) {
             return data;
         } catch (err) {
             lastErr = err;
-            const status = err.response?.status;
+            const status = getYahooErrorStatus(err);
             const code = err.code;
             const retryable = !status || status >= 500 || status === 429 || RETRYABLE_CODES.has(code);
-            console.warn(`Yahoo API attempt ${attempt} failed for ${path}:`, code || status || err.message);
+            console.warn(`Yahoo API attempt ${attempt} failed for ${path}:`, code || status || err.message, formatYahooErrorDetails(err));
             if (!retryable || attempt === 3) break;
             await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
         }
     }
 
-    throw lastErr;
+    throw wrapYahooError(lastErr, path);
 }
 
 async function getUserLeaguesFromGames(session) {
@@ -88,22 +131,41 @@ async function getUserLeaguesFromGames(session) {
 function parseLeaguesFromKeyedResponse(data) {
     const user = data?.fantasy_content?.users?.['0']?.user;
     const games = user?.[1]?.games;
-    const game = games?.['0']?.game;
-    const leagues = game?.[1]?.leagues;
-    if (!leagues || typeof leagues !== 'object') return [];
-    return Object.values(leagues).filter(l => typeof l === 'object' && l.league);
+    if (!games || typeof games !== 'object') return [];
+
+    return Object.values(games).flatMap((gameEntry) => {
+        const game = gameEntry?.game || gameEntry;
+        const leagues = game?.[1]?.leagues;
+        if (!leagues || typeof leagues !== 'object') return [];
+        return Object.values(leagues).filter((leagueEntry) => typeof leagueEntry === 'object' && leagueEntry.league);
+    });
 }
 
 async function getUserLeagues(session) {
-    try {
-        const keyedData = await yahooGet(session, `/users;use_login=1/games;game_keys=${DEFAULT_MLB_GAME_KEY}/leagues`);
-        const keyedLeagues = parseLeaguesFromKeyedResponse(keyedData);
-        if (keyedLeagues.length > 0) return keyedLeagues;
-    } catch (err) {
-        console.warn('Yahoo keyed league lookup failed:', err.response?.data || err.message);
+    const keyedPaths = [
+        `/users;use_login=1/games;game_keys=${DEFAULT_MLB_GAME_KEY}/leagues`,
+        DEFAULT_MLB_GAME_KEY === 'mlb' ? null : '/users;use_login=1/games;game_keys=mlb/leagues',
+    ].filter(Boolean);
+
+    let lastErr = null;
+
+    for (const path of keyedPaths) {
+        try {
+            const keyedData = await yahooGet(session, path);
+            const keyedLeagues = parseLeaguesFromKeyedResponse(keyedData);
+            if (keyedLeagues.length > 0) return keyedLeagues;
+        } catch (err) {
+            lastErr = err;
+            console.warn('Yahoo keyed league lookup failed:', formatYahooErrorDetails(err));
+        }
     }
 
-    return getUserLeaguesFromGames(session);
+    try {
+        return await getUserLeaguesFromGames(session);
+    } catch (err) {
+        if (lastErr) throw lastErr;
+        throw err;
+    }
 }
 
 async function getTeamRoster(session, teamKey) {
