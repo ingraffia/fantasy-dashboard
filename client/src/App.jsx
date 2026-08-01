@@ -7,11 +7,28 @@ const API = import.meta.env.DEV ? 'https://localhost:3001' : ''
 const AUTH_HEADER_NAME = 'x-auth-token'
 const AUTH_STORAGE_KEY = 'fantasy_auth_token'
 const YAHOO_REAUTH_GUARD_KEY = 'fantasy_yahoo_reauth_attempted'
+const YAHOO_LAST_OAUTH_RETURN_KEY = 'fantasy_yahoo_last_oauth_return_at'
+const YAHOO_LAST_AUTO_REAUTH_KEY = 'fantasy_yahoo_last_auto_reauth_at'
+const YAHOO_REAUTH_COOLDOWN_MS = 2 * 60 * 1000
+const YAHOO_AUTO_REAUTH_WINDOW_MS = 5 * 60 * 1000
 
 function getStoredToken() { return localStorage.getItem(AUTH_STORAGE_KEY) }
 function setStoredToken(t) { localStorage.setItem(AUTH_STORAGE_KEY, t) }
 function clearStoredToken() { localStorage.removeItem(AUTH_STORAGE_KEY) }
 function setupAxiosAuth(token) { axios.defaults.headers.common['Authorization'] = `Bearer ${token}` }
+
+function getStoredTimestamp(key) {
+  const value = Number(localStorage.getItem(key) || '')
+  return Number.isFinite(value) && value > 0 ? value : 0
+}
+
+function setStoredTimestamp(key, value = Date.now()) {
+  localStorage.setItem(key, String(value))
+}
+
+function clearStoredTimestamp(key) {
+  localStorage.removeItem(key)
+}
 
 function syncTokenFromResponse(response) {
   const rotated = response?.headers?.[AUTH_HEADER_NAME]
@@ -41,6 +58,15 @@ function clearYahooReauthAttempted() {
 
 function hasYahooReauthAttempted() {
   return sessionStorage.getItem(YAHOO_REAUTH_GUARD_KEY) === '1'
+}
+
+function shouldBlockAutoYahooReauth() {
+  const now = Date.now()
+  const lastOauthReturnAt = getStoredTimestamp(YAHOO_LAST_OAUTH_RETURN_KEY)
+  const lastAutoReauthAt = getStoredTimestamp(YAHOO_LAST_AUTO_REAUTH_KEY)
+
+  return (lastOauthReturnAt && (now - lastOauthReturnAt) < YAHOO_REAUTH_COOLDOWN_MS)
+    || (lastAutoReauthAt && (now - lastAutoReauthAt) < YAHOO_AUTO_REAUTH_WINDOW_MS)
 }
 
 /* ── Login — dark full-bleed hero ───────────────────────── */
@@ -95,7 +121,7 @@ function LoginScreen({ api, yahooNeedsReconnect = false }) {
               fontSize: 13,
               lineHeight: 1.45,
             }}>
-              Yahoo accepted the login redirect, but it still rejected fantasy data access on August 1, 2026. Try signing in again below.
+              Yahoo sent you back, but fantasy access is still being rejected on Saturday, August 1, 2026. The app has stopped auto-redirecting so you can retry manually below.
             </div>
           )}
 
@@ -138,6 +164,7 @@ export default function App() {
 
         if (isYahooDashboardResponse(r) && !didYahooDashboardAuthFail(r)) {
           clearYahooReauthAttempted()
+          clearStoredTimestamp(YAHOO_LAST_AUTO_REAUTH_KEY)
           setYahooNeedsReconnect(false)
         }
 
@@ -145,13 +172,14 @@ export default function App() {
           clearStoredToken()
           delete axios.defaults.headers.common['Authorization']
 
-          if (hasYahooReauthAttempted()) {
+          if (hasYahooReauthAttempted() || shouldBlockAutoYahooReauth()) {
             setYahooNeedsReconnect(true)
             setAuthed(false)
             return r
           }
 
           markYahooReauthAttempted()
+          setStoredTimestamp(YAHOO_LAST_AUTO_REAUTH_KEY)
           setYahooNeedsReconnect(false)
           setAuthed(false)
           window.location.assign(`${API}/auth/login`)
@@ -176,6 +204,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     const authToken = params.get('auth')
     if (authToken) {
+      setStoredTimestamp(YAHOO_LAST_OAUTH_RETURN_KEY)
       setStoredToken(authToken)
       setupAxiosAuth(authToken)
       window.history.replaceState({}, '', '/')
@@ -198,6 +227,8 @@ export default function App() {
         .catch(() => { clearStoredToken(); setAuthed(false) })
     } else {
       clearYahooReauthAttempted()
+      clearStoredTimestamp(YAHOO_LAST_OAUTH_RETURN_KEY)
+      clearStoredTimestamp(YAHOO_LAST_AUTO_REAUTH_KEY)
       setYahooNeedsReconnect(false)
       setAuthed(false)
     }
@@ -206,6 +237,8 @@ export default function App() {
   const handleLogout = () => {
     axios.get(`${API}/auth/logout`).catch(() => { })
     clearYahooReauthAttempted()
+    clearStoredTimestamp(YAHOO_LAST_OAUTH_RETURN_KEY)
+    clearStoredTimestamp(YAHOO_LAST_AUTO_REAUTH_KEY)
     setYahooNeedsReconnect(false)
     clearStoredToken()
     delete axios.defaults.headers.common['Authorization']
