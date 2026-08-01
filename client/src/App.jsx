@@ -5,10 +5,12 @@ import { BrandMark } from './BrandLogo'
 
 const API = import.meta.env.DEV ? 'https://localhost:3001' : ''
 const AUTH_HEADER_NAME = 'x-auth-token'
+const AUTH_STORAGE_KEY = 'fantasy_auth_token'
+const YAHOO_REAUTH_GUARD_KEY = 'fantasy_yahoo_reauth_attempted'
 
-function getStoredToken() { return localStorage.getItem('fantasy_auth_token') }
-function setStoredToken(t) { localStorage.setItem('fantasy_auth_token', t) }
-function clearStoredToken() { localStorage.removeItem('fantasy_auth_token') }
+function getStoredToken() { return localStorage.getItem(AUTH_STORAGE_KEY) }
+function setStoredToken(t) { localStorage.setItem(AUTH_STORAGE_KEY, t) }
+function clearStoredToken() { localStorage.removeItem(AUTH_STORAGE_KEY) }
 function setupAxiosAuth(token) { axios.defaults.headers.common['Authorization'] = `Bearer ${token}` }
 
 function syncTokenFromResponse(response) {
@@ -16,6 +18,33 @@ function syncTokenFromResponse(response) {
   if (!rotated) return
   setStoredToken(rotated)
   setupAxiosAuth(rotated)
+}
+
+function didYahooDashboardAuthFail(response) {
+  const warning = response?.headers?.['x-dashboard-warning']
+  if (!warning) return false
+  return /yahoo/i.test(warning) && /status 403/i.test(warning)
+}
+
+function markYahooReauthAttempted() {
+  sessionStorage.setItem(YAHOO_REAUTH_GUARD_KEY, '1')
+}
+
+function clearYahooReauthAttempted() {
+  sessionStorage.removeItem(YAHOO_REAUTH_GUARD_KEY)
+}
+
+function hasYahooReauthAttempted() {
+  return sessionStorage.getItem(YAHOO_REAUTH_GUARD_KEY) === '1'
+}
+
+function beginYahooReauth(setAuthed) {
+  if (hasYahooReauthAttempted()) return
+  markYahooReauthAttempted()
+  clearStoredToken()
+  delete axios.defaults.headers.common['Authorization']
+  setAuthed(false)
+  window.location.assign(`${API}/auth/login`)
 }
 
 /* ── Login — dark full-bleed hero ───────────────────────── */
@@ -92,7 +121,11 @@ export default function App() {
 
   useEffect(() => {
     const id = axios.interceptors.response.use(
-      r => { syncTokenFromResponse(r); return r },
+      r => {
+        syncTokenFromResponse(r)
+        if (didYahooDashboardAuthFail(r)) beginYahooReauth(setAuthed)
+        return r
+      },
       err => {
         syncTokenFromResponse(err.response)
         if (err.response?.status === 401) {
@@ -110,6 +143,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     const authToken = params.get('auth')
     if (authToken) {
+      clearYahooReauthAttempted()
       setStoredToken(authToken)
       setupAxiosAuth(authToken)
       window.history.replaceState({}, '', '/')
@@ -120,15 +154,26 @@ export default function App() {
     if (storedToken) {
       setupAxiosAuth(storedToken)
       axios.get(`${API}/auth/status`)
-        .then(r => { syncTokenFromResponse(r); setAuthed(!!r.data.authenticated); if (!r.data.authenticated) clearStoredToken() })
+        .then(r => {
+          syncTokenFromResponse(r)
+          if (r.data.authenticated) {
+            clearYahooReauthAttempted()
+            setAuthed(true)
+          } else {
+            clearStoredToken()
+            setAuthed(false)
+          }
+        })
         .catch(() => { clearStoredToken(); setAuthed(false) })
     } else {
+      clearYahooReauthAttempted()
       setAuthed(false)
     }
   }, [])
 
   const handleLogout = () => {
     axios.get(`${API}/auth/logout`).catch(() => { })
+    clearYahooReauthAttempted()
     clearStoredToken()
     delete axios.defaults.headers.common['Authorization']
     setAuthed(false)
