@@ -9,6 +9,7 @@ const AUTH_STORAGE_KEY = 'fantasy_auth_token'
 const YAHOO_REAUTH_GUARD_KEY = 'fantasy_yahoo_reauth_attempted'
 const YAHOO_LAST_OAUTH_RETURN_KEY = 'fantasy_yahoo_last_oauth_return_at'
 const YAHOO_LAST_AUTO_REAUTH_KEY = 'fantasy_yahoo_last_auto_reauth_at'
+const YAHOO_LAST_WARNING_KEY = 'fantasy_yahoo_last_warning'
 const YAHOO_REAUTH_COOLDOWN_MS = 2 * 60 * 1000
 const YAHOO_AUTO_REAUTH_WINDOW_MS = 5 * 60 * 1000
 
@@ -30,6 +31,18 @@ function clearStoredTimestamp(key) {
   localStorage.removeItem(key)
 }
 
+function getStoredWarning() {
+  return localStorage.getItem(YAHOO_LAST_WARNING_KEY) || ''
+}
+
+function setStoredWarning(value) {
+  localStorage.setItem(YAHOO_LAST_WARNING_KEY, value)
+}
+
+function clearStoredWarning() {
+  localStorage.removeItem(YAHOO_LAST_WARNING_KEY)
+}
+
 function syncTokenFromResponse(response) {
   const rotated = response?.headers?.[AUTH_HEADER_NAME]
   if (!rotated) return
@@ -37,8 +50,13 @@ function syncTokenFromResponse(response) {
   setupAxiosAuth(rotated)
 }
 
-function didYahooDashboardAuthFail(response) {
+function getYahooDashboardWarning(response) {
   const warning = response?.headers?.['x-dashboard-warning']
+  return typeof warning === 'string' ? warning : ''
+}
+
+function didYahooDashboardAuthFail(response) {
+  const warning = getYahooDashboardWarning(response)
   if (!warning) return false
   return /yahoo/i.test(warning) && /status 403/i.test(warning)
 }
@@ -70,7 +88,7 @@ function shouldBlockAutoYahooReauth() {
 }
 
 /* ── Login — dark full-bleed hero ───────────────────────── */
-function LoginScreen({ api, yahooNeedsReconnect = false }) {
+function LoginScreen({ api, yahooNeedsReconnect = false, yahooWarning = '' }) {
   return (
     <div className="login-page">
       {/* Left panel — brand hero */}
@@ -121,7 +139,21 @@ function LoginScreen({ api, yahooNeedsReconnect = false }) {
               fontSize: 13,
               lineHeight: 1.45,
             }}>
-              Yahoo sent you back, but fantasy access is still being rejected on Saturday, August 1, 2026. The app has stopped auto-redirecting so you can retry manually below.
+              <div style={{ fontWeight: 700, marginBottom: yahooWarning ? 8 : 0 }}>
+                Yahoo sent you back, but fantasy access is still being rejected on Saturday, August 1, 2026. The app has stopped auto-redirecting so you can retry manually below.
+              </div>
+              {yahooWarning && (
+                <div style={{
+                  fontSize: 12,
+                  lineHeight: 1.5,
+                  color: '#7c2d12',
+                  paddingTop: 8,
+                  borderTop: '1px solid rgba(234, 88, 12, 0.14)',
+                  wordBreak: 'break-word',
+                }}>
+                  {yahooWarning}
+                </div>
+              )}
             </div>
           )}
 
@@ -156,6 +188,7 @@ function LoginScreen({ api, yahooNeedsReconnect = false }) {
 export default function App() {
   const [authed, setAuthed] = useState(null)
   const [yahooNeedsReconnect, setYahooNeedsReconnect] = useState(false)
+  const [yahooWarning, setYahooWarning] = useState(() => getStoredWarning())
 
   useEffect(() => {
     const id = axios.interceptors.response.use(
@@ -165,10 +198,18 @@ export default function App() {
         if (isYahooDashboardResponse(r) && !didYahooDashboardAuthFail(r)) {
           clearYahooReauthAttempted()
           clearStoredTimestamp(YAHOO_LAST_AUTO_REAUTH_KEY)
+          clearStoredWarning()
+          setYahooWarning('')
           setYahooNeedsReconnect(false)
         }
 
         if (didYahooDashboardAuthFail(r)) {
+          const warning = getYahooDashboardWarning(r)
+          if (warning) {
+            setStoredWarning(warning)
+            setYahooWarning(warning)
+          }
+
           clearStoredToken()
           delete axios.defaults.headers.common['Authorization']
 
@@ -229,6 +270,8 @@ export default function App() {
       clearYahooReauthAttempted()
       clearStoredTimestamp(YAHOO_LAST_OAUTH_RETURN_KEY)
       clearStoredTimestamp(YAHOO_LAST_AUTO_REAUTH_KEY)
+      clearStoredWarning()
+      setYahooWarning('')
       setYahooNeedsReconnect(false)
       setAuthed(false)
     }
@@ -239,6 +282,8 @@ export default function App() {
     clearYahooReauthAttempted()
     clearStoredTimestamp(YAHOO_LAST_OAUTH_RETURN_KEY)
     clearStoredTimestamp(YAHOO_LAST_AUTO_REAUTH_KEY)
+    clearStoredWarning()
+    setYahooWarning('')
     setYahooNeedsReconnect(false)
     clearStoredToken()
     delete axios.defaults.headers.common['Authorization']
@@ -252,7 +297,7 @@ export default function App() {
           <div className="auth-spinner" />
         </div>
       )}
-      {authed === false && <LoginScreen api={API} yahooNeedsReconnect={yahooNeedsReconnect} />}
+      {authed === false && <LoginScreen api={API} yahooNeedsReconnect={yahooNeedsReconnect} yahooWarning={yahooWarning} />}
       {authed === true && <Dashboard api={API} onLogout={handleLogout} />}
     </>
   )
