@@ -38,6 +38,30 @@ function flattenMeta(arr) {
     return flat;
 }
 
+function formatDashboardWarningDetail(err) {
+    const detail = err?.response?.data || err?.data || null;
+    if (!detail) return '';
+
+    let serialized = '';
+    if (typeof detail === 'string') serialized = detail;
+    else {
+        try {
+            serialized = JSON.stringify(detail);
+        } catch (_) {
+            serialized = '';
+        }
+    }
+
+    return serialized.replace(/\s+/g, ' ').trim().slice(0, 320);
+}
+
+function buildYahooDashboardWarning(err) {
+    const base = `Yahoo dashboard unavailable: ${err.message}`;
+    const detail = formatDashboardWarningDetail(err);
+    if (!detail || detail === err.message) return base;
+    return `${base} | Yahoo says: ${detail}`;
+}
+
 function parseRanks(playerRanksArray) {
     const result = {};
     if (!Array.isArray(playerRanksArray)) return result;
@@ -1391,7 +1415,7 @@ router.get('/dashboard', requireAuth, async (req, res) => {
     } catch (err) {
         const detail = err.response?.data || err.message;
         console.error('Yahoo dashboard fatal error:', detail);
-        res.setHeader('x-dashboard-warning', `Yahoo dashboard unavailable: ${err.message}`);
+        res.setHeader('x-dashboard-warning', buildYahooDashboardWarning(err));
         res.json([]);
     }
 });
